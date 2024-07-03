@@ -1,0 +1,14 @@
+{
+  "name": "jinge-swc-compiler",
+  "version": "0.1.0",
+  "description": "",
+  "author": "",
+  "license": "ISC",
+  "keywords": ["jinge", "compiler"],
+  "main": "target/wasm32-wasi/release/jinge_swc_compiler.wasm",
+  "scripts": {
+    "prepublishOnly": "cargo build-wasi --release"
+  },
+  "files": [],
+  "preferUnplugged": true
+}
