@@ -1,5 +1,4 @@
 mod config;
-mod intl;
 mod visitor;
 
 use config::Config;
@@ -22,13 +21,15 @@ pub fn process_transform(program: Program, _metadata: TransformPluginProgramMeta
     .get_context(&TransformPluginMetadataContextKind::Cwd)
     .expect("failed to get cwd");
 
+  if !filename.starts_with(&cwd) || !filename.ends_with(".tsx") {
+    return program;
+  }
+
   let config = _metadata
     .get_transform_plugin_config()
     .expect("failed to get plugin config for jinge-swc-plugin");
 
-  if !filename.starts_with(&cwd) {
-    return program;
-  }
+  println!("{} {}", cwd, filename);
 
   // 注意此处 filename 的获取方式需要和 `packages/tools/intl/extract.ts` 中的算法一致，如果修改两处都要变更。
   let filename = filename[cwd.len()..].to_string();

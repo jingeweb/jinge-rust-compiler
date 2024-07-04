@@ -1,14 +1,32 @@
 {
-  "name": "jinge-swc-compiler",
-  "version": "0.1.0",
-  "description": "",
-  "author": "",
+  "name": "jinge-compiler",
+  "version": "4.0.0",
+  "description": "template compiler(swc plugin) for jinge mvvm framework",
+  "author": "Yuhang Ge<abeyuhang@gmail.com>",
   "license": "ISC",
-  "keywords": ["jinge", "compiler"],
-  "main": "target/wasm32-wasi/release/jinge_swc_compiler.wasm",
+  "keywords": [
+    "jinge",
+    "compiler"
+  ],
   "scripts": {
+    "dev": "cargo watch -x build-wasi",
+    "build": "cargo build-wasi --release",
     "prepublishOnly": "cargo build-wasi --release"
   },
-  "files": [],
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./target/wasm32-wasi/release/jinge_swc_compiler.wasm"
+    },
+    "./debug": {
+      "types": "./index.d.ts",
+      "default": "./target/wasm32-wasi/debug/jinge_swc_compiler.wasm"
+    }
+  },
+  "files": [
+    "package.json",
+    "target/wasm32-wasi/debug/jinge_swc_compiler.wasm",
+    "target/wasm32-wasi/release/jinge_swc_compiler.wasm"
+  ],
   "preferUnplugged": true
 }
