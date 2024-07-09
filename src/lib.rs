@@ -5,7 +5,6 @@ mod tpl;
 mod visitor;
 
 use config::Config;
-use enumset::EnumSet;
 use swc_core::ecma::{
   ast::Program,
   transforms::testing::test_inline,

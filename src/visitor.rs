@@ -1,7 +1,7 @@
 use std::borrow::Borrow;
 use std::ops::Deref;
+use std::rc::Rc;
 
-use enumset::{EnumSet, EnumSetType};
 use swc_core::atoms::Atom;
 use swc_core::common::{Span, Spanned, DUMMY_SP};
 use swc_core::ecma::ast::*;
@@ -9,11 +9,11 @@ use swc_core::ecma::visit::{Fold, Visit, VisitAll, VisitMut, VisitWith};
 use swc_core::plugin::errors::HANDLER;
 
 use crate::ast::{
-  ast_create_console_log, ast_create_expr_ident, ast_create_expr_lit_str, ast_create_jinge_import,
+  ast_create_console_log, ast_create_expr_call, ast_create_expr_ident, ast_create_expr_lit_str,
 };
-use crate::common::ImportId;
+use crate::common::{JINGE_IMPORT_CREATE_ELE, JINGE_IMPORT_TEXT_RENDER_FN};
 use crate::config::Config;
-use crate::tpl;
+use crate::tpl::{self, gen_import_jinge, gen_text_render_func};
 use swc_core::ecma::visit::VisitMutWith;
 
 fn emit_error(sp: Span, msg: &str) {
@@ -26,71 +26,15 @@ pub struct TransformVisitor {
   // pub cwd: String,
   // pub filename: String,
   // pub config: Config,
-  pub imports: EnumSet<ImportId>,
+  changed: bool,
 }
 impl TransformVisitor {
   pub fn new() -> Self {
-    Self {
-      imports: EnumSet::new(),
-    }
+    Self { changed: false }
   }
 }
 impl VisitMut for TransformVisitor {
-  // Implement necessary visit_mut_* methods for actual custom transform.
-  // A comprehensive list of possible visitor methods can be found here:
-  // https://rustdoc.swc.rs/swc_ecma_visit/trait.VisitMut.html
-
-  // fn visit_mut_call_expr(&mut self, n: &mut swc_core::ecma::ast::CallExpr) {}
-
-  // fn visit_mut_module_items(&mut self, n: &mut std::vec::Vec<ModuleItem>) {
-  //   println!("{:?}", n.len());
-  //   let mut items = Vec::with_capacity(n.len() + 1);
-  //   items.push(ModuleItem::Stmt(Stmt::Decl(Decl::Var(Box::new(VarDecl {
-  //     span: DUMMY_SP,
-  //     kind: VarDeclKind::Const,
-  //     declare: false,
-  //     decls: vec![VarDeclarator {
-  //       span: DUMMY_SP,
-  //       name: Pat::Ident(BindingIdent {
-  //         id: Ident {
-  //           span: DUMMY_SP,
-  //           sym: Atom::from("xxoo"),
-  //           optional: false,
-  //         },
-  //         type_ann: None,
-  //       }),
-  //       init: Some(Box::new(Expr::Lit(Lit::Num(Number {
-  //         span: DUMMY_SP,
-  //         value: 45.0,
-  //         raw: None,
-  //       })))),
-  //       definite: false,
-  //     }],
-  //   })))));
-  //   items.append(n);
-  //   *n = items;
-  // }
   fn visit_mut_module(&mut self, n: &mut Module) {
-    n.visit_mut_children_with(self);
-
-    // {
-    //   let mut new_items = Vec::with_capacity(n.body.len() + 1);
-    //   new_items.push(ast_create_jinge_import());
-
-    //   new_items.append(&mut n.body);
-    //   new_items.push(ModuleItem::Stmt(Stmt::Expr(ExprStmt {
-    //     span: DUMMY_SP,
-    //     expr: Box::new(Expr::Call(CallExpr {
-    //       span: DUMMY_SP,
-    //       callee: Callee::Expr(ast_create_expr_ident("jinge$textRenderFn$")),
-    //       args: vec![],
-    //       type_args: None,
-    //     })),
-    //   })));
-    //   n.body = new_items;
-    //   println!("xxxx {}", n.body.len());
-    //   return;
-    // }
     n.body.iter_mut().for_each(|item| match item {
       ModuleItem::ModuleDecl(decl) => match decl {
         ModuleDecl::ExportDecl(decl) => match &mut decl.decl {
@@ -128,52 +72,11 @@ impl VisitMut for TransformVisitor {
       },
     });
 
-    if self.imports.len() > 0 {
+    if self.changed {
       let mut new_items = Vec::with_capacity(n.body.len() + 1);
-      let imports: Vec<ImportId> = self.imports.iter().collect();
-      new_items.push(ast_create_jinge_import(imports));
-      // let mut x = n.body.remove(0);
-      // println!("{:?}", x);
-      // // match &mut x {
-      // //   ModuleItem::ModuleDecl(ref mut decl) => match decl {
-      // //     ModuleDecl::Import(ref mut imp) => {
-      // //       let spec = imp.specifiers.remove(0);
-      // //       match spec {
-      // //         ImportSpecifier::Named(mut spec) => {
-      // //           spec.local = Ident {
-      // //             span: spec.local.span(),
-      // //             sym: Atom::from("textRenderFn"),
-      // //             optional: false,
-      // //           }
-      // //         }
-      // //         _ => (),
-      // //       }
-      // //     }
-      // //     _ => (),
-      // //   },
-      // //   _ => (),
-      // // };
-      // // println!("{:?}", x);
-
-      // new_items.push(x);
-      // let x = n.body.remove(0);
-      // // // println!("{:?}", x);
-      // new_items.push(x);
+      new_items.push(gen_import_jinge());
       new_items.append(&mut n.body);
-      // new_items.push(ModuleItem::Stmt(Stmt::Expr(ExprStmt {
-      //   span: DUMMY_SP,
-      //   expr: Box::new(Expr::Call(CallExpr {
-      //     span: DUMMY_SP,
-      //     callee: Callee::Expr(Box::new(Expr::Ident(Ident {
-      //       span: DUMMY_SP,
-      //       sym: Atom::from("textRenderFn"),
-      //       optional: false,
-      //     }))),
-      //     args: vec![],
-      //     type_args: None,
-      //   })),
-      // })));
-      // println!("{:?}", new_items[0]);
+
       n.body = new_items;
       println!("add import");
     }
@@ -224,11 +127,12 @@ impl TransformVisitor {
     let Some(return_arg) = return_expr.arg.as_ref() else {
       return;
     };
-    let mut visitor = JSXVisitor::new(&mut self.imports);
+    let mut visitor = JSXVisitor::new();
     visitor.visit_expr(&*return_arg);
-    if !visitor.exprs.is_empty() {
+    if !visitor.context.exprs.is_empty() {
       println!("gen render");
       let elems: Vec<Option<ExprOrSpread>> = visitor
+        .context
         .exprs
         .into_iter()
         .map(|e| {
@@ -242,6 +146,7 @@ impl TransformVisitor {
         span: DUMMY_SP,
         elems,
       })));
+      self.changed = true;
     }
   }
 }
@@ -255,70 +160,159 @@ struct Html {
   is_svg: bool,
 }
 
-struct JSXVisitor<'a> {
-  imports: &'a mut EnumSet<ImportId>,
+struct Context {
   parent: Parent,
-
-  exprs: Vec<Box<Expr>>,
+  exprs: Box<Vec<Box<Expr>>>,
+}
+struct JSXVisitor {
+  context: Context,
+  stack: Vec<Context>,
 }
 
-impl<'a> JSXVisitor<'a> {
-  fn new(imports: &'a mut EnumSet<ImportId>) -> Self {
-    Self {
-      imports,
+impl JSXVisitor {
+  fn new() -> Self {
+    let root_context = Context {
       parent: Parent::Null,
-
-      exprs: vec![],
+      exprs: Box::new(vec![]),
+    };
+    Self {
+      context: root_context,
+      stack: vec![],
     }
   }
-  fn add_import(&mut self, i: ImportId) {
-    if !self.imports.contains(i) {
-      self.imports.insert(i);
-    }
+  fn push_context(&mut self, p: Parent) {
+    let current_context = std::mem::replace(
+      &mut self.context,
+      Context {
+        parent: p,
+        exprs: Box::new(vec![]),
+      },
+    );
+    self.stack.push(current_context);
+  }
+  fn pop_context(&mut self) -> Context {
+    std::mem::replace(&mut self.context, self.stack.pop().unwrap())
   }
 }
 
-impl Visit for JSXVisitor<'_> {
+impl Visit for JSXVisitor {
   fn visit_lit(&mut self, n: &Lit) {
-    if let Parent::Html(_) = &self.parent {
+    if let Parent::Html(_) = &self.context.parent {
       let mut e = Expr::Lit(n.clone());
       e.set_span(DUMMY_SP);
-      self.exprs.push(Box::new(e));
+      self.context.exprs.push(Box::new(e));
     } else {
-      self.add_import(ImportId::TextRenderFn);
       let mut e = Expr::Lit(n.clone());
       e.set_span(DUMMY_SP);
-      self.exprs.push(tpl::text_render_func(Box::new(e)));
+      self.context.exprs.push(gen_text_render_func(Box::new(e)));
     }
   }
   fn visit_jsx_text(&mut self, n: &JSXText) {
     let text = n.value.trim();
     if !text.is_empty() {
-      self.exprs.push(ast_create_expr_lit_str(text));
+      self.context.exprs.push(ast_create_expr_lit_str(text));
     }
   }
-  // fn visit_jsx_element_child(&mut self, n: &JSXElementChild) {
-  //   match n {
-  //     JSXElementChild::JSXText(n) => {
-
-  //     }
-  //     JSXElementChild::JSXExprContainer(expr) => match &expr.expr {
-  //       JSXExpr::JSXEmptyExpr(_) => (),
-  //       JSXExpr::Expr(expr) => {
-  //         self.visit_expr(expr);
-  //       }
-  //     },
-  //     JSXElementChild::JSXSpreadChild(n) => emit_error(n.span(), "不支持该语法"),
-  //     JSXElementChild::JSXElement(c) => {
-  //       self.v_jsx_element(c);
-  //     }
-  //     JSXElementChild::JSXFragment(f) => self.v_jsx_fragment(f),
-  //   }
-  // }
 
   fn visit_expr(&mut self, n: &Expr) {
     match n {
-      Expr::JSXElement(n) => {}
+      Expr::JSXElement(n) => {
+        let JSXElementName::Ident(tn) = &n.opening.name else {
+          emit_error(n.opening.name.span(), "todo");
+          return;
+        };
+        let tag = tn.as_ref();
+        match tag.chars().next() {
+          Some(c) if c >= 'A' && c <= 'Z' => {}
+          Some(c) if c >= 'a' && c <= 'z' => {
+            let mut a_ref: Option<Atom> = None;
+            let mut a_lits: Vec<(Ident, Lit)> = vec![];
+            n.opening.attrs.iter().for_each(|attr| match attr {
+              JSXAttrOrSpread::SpreadElement(s) => {
+                emit_error(s.span(), "暂不支持 ... 属性");
+              }
+              JSXAttrOrSpread::JSXAttr(attr) => {
+                let JSXAttrName::Ident(n) = &attr.name else {
+                  return;
+                };
+                let name = &n.sym;
+                if name == "ref" {
+                  if a_ref.is_some() {
+                    emit_error(attr.span(), "不能重复指定 ref");
+                    return;
+                  }
+                  a_ref.replace(name.clone());
+                } else if name.starts_with("on")
+                  && matches!(name.chars().nth(2), Some(c) if c >= 'A' && c <= 'Z')
+                {
+                  // html event
+                } else {
+                  if let Some(val) = &attr.value {
+                    match val {
+                      JSXAttrValue::Lit(val) => {
+                        a_lits.push((tn.clone(), val.clone()));
+                      }
+                      JSXAttrValue::JSXExprContainer(val) => match &val.expr {
+                        JSXExpr::JSXEmptyExpr(_) => {
+                          emit_error(val.expr.span(), "属性值为空");
+                        }
+                        JSXExpr::Expr(expr) => match expr.as_ref() {
+                          Expr::JSXElement(_)
+                          | Expr::JSXEmpty(_)
+                          | Expr::JSXFragment(_)
+                          | Expr::JSXMember(_)
+                          | Expr::JSXNamespacedName(_) => {
+                            emit_error(val.expr.span(), "不支持 JSX 元素作为属性值");
+                          }
+                          Expr::Lit(val) => {
+                            a_lits.push((tn.clone(), val.clone()));
+                          }
+                          _ => {
+                            // expr attribute
+                          }
+                        },
+                      },
+                      _ => emit_error(val.span(), "不支持该类型的属性值。"),
+                    }
+                  } else {
+                    // bool attribute
+                    a_lits.push((tn.clone(), Lit::Bool(Bool::from(true))));
+                  }
+                }
+              }
+            });
+
+            let is_svg = tag == "svg";
+            self.push_context(Parent::Html(Html { is_svg }));
+            n.visit_children_with(self);
+            let context = self.pop_context();
+            let mut args = vec![ExprOrSpread {
+              spread: None,
+              expr: ast_create_expr_lit_str(tag),
+            }];
+            if !context.exprs.is_empty() {
+              args.append(
+                &mut context
+                  .exprs
+                  .into_iter()
+                  .map(|expr| ExprOrSpread { spread: None, expr })
+                  .collect::<Vec<ExprOrSpread>>(),
+              );
+            }
+            self.context.exprs.push(ast_create_expr_call(
+              ast_create_expr_ident(JINGE_IMPORT_CREATE_ELE.1),
+              args,
+            ));
+          }
+          _ => {
+            emit_error(
+              tn.span(),
+              "不支持的 Tag。合法 Tag 为：大写字母打头为 Component 组件，小写字母打头为 html 元素。",
+            );
+            return;
+          }
+        }
+      }
       Expr::JSXEmpty(_) => (),
       Expr::JSXFragment(n) => {
         if n.children.is_empty() {
@@ -347,7 +341,7 @@ impl Visit for JSXVisitor<'_> {
         | BinaryOp::Div
         | BinaryOp::BitAnd
         | BinaryOp::BitOr
-        | BinaryOp::BitXor => {}
+        | BinaryOp::BitXor => b.visit_children_with(self),
         _ => emit_error(b.span(), "不支持条件表达式，请使用 <If> 组件"),
       },
       _ => {

@@ -1,7 +1,5 @@
 use swc_core::{common::*, ecma::ast::*, ecma::atoms::*};
 
-use crate::common::ImportId;
-
 #[inline]
 pub fn ast_create_ident(id: &str) -> Ident {
   Ident {
@@ -26,29 +24,15 @@ pub fn ast_create_expr_lit_str(v: &str) -> Box<Expr> {
     raw: None,
   })))
 }
-pub fn ast_create_jinge_import(imports: Vec<ImportId>) -> ModuleItem {
-  ModuleItem::ModuleDecl(ModuleDecl::Import(ImportDecl {
+#[inline]
+pub fn ast_create_expr_call(callee: Box<Expr>, args: Vec<ExprOrSpread>) -> Box<Expr> {
+  Box::new(Expr::Call(CallExpr {
     span: DUMMY_SP,
-    specifiers: imports
-      .iter()
-      .map(|i| {
-        let sym = i.as_ref();
-        let loc = format!("jinge${}$", sym);
-        ImportSpecifier::Named(ImportNamedSpecifier {
-          span: DUMMY_SP,
-          local: Ident::from(loc.as_str()),
-          imported: Some(ModuleExportName::Ident(Ident::from(sym))),
-          is_type_only: false,
-        })
-      })
-      .collect(),
-    src: Box::new(Str::from("jinge")),
-    type_only: false,
-    with: None,
-    phase: ImportPhase::Evaluation,
+    callee: Callee::Expr(callee),
+    args,
+    type_args: None,
   }))
 }
-
 pub fn ast_create_console_log() -> ModuleItem {
   ModuleItem::Stmt(Stmt::Expr(ExprStmt {
     span: DUMMY_SP,

@@ -20,6 +20,8 @@
   },
   "files": [
     "package.json",
+    "LICENSE",
+    "README.md",
     "index.js",
     "index.d.ts",
     "target/wasm32-wasi/debug/jinge_swc_compiler.wasm",
