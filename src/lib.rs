@@ -1,7 +1,11 @@
+mod ast;
+mod common;
 mod config;
+mod tpl;
 mod visitor;
 
 use config::Config;
+use enumset::EnumSet;
 use swc_core::ecma::{
   ast::Program,
   transforms::testing::test_inline,
@@ -25,26 +29,22 @@ pub fn process_transform(program: Program, _metadata: TransformPluginProgramMeta
     return program;
   }
 
-  let config = _metadata
-    .get_transform_plugin_config()
-    .expect("failed to get plugin config for jinge-swc-plugin");
+  // let config = _metadata
+  //   .get_transform_plugin_config()
+  //   .expect("failed to get plugin config for jinge-swc-plugin");
 
   // println!("{} {}", cwd, filename);
 
-  // 注意此处 filename 的获取方式需要和 `packages/tools/intl/extract.ts` 中的算法一致，如果修改两处都要变更。
-  let filename = filename[cwd.len()..].to_string();
+  // // 注意此处 filename 的获取方式需要和 `packages/tools/intl/extract.ts` 中的算法一致，如果修改两处都要变更。
+  // let filename = filename[cwd.len()..].to_string();
 
-  // println!("START ... {}", filename);
+  // // println!("START ... {}", filename);
 
-  // println!("CONFIG STR: {}", config);
-  let config =
-    serde_json::from_str::<Config>(&config).expect("invalid config for binfoe-studio-swc-plugin");
+  // // println!("CONFIG STR: {}", config);
+  // let config =
+  //   serde_json::from_str::<Config>(&config).expect("invalid config for binfoe-studio-swc-plugin");
 
-  let t = TransformVisitor {
-    cwd,
-    filename,
-    config,
-  };
+  let t = TransformVisitor::new();
 
   program.fold_with(&mut as_folder(t))
 }
@@ -53,20 +53,20 @@ pub fn process_transform(program: Program, _metadata: TransformPluginProgramMeta
 // Recommended strategy to test plugin's transform is verify
 // the Visitor's behavior, instead of trying to run `process_transform` with mocks
 // unless explicitly required to do so.
-test_inline!(
-  Default::default(),
-  |_| as_folder(TransformVisitor {
-    cwd: "/home/xiaoge/binfoe/studio/packages/client".to_string(),
-    filename: "/home/xiaoge/binfoe/studio/packages/client/src/main.tsx".to_string(),
-    config: Config {
-      delete_default_message: None,
-      // import_source: "@binfoe/server".into(),
-      // replace_source: "@/service/action".to_string(),
-    }
-  }),
-  boo,
-  // Input codes
-  r#"console.log("transform");"#,
-  // Output codes after transformed with plugin
-  r#"console.log("transform");"#
-);
+// test_inline!(
+//   Default::default(),
+//   |_| as_folder(TransformVisitor {
+//     cwd: "/home/xiaoge/binfoe/studio/packages/client".to_string(),
+//     filename: "/home/xiaoge/binfoe/studio/packages/client/src/main.tsx".to_string(),
+//     config: Config {
+//       delete_default_message: None,
+//       // import_source: "@binfoe/server".into(),
+//       // replace_source: "@/service/action".to_string(),
+//     }
+//   }),
+//   boo,
+//   // Input codes
+//   r#"console.log("transform");"#,
+//   // Output codes after transformed with plugin
+//   r#"console.log("transform");"#
+// );

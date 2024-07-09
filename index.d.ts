@@ -1,2 +1,2 @@
-declare const plugin: string;
-export default plugin;
+export const SWCPlugin: string;
+export const SWCDebugPlugin: string;
