@@ -17,9 +17,9 @@ pub fn ast_create_expr_this() -> Box<Expr> {
   Box::new(Expr::This(ThisExpr { span: DUMMY_SP }))
 }
 #[inline]
-pub fn ast_create_expr_lit_str(v: &str) -> Box<Expr> {
+pub fn ast_create_expr_lit_str(v: &str, sp: Option<Span>) -> Box<Expr> {
   Box::new(Expr::Lit(Lit::Str(Str {
-    span: DUMMY_SP,
+    span: sp.unwrap_or(DUMMY_SP),
     value: Atom::from(v),
     raw: None,
   })))

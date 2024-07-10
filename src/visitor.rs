@@ -1,23 +1,12 @@
 use std::borrow::Borrow;
 use std::ops::Deref;
-use std::rc::Rc;
 
-use swc_core::atoms::Atom;
-use swc_core::common::{Span, Spanned, DUMMY_SP};
+use swc_core::common::Spanned;
 use swc_core::ecma::ast::*;
-use swc_core::ecma::parser;
-use swc_core::ecma::visit::{Fold, Visit, VisitAll, VisitMut, VisitWith};
-use swc_core::plugin::errors::HANDLER;
+use swc_core::ecma::visit::VisitMut;
 
-use crate::ast::{
-  ast_create_console_log, ast_create_expr_call, ast_create_expr_ident, ast_create_expr_lit_str,
-};
-use crate::common::{emit_error, gen_import_jinge, JINGE_IMPORT_CREATE_ELE, JINGE_IMPORT_TEXT_RENDER_FN};
-use crate::config::Config;
-use crate::tpl::{self, gen_import_jinge, gen_text_render_func};
-use swc_core::ecma::visit::VisitMutWith;
+use crate::common::{emit_error, gen_import_jinge};
 use crate::parser;
-
 
 pub struct TransformVisitor {
   // pub cwd: String,
@@ -125,24 +114,8 @@ impl TransformVisitor {
       return;
     };
     let mut visitor = parser::TemplateParser::new();
-    visitor.visit_expr(&*return_arg);
-    if !visitor.context.exprs.is_empty() {
-      println!("gen render");
-      let elems: Vec<Option<ExprOrSpread>> = visitor
-        .context
-        .exprs
-        .into_iter()
-        .map(|e| {
-          Some(ExprOrSpread {
-            spread: None,
-            expr: e,
-          })
-        })
-        .collect();
-      return_expr.arg.replace(Box::new(Expr::Array(ArrayLit {
-        span: DUMMY_SP,
-        elems,
-      })));
+    if let Some(replaced_expr) = visitor.parse(&*return_arg) {
+      return_expr.arg.replace(replaced_expr);
       self.changed = true;
     }
   }

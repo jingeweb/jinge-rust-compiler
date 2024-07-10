@@ -69,7 +69,7 @@ test_inline!(
   import { Component } from 'jinge';
   export class App extends Component {
     render() {
-      return <div><h1>hello</h1></div>;
+      return <div class="ooo"><h1>hello</h1></div>;
     }
   }
   "#,
