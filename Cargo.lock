@@ -460,6 +460,7 @@ dependencies = [
  "serde_json",
  "sha2",
  "swc_core",
+ "swc_ecma_parser",
 ]
 
 [[package]]

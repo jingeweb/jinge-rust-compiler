@@ -1,8 +1,9 @@
 mod ast;
 mod common;
 mod config;
-mod tpl;
 mod visitor;
+mod parser;
+
 
 use config::Config;
 use swc_core::ecma::{
@@ -12,6 +13,7 @@ use swc_core::ecma::{
 };
 use swc_core::plugin::metadata::*;
 use swc_core::plugin::{plugin_transform, proxies::TransformPluginProgramMetadata};
+use swc_ecma_parser::TsSyntax;
 use visitor::TransformVisitor;
 
 #[plugin_transform]
@@ -52,20 +54,25 @@ pub fn process_transform(program: Program, _metadata: TransformPluginProgramMeta
 // Recommended strategy to test plugin's transform is verify
 // the Visitor's behavior, instead of trying to run `process_transform` with mocks
 // unless explicitly required to do so.
-// test_inline!(
-//   Default::default(),
-//   |_| as_folder(TransformVisitor {
-//     cwd: "/home/xiaoge/binfoe/studio/packages/client".to_string(),
-//     filename: "/home/xiaoge/binfoe/studio/packages/client/src/main.tsx".to_string(),
-//     config: Config {
-//       delete_default_message: None,
-//       // import_source: "@binfoe/server".into(),
-//       // replace_source: "@/service/action".to_string(),
-//     }
-//   }),
-//   boo,
-//   // Input codes
-//   r#"console.log("transform");"#,
-//   // Output codes after transformed with plugin
-//   r#"console.log("transform");"#
-// );
+test_inline!(
+  swc_ecma_parser::Syntax::Typescript(swc_ecma_parser::TsSyntax {
+    tsx: true,
+    decorators: false,
+    dts: true,
+    no_early_errors: false,
+    disallow_ambiguous_jsx_like: false
+  }),
+  |_| as_folder(TransformVisitor::new()),
+  boo,
+  // Input codes
+  r#"
+  import { Component } from 'jinge';
+  export class App extends Component {
+    render() {
+      return <div><h1>hello</h1></div>;
+    }
+  }
+  "#,
+  // Output codes after transformed with plugin
+  r#""#
+);
