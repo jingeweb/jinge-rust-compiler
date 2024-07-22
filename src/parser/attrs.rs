@@ -1,19 +1,29 @@
-use swc_core::atoms::Atom;
-use swc_core::common::Spanned;
-use swc_core::ecma::ast::{Bool, Expr, Ident, JSXAttrName, JSXAttrOrSpread, JSXAttrValue, JSXElement, JSXExpr, Lit};
 use crate::common::emit_error;
 use crate::parser::TemplateParser;
+use swc_core::common::Spanned;
+use swc_core::ecma::ast::*;
 
+use super::expr::{parse_expr_attr, AttrExpr};
+
+pub struct AttrEvt {
+  pub event_name: String,
+  pub event_handler: Box<Expr>,
+  pub capture: bool,
+}
 pub struct AttrStore {
-  pub ref_mark: Option<Atom>,
-  pub lit_props: Vec<(Ident, Lit)>
+  pub ref_mark: Option<Lit>,
+  pub lit_props: Vec<(IdentName, Lit)>,
+  pub evt_props: Vec<AttrEvt>,
+  pub expr_props: Vec<AttrExpr>,
 }
 
 impl TemplateParser {
-  pub fn parse_attrs(&mut self, tag: &Ident, n: &JSXElement) -> AttrStore {
+  pub fn parse_attrs(&mut self, n: &JSXElement) -> AttrStore {
     let mut attrs = AttrStore {
       ref_mark: None,
-      lit_props: vec![]
+      lit_props: vec![],
+      evt_props: vec![],
+      expr_props: vec![],
     };
 
     n.opening.attrs.iter().for_each(|attr| match attr {
@@ -30,15 +40,42 @@ impl TemplateParser {
             emit_error(attr.span(), "不能重复指定 ref");
             return;
           }
-          let Some(JSXAttrValue::Lit(Lit::Str(val))) = &attr.value else {
+          let Some(JSXAttrValue::Lit(val)) = &attr.value else {
             emit_error(attr.span(), "ref 属性值只能是字符串");
             return;
           };
-          attrs.ref_mark.replace(val.value.clone());
+          if !matches!(val, Lit::Str(_)) {
+            emit_error(attr.span(), "ref 属性值只能是字符串");
+            return;
+          }
+
+          attrs.ref_mark.replace(val.clone());
         } else if name.starts_with("on")
           && matches!(name.chars().nth(2), Some(c) if c >= 'A' && c <= 'Z')
         {
-          // html event
+          let Some(JSXAttrValue::JSXExprContainer(val)) = &attr.value else {
+            emit_error(attr.span(), "事件属性的属性值必须是箭头函数");
+            return;
+          };
+          let JSXExpr::Expr(val) = &val.expr else {
+            emit_error(attr.span(), "事件属性的属性值必须是箭头函数");
+            return;
+          };
+          if !matches!(val.as_ref(), Expr::Arrow(_)) {
+            emit_error(attr.span(), "事件属性的属性值必须是箭头函数");
+            return;
+          };
+          let mut event_name = &name[2..];
+          let mut capture = false;
+          if event_name.ends_with("Capture") {
+            event_name = &event_name[..event_name.len() - 7];
+            capture = true;
+          }
+          attrs.evt_props.push(AttrEvt {
+            event_name: event_name.to_lowercase(),
+            event_handler: val.clone(),
+            capture,
+          })
         } else {
           if let Some(val) = &attr.value {
             match val {
@@ -58,11 +95,13 @@ impl TemplateParser {
                   Expr::Lit(val) => {
                     attrs.lit_props.push((an.clone(), val.clone()));
                   }
-                  Expr::Fn(_) | Expr::Arrow(_) => {
-                    emit_error(attr.name.span(), "不支持函数作为属性值。如果是想传递事件，请使用 on 打头的属性名，例如 onClick")
-                  }
+                  Expr::Fn(_) | Expr::Arrow(_) => emit_error(
+                    attr.name.span(),
+                    "不支持函数作为属性值。如果是想传递事件，请使用 on 打头的属性名，例如 onClick",
+                  ),
                   _ => {
-                    // expr attribute
+                    let x = parse_expr_attr(name.clone(), expr.as_ref());
+                    attrs.expr_props.push(x);
                   }
                 },
               },
@@ -70,7 +109,9 @@ impl TemplateParser {
             }
           } else {
             // bool attribute
-            attrs.lit_props.push((an.clone(), Lit::Bool(Bool::from(true))));
+            attrs
+              .lit_props
+              .push((an.clone(), Lit::Bool(Bool::from(true))));
           }
         }
       }

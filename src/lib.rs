@@ -1,9 +1,8 @@
 mod ast;
 mod common;
 mod config;
-mod visitor;
 mod parser;
-
+mod visitor;
 
 use config::Config;
 use swc_core::ecma::{
@@ -69,7 +68,7 @@ test_inline!(
   import { Component } from 'jinge';
   export class App extends Component {
     render() {
-      return <div class="ooo"><h1>hello</h1></div>;
+      return <div>oo</div>;
     }
   }
   "#,

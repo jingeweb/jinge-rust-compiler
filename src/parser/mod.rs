@@ -1,23 +1,29 @@
-use swc_core::atoms::Atom;
-use swc_core::common::{DUMMY_SP, Spanned};
+use crate::ast::{
+  ast_create_arg_expr, ast_create_expr_call, ast_create_expr_ident, ast_create_expr_lit_bool,
+  ast_create_expr_lit_str, ast_create_expr_lit_string, ast_create_expr_this,
+};
+use crate::common::{
+  emit_error, JINGE_EL_IDENT, JINGE_IMPORT_ADD_EVENT, JINGE_IMPORT_CREATE_ELE,
+  JINGE_IMPORT_CREATE_ELE_A, JINGE_IMPORT_TEXT_RENDER_FN,
+};
 use swc_core::common::util::take::Take;
+use swc_core::common::{Spanned, SyntaxContext, DUMMY_SP};
 use swc_core::ecma::ast::*;
 use swc_core::ecma::visit::{Visit, VisitWith};
-use crate::ast::{ast_create_expr_call, ast_create_expr_ident, ast_create_expr_lit_str};
-use crate::common::{emit_error, JINGE_IMPORT_CREATE_ELE, JINGE_IMPORT_CREATE_ELE_A};
-use crate::parser::attrs::AttrStore;
-use crate::parser::tpl::gen_text_render_func;
+use tpl::{tpl_lit_obj, tpl_push_ele_code, tpl_set_ref_code};
 
-mod tpl;
 mod attrs;
+mod tpl;
+mod expr;
 
-
+#[derive(Debug)]
 enum Parent {
   Component,
   Html(Html),
   Null,
 }
 
+#[derive(Debug)]
 struct Html {
   is_svg: bool,
 }
@@ -25,6 +31,15 @@ struct Html {
 struct Context {
   parent: Parent,
   expressions: Box<Vec<Box<Expr>>>,
+}
+
+impl Context {
+  pub fn is_parent_svg(&self) -> bool {
+    matches!(self.parent, Parent::Html(ref v) if v.is_svg)
+  }
+  pub fn is_parent_component(&self) -> bool {
+    matches!(self.parent, Parent::Component | Parent::Null)
+  }
 }
 
 pub struct TemplateParser {
@@ -58,7 +73,11 @@ impl TemplateParser {
   }
   pub fn parse(&mut self, expr: &Expr) -> Option<Box<Expr>> {
     self.visit_expr(expr);
-    let elems: Vec<Option<ExprOrSpread>> = self.context.expressions.take().into_iter()
+    let elems: Vec<Option<ExprOrSpread>> = self
+      .context
+      .expressions
+      .take()
+      .into_iter()
       .map(|e| {
         Some(ExprOrSpread {
           spread: None,
@@ -77,55 +96,125 @@ impl TemplateParser {
   }
 
   fn parse_html_element(&mut self, tn: &Ident, n: &JSXElement) {
-    let mut attrs  = self.parse_attrs(tn, n);
+    let mut attrs = self.parse_attrs(n);
     let is_svg = tn.as_ref() == "svg";
     self.push_context(Parent::Html(Html { is_svg }));
     // 此处不能直接用 n.visit_children_with(self)，会再次 visit attributes
     n.children.iter().for_each(|child| {
       child.visit_children_with(self);
     });
-    let context = self.pop_context();
-    let mut args = vec![ExprOrSpread {
-      spread: None,
-      expr: ast_create_expr_lit_str(tn.as_ref(), Some(tn.span())),
-    }];
-    let has_attrs = !attrs.lit_props.is_empty();
-    if has_attrs {
-      let x = Box::new(Expr::Object(ObjectLit {
-        span: DUMMY_SP,
-        props: attrs.lit_props.take().into_iter().map(|(prop, val)| {
-          PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
-            key: PropName::Ident(prop),
-            value: Box::new(Expr::Lit(val))
-          })))
-        }).collect()
-      }));
-      args.push(ExprOrSpread {
-        spread: None,
-        expr: x
-      });
+    let children_context = self.pop_context();
+    let callee_ident = if self.context.is_parent_svg() || tn.sym.eq("svg") {
+      if !attrs.lit_props.is_empty() {
+        JINGE_IMPORT_CREATE_ELE_A.1
+      } else {
+        JINGE_IMPORT_CREATE_ELE.1
+      }
+    } else {
+      if !attrs.lit_props.is_empty() {
+        JINGE_IMPORT_CREATE_ELE_A.1
+      } else {
+        JINGE_IMPORT_CREATE_ELE.1
+      }
+    };
+    let mut args = vec![ast_create_arg_expr(Box::new(Expr::Lit(Lit::Str(
+      Str::from(tn.sym.clone()),
+    ))))];
+    let set_ref_code = attrs.ref_mark.take().map(|r| tpl_set_ref_code(r));
+    let push_ele_code = if self.context.is_parent_component() {
+      Some(tpl_push_ele_code())
+    } else {
+      None
+    };
+    if !attrs.lit_props.is_empty() {
+      args.push(ast_create_arg_expr(tpl_lit_obj(attrs.lit_props)));
     }
-    if !context.expressions.is_empty() {
+    if !children_context.expressions.is_empty() {
       args.append(
-        &mut context
+        &mut children_context
           .expressions
           .into_iter()
           .map(|expr| ExprOrSpread { spread: None, expr })
           .collect::<Vec<ExprOrSpread>>(),
       );
     }
-    self.context.expressions.push(ast_create_expr_call(
-      ast_create_expr_ident(if has_attrs {
-        JINGE_IMPORT_CREATE_ELE_A.1
-      } else {
-        JINGE_IMPORT_CREATE_ELE.1
-      }),
-      args,
-    ));
-  }
-  fn parse_component_element(&mut self) {
 
+    let output = if set_ref_code.is_some() || push_ele_code.is_some() || !attrs.evt_props.is_empty()
+    {
+      let mut stmts: Vec<Stmt> = vec![Stmt::Decl(Decl::Var(Box::new(VarDecl {
+        ctxt: SyntaxContext::empty(),
+        span: DUMMY_SP,
+        kind: VarDeclKind::Const,
+        declare: false,
+        decls: vec![VarDeclarator {
+          span: DUMMY_SP,
+          name: Pat::Ident(BindingIdent {
+            id: Ident::from(JINGE_EL_IDENT),
+            type_ann: None,
+          }),
+          init: Some(ast_create_expr_call(
+            ast_create_expr_ident(callee_ident),
+            args,
+          )),
+          definite: false,
+        }],
+      })))];
+      attrs.evt_props.into_iter().for_each(|evt| {
+        let mut args = vec![
+          ast_create_arg_expr(ast_create_expr_ident(JINGE_EL_IDENT)),
+          ast_create_arg_expr(ast_create_expr_lit_string(evt.event_name)),
+          ast_create_arg_expr(evt.event_handler),
+        ];
+        if evt.capture {
+          args.push(ast_create_arg_expr(ast_create_expr_lit_bool(true)));
+        }
+        stmts.push(Stmt::Expr(ExprStmt {
+          span: DUMMY_SP,
+          expr: ast_create_expr_call(ast_create_expr_ident(JINGE_IMPORT_ADD_EVENT.1), args),
+        }))
+      });
+      if let Some(c) = set_ref_code {
+        stmts.push(Stmt::Expr(ExprStmt {
+          span: DUMMY_SP,
+          expr: c,
+        }))
+      }
+      if let Some(c) = push_ele_code {
+        stmts.push(Stmt::Expr(ExprStmt {
+          span: DUMMY_SP,
+          expr: c,
+        }))
+      }
+      stmts.push(Stmt::Return(ReturnStmt {
+        span: DUMMY_SP,
+        arg: Some(ast_create_expr_ident(JINGE_EL_IDENT)),
+      }));
+      let body = Box::new(BlockStmtOrExpr::BlockStmt(BlockStmt {
+        ctxt: SyntaxContext::empty(),
+        span: DUMMY_SP,
+        stmts,
+      }));
+      let callee = Box::new(Expr::Paren(ParenExpr {
+        span: DUMMY_SP,
+        expr: Box::new(Expr::Arrow(ArrowExpr {
+          ctxt: SyntaxContext::empty(),
+          span: DUMMY_SP,
+          params: vec![],
+          body,
+          is_async: false,
+          is_generator: false,
+          type_params: None,
+          return_type: None,
+        })),
+      }));
+      ast_create_expr_call(callee, vec![])
+    } else {
+      ast_create_expr_call(ast_create_expr_ident(callee_ident), args)
+    };
+
+    self.context.expressions.push(output);
   }
+  fn parse_component_element(&mut self) {}
 }
 
 impl Visit for TemplateParser {
@@ -161,7 +250,10 @@ impl Visit for TemplateParser {
 
   fn visit_jsx_element(&mut self, n: &JSXElement) {
     let JSXElementName::Ident(tn) = &n.opening.name else {
-      emit_error(n.opening.name.span(), "未知的 JSX 格式，opening.name 未找到");
+      emit_error(
+        n.opening.name.span(),
+        "未知的 JSX 格式，opening.name 未找到",
+      );
       return;
     };
     // let tag = tn.as_ref();
@@ -183,17 +275,27 @@ impl Visit for TemplateParser {
   fn visit_jsx_text(&mut self, n: &JSXText) {
     let text = n.value.trim();
     if !text.is_empty() {
-      self.context.expressions.push(ast_create_expr_lit_str(text, Some(n.span())));
+      self
+        .context
+        .expressions
+        .push(ast_create_expr_lit_str(text, Some(n.span())));
     }
   }
 
   fn visit_lit(&mut self, n: &Lit) {
     if let Parent::Html(_) = &self.context.parent {
-      self.context.expressions.push(Box::new(Expr::Lit(n.clone())));
+      self
+        .context
+        .expressions
+        .push(Box::new(Expr::Lit(n.clone())));
     } else {
-      let mut e = Expr::Lit(n.clone());
-      e.set_span(DUMMY_SP);
-      self.context.expressions.push(gen_text_render_func(Box::new(e)));
+      self.context.expressions.push(ast_create_expr_call(
+        ast_create_expr_ident(JINGE_IMPORT_TEXT_RENDER_FN.1),
+        vec![
+          ast_create_arg_expr(ast_create_expr_this()),
+          ast_create_arg_expr(Box::new(Expr::Lit(n.clone()))),
+        ],
+      ));
     }
   }
 }
