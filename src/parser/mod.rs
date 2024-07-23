@@ -3,7 +3,7 @@ use crate::ast::{
   ast_create_expr_lit_str, ast_create_expr_lit_string, ast_create_expr_this,
 };
 use crate::common::{
-  emit_error, JINGE_EL_IDENT, JINGE_IMPORT_ADD_EVENT, JINGE_IMPORT_CREATE_ELE,
+  emit_error, JINGE_IDENT, JINGE_IMPORT_ADD_EVENT, JINGE_IMPORT_CREATE_ELE,
   JINGE_IMPORT_CREATE_ELE_A, JINGE_IMPORT_TEXT_RENDER_FN,
 };
 use swc_core::common::util::take::Take;
@@ -13,8 +13,8 @@ use swc_core::ecma::visit::{Visit, VisitWith};
 use tpl::{tpl_lit_obj, tpl_push_ele_code, tpl_set_ref_code};
 
 mod attrs;
-mod tpl;
 mod expr;
+mod tpl;
 
 #[derive(Debug)]
 enum Parent {
@@ -105,13 +105,13 @@ impl TemplateParser {
     });
     let children_context = self.pop_context();
     let callee_ident = if self.context.is_parent_svg() || tn.sym.eq("svg") {
-      if !attrs.lit_props.is_empty() {
+      if !attrs.const_props.is_empty() {
         JINGE_IMPORT_CREATE_ELE_A.1
       } else {
         JINGE_IMPORT_CREATE_ELE.1
       }
     } else {
-      if !attrs.lit_props.is_empty() {
+      if !attrs.const_props.is_empty() {
         JINGE_IMPORT_CREATE_ELE_A.1
       } else {
         JINGE_IMPORT_CREATE_ELE.1
@@ -120,14 +120,14 @@ impl TemplateParser {
     let mut args = vec![ast_create_arg_expr(Box::new(Expr::Lit(Lit::Str(
       Str::from(tn.sym.clone()),
     ))))];
-    let set_ref_code = attrs.ref_mark.take().map(|r| tpl_set_ref_code(r));
+    let set_ref_code = attrs.ref_prop.take().map(|r| tpl_set_ref_code(r));
     let push_ele_code = if self.context.is_parent_component() {
       Some(tpl_push_ele_code())
     } else {
       None
     };
-    if !attrs.lit_props.is_empty() {
-      args.push(ast_create_arg_expr(tpl_lit_obj(attrs.lit_props)));
+    if !attrs.const_props.is_empty() {
+      args.push(ast_create_arg_expr(tpl_lit_obj(attrs.const_props)));
     }
     if !children_context.expressions.is_empty() {
       args.append(
@@ -149,7 +149,7 @@ impl TemplateParser {
         decls: vec![VarDeclarator {
           span: DUMMY_SP,
           name: Pat::Ident(BindingIdent {
-            id: Ident::from(JINGE_EL_IDENT),
+            id: Ident::from(JINGE_IDENT),
             type_ann: None,
           }),
           init: Some(ast_create_expr_call(
@@ -161,7 +161,7 @@ impl TemplateParser {
       })))];
       attrs.evt_props.into_iter().for_each(|evt| {
         let mut args = vec![
-          ast_create_arg_expr(ast_create_expr_ident(JINGE_EL_IDENT)),
+          ast_create_arg_expr(ast_create_expr_ident(JINGE_IDENT)),
           ast_create_arg_expr(ast_create_expr_lit_string(evt.event_name)),
           ast_create_arg_expr(evt.event_handler),
         ];
@@ -187,7 +187,7 @@ impl TemplateParser {
       }
       stmts.push(Stmt::Return(ReturnStmt {
         span: DUMMY_SP,
-        arg: Some(ast_create_expr_ident(JINGE_EL_IDENT)),
+        arg: Some(ast_create_expr_ident(JINGE_IDENT)),
       }));
       let body = Box::new(BlockStmtOrExpr::BlockStmt(BlockStmt {
         ctxt: SyntaxContext::empty(),

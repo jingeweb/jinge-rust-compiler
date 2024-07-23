@@ -18,16 +18,18 @@ pub const JINGE_IMPORT_CREATE_ELE: (&str, &str) = x!("createEle");
 pub const JINGE_IMPORT_CREATE_ELE_A: (&str, &str) = x!("createEleA");
 pub const JINGE_IMPORT_ADD_EVENT: (&str, &str) = x!("addEvent");
 pub const JINGE_IMPORT_SET_REF: (&str, &str) = x!("SET_REF");
+pub const JINGE_IMPORT_WATCH: (&str, &str) = x!("WATCH");
 pub const JINGE_IMPORT_ROOT_NODES: (&str, &str) = x!("ROOT_NODES");
-pub const JINGE_EL_IDENT: &str = "$jg$";
+pub const JINGE_IDENT: &str = "$jg$";
 
-const JINGE_IMPORTS: [(&str, &str); 6] = [
+const JINGE_IMPORTS: [(&str, &str); 7] = [
   JINGE_IMPORT_TEXT_RENDER_FN,
   JINGE_IMPORT_CREATE_ELE,
   JINGE_IMPORT_CREATE_ELE_A,
   JINGE_IMPORT_ADD_EVENT,
   JINGE_IMPORT_SET_REF,
   JINGE_IMPORT_ROOT_NODES,
+  JINGE_IMPORT_WATCH,
 ];
 
 pub fn gen_import_jinge() -> ModuleItem {

@@ -6,60 +6,69 @@ use swc_core::{
 
 use crate::common::emit_error;
 
-pub struct AttrExpr {
-  pub name: Atom,
-  pub is_const: bool,
+pub struct AttrWatchExpr {}
+
+pub enum AttrExpr {
+  Pure,
+  Watch(AttrWatchExpr),
 }
 
-pub fn parse_expr_attr(name: Atom, val: &Expr) -> AttrExpr {
+pub fn parse_expr_attr(val: &Expr) -> AttrExpr {
   let mut parser = ExprAttrVisitor::new();
   parser.visit_expr(val);
+  if parser.computed_paths.is_empty() && parser.const_paths.is_empty() {
+    return AttrExpr::Pure;
+  }
+  if parser.computed_paths.is_empty() {
+    let x = 
+  }
 
-  AttrExpr {
-    name,
-    is_const: parser.is_const,
+  AttrExpr::Pure
+}
+
+pub struct WatchExpr {
+  pub root: Root,
+  pub path: Vec<PathItem>,
+}
+impl From<ExprAttrWalker> for WatchExpr {
+  fn from(value: ExprAttrWalker) -> Self {
+    Self {
+      root: value.root,
+      path: value.path,
+    }
   }
 }
-
-struct ExprAttrVisitor<'a> {
-  is_const: bool,
-  watch_paths: Vec<PathItem<'a>>,
-  computed_member_exprs: Vec<&'a Expr>,
+struct ExprAttrVisitor {
+  const_paths: Vec<WatchExpr>,
+  computed_paths: Vec<WatchExpr>,
 }
 
-impl<'a> ExprAttrVisitor<'a> {
+impl ExprAttrVisitor {
   pub fn new() -> Self {
     Self {
-      is_const: false,
-      watch_paths: vec![],
-      computed_member_exprs: vec![],
+      const_paths: vec![],
+      computed_paths: vec![],
     }
   }
 }
 
-struct ExprAttrWalker<'a> {
+struct ExprAttrWalker {
   root: Root,
   computed: ComputedType,
-  path: Vec<PathItem<'a>>,
-  path_need_watch: bool,
+  path: Vec<PathItem>,
+  meet_private: bool,
 }
-impl<'a> ExprAttrWalker<'a> {
+impl ExprAttrWalker {
   fn new() -> Self {
     Self {
       root: Root::None,
       computed: ComputedType::None,
       path: vec![],
-      path_need_watch: false,
+      meet_private: false,
     }
   }
-  // #[inline]
-  // fn prepend_path(&mut self, p: PathItem<'a>) {
-  //   let mut new_paths = Vec::with_capacity(self.paths.len() + 1);
-  //   new_paths.push(p);
-  //   new_paths.append(&mut self.paths);
-  //   self.paths = new_paths;
-  // }
-  fn walk(&mut self, n: &'a MemberExpr) {
+
+  fn walk(&mut self, n: &MemberExpr) {
     match n.obj.as_ref() {
       Expr::This(_) => {
         self.root = Root::This;
@@ -69,6 +78,7 @@ impl<'a> ExprAttrWalker<'a> {
           self.root = Root::Id(e.sym.clone());
         } else {
           // 如果 ident 是下划线打头，则认定为不进行 watch 监控。
+          self.meet_private = true
         }
       }
       Expr::Member(e) => {
@@ -76,13 +86,14 @@ impl<'a> ExprAttrWalker<'a> {
       }
       _ => {
         emit_error(n.obj.span(), "不支持该类型的表达式");
+        self.root = Root::None;
+        self.meet_private = true;
       }
     }
-    if matches!(self.root, Root::None) {
+    if self.meet_private || matches!(self.root, Root::None) {
       return;
     }
-    let prop = &n.prop;
-    match prop {
+    match &n.prop {
       MemberProp::Computed(c) => match c.expr.as_ref() {
         Expr::Lit(v) => match v {
           Lit::Str(s) => {
@@ -93,6 +104,7 @@ impl<'a> ExprAttrWalker<'a> {
               }
             } else {
               // 如果 property 是下划线打头，则认定为不进行 watch 监控。
+              self.meet_private = true;
             }
             self.path.push(PathItem::Const(s.clone()));
           }
@@ -110,7 +122,7 @@ impl<'a> ExprAttrWalker<'a> {
         },
         _ => {
           self.computed = ComputedType::Expr;
-          self.path.push(PathItem::Computed(c.expr.as_ref()));
+          self.path.push(PathItem::Computed(c.expr.clone()));
         }
       },
       MemberProp::Ident(c) => {
@@ -120,6 +132,7 @@ impl<'a> ExprAttrWalker<'a> {
           }
         } else {
           // 下划线打头的 property 不进行 watch。path 中只要有一个 item 是 public 的，就需要进行 watch
+          self.meet_private = true
         }
         self.path.push(PathItem::Const(c.sym.clone()));
       }
@@ -129,10 +142,10 @@ impl<'a> ExprAttrWalker<'a> {
     };
   }
 }
-enum PathItem<'a> {
+enum PathItem {
   PrivateName(Atom),
   Const(Atom),
-  Computed(&'a Expr),
+  Computed(Box<Expr>),
 }
 enum ComputedType {
   None,
@@ -145,7 +158,7 @@ enum Root {
   Id(Atom),
 }
 
-impl Visit for ExprAttrVisitor<'_> {
+impl Visit for ExprAttrVisitor {
   fn visit_member_expr(&mut self, node: &MemberExpr) {
     let mut walker = ExprAttrWalker::new();
     walker.walk(node);
@@ -157,9 +170,9 @@ impl Visit for ExprAttrVisitor<'_> {
     // }
     // self.is_const = false;
     match walker.computed {
-      ComputedType::None => return,
-      ComputedType::Const => self.watch_paths.push(walker.path),
-      ComputedType::Expr => {}
+      ComputedType::None => (),
+      ComputedType::Const => self.const_paths.push(WatchExpr::from(walker)),
+      ComputedType::Expr => self.computed_paths.push(WatchExpr::from(walker)),
     }
   }
 }
