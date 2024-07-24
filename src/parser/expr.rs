@@ -1,178 +1,415 @@
 use swc_core::{
   atoms::Atom,
-  common::Spanned,
-  ecma::{ast::*, visit::Visit},
+  common::{util::take::Take, Spanned, SyntaxContext, DUMMY_SP},
+  ecma::{
+    ast::*,
+    visit::{Visit, VisitAll, VisitAllWith, VisitMut, VisitMutWith},
+  },
 };
 
-use crate::common::emit_error;
+use crate::{
+  ast::{ast_create_arg_expr, ast_create_expr_call, ast_create_expr_ident, ast_create_expr_this},
+  common::{
+    emit_error, JINGE_IMPORT_DYM_PATH_WATCHER, JINGE_IMPORT_EXPR_WATCHER, JINGE_IMPORT_PATH_WATCHER,
+  },
+};
 
-pub struct AttrWatchExpr {}
+// pub struct AttrWatchExpr {}
 
-pub enum AttrExpr {
-  Pure,
-  Watch(AttrWatchExpr),
-}
+// pub enum AttrExpr {
+//   Pure,
+//   Watch(AttrWatchExpr),
+// }
 
-pub fn parse_expr_attr(val: &Expr) -> AttrExpr {
-  let mut parser = ExprAttrVisitor::new();
-  parser.visit_expr(val);
-  if parser.computed_paths.is_empty() && parser.const_paths.is_empty() {
-    return AttrExpr::Pure;
-  }
-  if parser.computed_paths.is_empty() {
-    let x = 
-  }
+// pub fn parse_expr_attr(val: &Expr) -> AttrExpr {
+//   let mut parser = ExprAttrVisitor::new();
+//   parser.visit_expr(val);
+//   if parser.computed_paths.is_empty() && parser.const_paths.is_empty() {
+//     return AttrExpr::Pure;
+//   }
+//   if parser.computed_paths.is_empty() {
+//     let x =
+//   }
 
-  AttrExpr::Pure
-}
+//   AttrExpr::Pure
+// }
 
-pub struct WatchExpr {
-  pub root: Root,
-  pub path: Vec<PathItem>,
-}
-impl From<ExprAttrWalker> for WatchExpr {
-  fn from(value: ExprAttrWalker) -> Self {
-    Self {
-      root: value.root,
-      path: value.path,
-    }
-  }
-}
-struct ExprAttrVisitor {
-  const_paths: Vec<WatchExpr>,
-  computed_paths: Vec<WatchExpr>,
-}
+// pub struct WatchExpr {
+//   pub root: Root,
+//   pub path: Vec<PathItem>,
+// }
+// impl From<ExprAttrWalker> for WatchExpr {
+//   fn from(value: ExprAttrWalker) -> Self {
+//     Self {
+//       root: value.root,
+//       path: value.path,
+//     }
+//   }
+// }
+// struct ExprAttrVisitor {
+//   const_paths: Vec<WatchExpr>,
+//   computed_paths: Vec<WatchExpr>,
+// }
 
-impl ExprAttrVisitor {
-  pub fn new() -> Self {
-    Self {
-      const_paths: vec![],
-      computed_paths: vec![],
-    }
-  }
-}
+// impl ExprAttrVisitor {
+//   pub fn new() -> Self {
+//     Self {
+//       const_paths: vec![],
+//       computed_paths: vec![],
+//     }
+//   }
+// }
 
-struct ExprAttrWalker {
-  root: Root,
-  computed: ComputedType,
-  path: Vec<PathItem>,
-  meet_private: bool,
-}
-impl ExprAttrWalker {
-  fn new() -> Self {
-    Self {
-      root: Root::None,
-      computed: ComputedType::None,
-      path: vec![],
-      meet_private: false,
-    }
-  }
+// struct ExprAttrWalker {
+//   root: Root,
+//   computed: ComputedType,
+//   path: Vec<PathItem>,
+//   meet_private: bool,
+// }
+// impl ExprAttrWalker {
+//   fn new() -> Self {
+//     Self {
+//       root: Root::None,
+//       computed: ComputedType::None,
+//       path: vec![],
+//       meet_private: false,
+//     }
+//   }
 
-  fn walk(&mut self, n: &MemberExpr) {
-    match n.obj.as_ref() {
-      Expr::This(_) => {
-        self.root = Root::This;
-      }
-      Expr::Ident(e) => {
-        if !e.sym.starts_with('_') {
-          self.root = Root::Id(e.sym.clone());
-        } else {
-          // 如果 ident 是下划线打头，则认定为不进行 watch 监控。
-          self.meet_private = true
-        }
-      }
-      Expr::Member(e) => {
-        self.walk(e);
-      }
-      _ => {
-        emit_error(n.obj.span(), "不支持该类型的表达式");
-        self.root = Root::None;
-        self.meet_private = true;
-      }
-    }
-    if self.meet_private || matches!(self.root, Root::None) {
-      return;
-    }
-    match &n.prop {
-      MemberProp::Computed(c) => match c.expr.as_ref() {
-        Expr::Lit(v) => match v {
-          Lit::Str(s) => {
-            let s = &s.value;
-            if !s.starts_with('_') {
-              if matches!(self.computed, ComputedType::None) {
-                self.computed = ComputedType::Const;
-              }
-            } else {
-              // 如果 property 是下划线打头，则认定为不进行 watch 监控。
-              self.meet_private = true;
-            }
-            self.path.push(PathItem::Const(s.clone()));
-          }
-          Lit::Num(n) => {
-            if matches!(self.computed, ComputedType::None) {
-              self.computed = ComputedType::Const;
-            }
-            self
-              .path
-              .push(PathItem::Const(Atom::from(n.value.to_string())));
-          }
-          _ => {
-            emit_error(v.span(), "不支持该常量作为属性");
-          }
-        },
-        _ => {
-          self.computed = ComputedType::Expr;
-          self.path.push(PathItem::Computed(c.expr.clone()));
-        }
-      },
-      MemberProp::Ident(c) => {
-        if !c.sym.starts_with('_') {
-          if matches!(self.computed, ComputedType::None) {
-            self.computed = ComputedType::Const;
-          }
-        } else {
-          // 下划线打头的 property 不进行 watch。path 中只要有一个 item 是 public 的，就需要进行 watch
-          self.meet_private = true
-        }
-        self.path.push(PathItem::Const(c.sym.clone()));
-      }
-      MemberProp::PrivateName(c) => {
-        self.path.push(PathItem::PrivateName(c.name.clone()));
-      }
-    };
-  }
-}
-enum PathItem {
-  PrivateName(Atom),
-  Const(Atom),
-  Computed(Box<Expr>),
-}
-enum ComputedType {
-  None,
-  Const,
-  Expr,
-}
+//   fn walk(&mut self, n: &MemberExpr) {
+//     match n.obj.as_ref() {
+//       Expr::This(_) => {
+//         self.root = Root::This;
+//       }
+//       Expr::Ident(e) => {
+//         if !e.sym.starts_with('_') {
+//           self.root = Root::Id(e.sym.clone());
+//         } else {
+//           // 如果 ident 是下划线打头，则认定为不进行 watch 监控。
+//           self.meet_private = true
+//         }
+//       }
+//       Expr::Member(e) => {
+//         self.walk(e);
+//       }
+//       _ => {
+//         emit_error(n.obj.span(), "不支持该类型的表达式");
+//         self.root = Root::None;
+//         self.meet_private = true;
+//       }
+//     }
+//     if self.meet_private || matches!(self.root, Root::None) {
+//       return;
+//     }
+//     match &n.prop {
+//       MemberProp::Computed(c) => match c.expr.as_ref() {
+//         Expr::Lit(v) => match v {
+//           Lit::Str(s) => {
+//             let s = &s.value;
+//             if !s.starts_with('_') {
+//               if matches!(self.computed, ComputedType::None) {
+//                 self.computed = ComputedType::Const;
+//               }
+//             } else {
+//               // 如果 property 是下划线打头，则认定为不进行 watch 监控。
+//               self.meet_private = true;
+//             }
+//             self.path.push(PathItem::Const(s.clone()));
+//           }
+//           Lit::Num(n) => {
+//             if matches!(self.computed, ComputedType::None) {
+//               self.computed = ComputedType::Const;
+//             }
+//             self
+//               .path
+//               .push(PathItem::Const(Atom::from(n.value.to_string())));
+//           }
+//           _ => {
+//             emit_error(v.span(), "不支持该常量作为属性");
+//           }
+//         },
+//         _ => {
+//           self.computed = ComputedType::Expr;
+//           self.path.push(PathItem::Computed(c.expr.clone()));
+//         }
+//       },
+//       MemberProp::Ident(c) => {
+//         if !c.sym.starts_with('_') {
+//           if matches!(self.computed, ComputedType::None) {
+//             self.computed = ComputedType::Const;
+//           }
+//         } else {
+//           // 下划线打头的 property 不进行 watch。path 中只要有一个 item 是 public 的，就需要进行 watch
+//           self.meet_private = true
+//         }
+//         self.path.push(PathItem::Const(c.sym.clone()));
+//       }
+//       MemberProp::PrivateName(c) => {
+//         self.path.push(PathItem::PrivateName(c.name.clone()));
+//       }
+//     };
+//   }
+// }
+// enum PathItem {
+//   PrivateName(Atom),
+//   Const(Atom),
+//   Computed(Box<Expr>),
+// }
+// enum ComputedType {
+//   None,
+//   Const,
+//   Expr,
+// }
 enum Root {
   None,
   This,
   Id(Atom),
 }
 
-impl Visit for ExprAttrVisitor {
-  fn visit_member_expr(&mut self, node: &MemberExpr) {
-    let mut walker = ExprAttrWalker::new();
-    walker.walk(node);
-    if matches!(walker.root, Root::None) {
+struct Context {
+  root: Root,
+  path: Vec<Atom>,
+  expressions: Box<Vec<Box<Expr>>>,
+}
+impl Context {
+  fn new() -> Self {
+    Self {
+      root: Root::None,
+      path: vec![],
+      expressions: Box::new(vec![]),
+    }
+  }
+}
+
+pub struct ExprAttrVisitor {
+  meet_error: bool,
+  expressions: Vec<Box<Expr>>,
+  level: usize,
+}
+impl ExprAttrVisitor {
+  pub fn new() -> Self {
+    Self {
+      level: 0,
+      meet_error: false,
+      expressions: vec![],
+    }
+  }
+  fn new_with_level(level: usize) -> Self {
+    Self {
+      level,
+      meet_error: false,
+      expressions: vec![],
+    }
+  }
+
+  pub fn parse(&mut self, expr: &Expr) -> Option<Box<Expr>> {
+    self.visit_expr(expr);
+    if self.meet_error || self.expressions.is_empty() {
+      return None;
+    }
+    // 如果表达式整个是一个 MemberExpr，则不需要使用 ExprWatcher 进一步封装。
+    if matches!(expr, Expr::Member(_)) {
+      self.expressions.pop()
+      // let x = self.expressions.pop().unwrap();
+      // let args = vec![
+      //   ast_create_arg_expr(ast_create_expr_this()),
+      //   ast_create_arg_expr(x),
+      // ];
+      // let x = ast_create_expr_call(ast_create_expr_ident("watchForComponent"), args)
+    } else {
+      let mut expr = expr.clone();
+      let mut x = vec![];
+      x.append(&mut self.expressions);
+      let mut rep = MemberExprReplaceVisitor::new();
+      rep.visit_mut_expr(&mut expr);
+      let args = vec![
+        ast_create_arg_expr(Box::new(Expr::Array(ArrayLit {
+          span: DUMMY_SP,
+          elems: x
+            .into_iter()
+            .map(|e| Some(ast_create_arg_expr(e)))
+            .collect(),
+        }))),
+        ast_create_arg_expr(Box::new(Expr::Arrow(ArrowExpr {
+          span: DUMMY_SP,
+          ctxt: SyntaxContext::empty(),
+          params: rep.params,
+          body: Box::new(BlockStmtOrExpr::Expr(Box::new(expr))),
+          is_async: false,
+          is_generator: false,
+          type_params: None,
+          return_type: None,
+        }))),
+      ];
+      Some(ast_create_expr_call(
+        ast_create_expr_ident(JINGE_IMPORT_EXPR_WATCHER.1),
+        args,
+      ))
+    }
+  }
+}
+impl VisitAll for ExprAttrVisitor {
+  fn visit_expr(&mut self, node: &Expr) {
+    if self.meet_error {
       return;
     }
-    // if matches!(walker.computed, ComputedType::None) {
-    //   return;
-    // }
-    // self.is_const = false;
-    match walker.computed {
-      ComputedType::None => (),
-      ComputedType::Const => self.const_paths.push(WatchExpr::from(walker)),
-      ComputedType::Expr => self.computed_paths.push(WatchExpr::from(walker)),
+    node.visit_children_with(self);
+  }
+  fn visit_member_expr(&mut self, node: &MemberExpr) {
+    if self.meet_error {
+      return;
+    }
+    let mut mem_parser = MemberExprVisitor::new(self.level);
+    mem_parser.visit_member_expr(node);
+    if mem_parser.meet_error || mem_parser.path.is_empty() || matches!(&mem_parser.root, Root::None)
+    {
+      self.meet_error = true;
+      return;
+    }
+
+    let mut args: Vec<ExprOrSpread> = Vec::with_capacity(mem_parser.path.len() + 2);
+    args.push(match mem_parser.root {
+      Root::This => ast_create_arg_expr(ast_create_expr_this()),
+      Root::Id(id) => ast_create_arg_expr(Box::new(Expr::Ident(Ident::from(id)))),
+      Root::None => unreachable!(),
+    });
+    args.push(ast_create_arg_expr(Box::new(Expr::Array(ArrayLit {
+      span: DUMMY_SP,
+      elems: mem_parser
+        .path
+        .into_iter()
+        .map(|p| Some(ast_create_arg_expr(p)))
+        .collect(),
+    }))));
+    if self.level == 0 {
+      args.push(ast_create_arg_expr(Box::new(Expr::Lit(Lit::Bool(
+        Bool::from(true),
+      )))));
+    }
+    self.expressions.push(ast_create_expr_call(
+      ast_create_expr_ident(if mem_parser.computed {
+        JINGE_IMPORT_DYM_PATH_WATCHER.1
+      } else {
+        JINGE_IMPORT_PATH_WATCHER.1
+      }),
+      args,
+    ))
+  }
+}
+
+struct MemberExprReplaceVisitor {
+  count: usize,
+  params: Vec<Pat>,
+}
+impl MemberExprReplaceVisitor {
+  fn new() -> Self {
+    Self {
+      count: 0,
+      params: vec![],
+    }
+  }
+}
+impl VisitMut for MemberExprReplaceVisitor {
+  fn visit_mut_expr(&mut self, node: &mut Expr) {
+    match node {
+      Expr::Member(_) => {
+        let id = Ident::from(format!("a{}", self.count));
+        let p = Pat::Ident(BindingIdent {
+          id: id.clone(),
+          type_ann: None,
+        });
+        self.params.push(p);
+        self.count += 1;
+        *node = Expr::Ident(id);
+      }
+      _ => node.visit_mut_children_with(self),
+    }
+  }
+}
+
+struct MemberExprVisitor {
+  root: Root,
+  path: Vec<Box<Expr>>,
+  meet_error: bool,
+  meet_private: bool,
+  level: usize,
+  computed: bool,
+}
+impl MemberExprVisitor {
+  fn new(level: usize) -> Self {
+    Self {
+      level,
+      root: Root::None,
+      path: vec![],
+      meet_error: false,
+      meet_private: false,
+      computed: false,
+    }
+  }
+}
+impl Visit for MemberExprVisitor {
+  fn visit_member_expr(&mut self, node: &MemberExpr) {
+    match node.obj.as_ref() {
+      Expr::This(_) => {
+        self.root = Root::This;
+      }
+      Expr::Ident(id) => {
+        if !id.sym.starts_with('_') {
+          self.root = Root::Id(id.sym.clone());
+        } else {
+          self.meet_private = true;
+        }
+      }
+      Expr::Member(expr) => {
+        self.visit_member_expr(expr);
+      }
+      _ => {
+        emit_error(node.obj.span(), "不支持该类型的表达式");
+        self.meet_error = true;
+      }
+    }
+    if self.meet_error || self.meet_private {
+      return;
+    }
+    match &node.prop {
+      MemberProp::Ident(id) => {
+        if id.sym.starts_with('_') {
+          self.meet_private = true;
+        } else {
+          self
+            .path
+            .push(Box::new(Expr::Lit(Lit::Str(Str::from(id.sym.clone())))));
+        }
+      }
+      MemberProp::PrivateName(_) => {
+        self.meet_private = true;
+      }
+      MemberProp::Computed(c) => {
+        let expr = c.expr.as_ref();
+        match expr {
+          Expr::Lit(v) => match v {
+            Lit::Str(s) => {
+              if s.value.starts_with('_') {
+                self.meet_private = true;
+              } else {
+                self.path.push(Box::new(Expr::Lit(v.clone())))
+              }
+            }
+            Lit::Num(_) => self.path.push(Box::new(Expr::Lit(v.clone()))),
+            _ => {
+              self.meet_error = true;
+              emit_error(v.span(), "不支持该常量作为属性");
+            }
+          },
+
+          _ => {
+            if let Some(result) = ExprAttrVisitor::new_with_level(self.level + 1).parse(expr) {
+              self.computed = true;
+              self.path.push(result);
+            }
+          }
+        }
+      }
     }
   }
 }

@@ -139,7 +139,10 @@ impl TemplateParser {
       );
     }
 
-    let output = if set_ref_code.is_some() || push_ele_code.is_some() || !attrs.evt_props.is_empty()
+    let output = if set_ref_code.is_some()
+      || push_ele_code.is_some()
+      || !attrs.evt_props.is_empty()
+      || !attrs.watch_props.is_empty()
     {
       let mut stmts: Vec<Stmt> = vec![Stmt::Decl(Decl::Var(Box::new(VarDecl {
         ctxt: SyntaxContext::empty(),
@@ -171,6 +174,12 @@ impl TemplateParser {
         stmts.push(Stmt::Expr(ExprStmt {
           span: DUMMY_SP,
           expr: ast_create_expr_call(ast_create_expr_ident(JINGE_IMPORT_ADD_EVENT.1), args),
+        }))
+      });
+      attrs.watch_props.into_iter().for_each(|w| {
+        stmts.push(Stmt::Expr(ExprStmt {
+          span: DUMMY_SP,
+          expr: w,
         }))
       });
       if let Some(c) = set_ref_code {

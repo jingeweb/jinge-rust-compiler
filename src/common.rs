@@ -17,19 +17,26 @@ pub const JINGE_IMPORT_TEXT_RENDER_FN: (&str, &str) = x!("textRenderFn");
 pub const JINGE_IMPORT_CREATE_ELE: (&str, &str) = x!("createEle");
 pub const JINGE_IMPORT_CREATE_ELE_A: (&str, &str) = x!("createEleA");
 pub const JINGE_IMPORT_ADD_EVENT: (&str, &str) = x!("addEvent");
-pub const JINGE_IMPORT_SET_REF: (&str, &str) = x!("SET_REF");
-pub const JINGE_IMPORT_WATCH: (&str, &str) = x!("WATCH");
+pub const JINGE_IMPORT_PATH_WATCHER: (&str, &str) = x!("PathWatcher");
+pub const JINGE_IMPORT_DYM_PATH_WATCHER: (&str, &str) = x!("DymPathWatcher");
+pub const JINGE_IMPORT_EXPR_WATCHER: (&str, &str) = x!("ExprWatcher");
+pub const JINGE_IMPORT_WATCH_FOR_COMPONENT: (&str, &str) = x!("watchForComponent");
+
+pub const JINGE_IMPORT_SET_REF: (&str, &str) = x!("setRefForComponent");
 pub const JINGE_IMPORT_ROOT_NODES: (&str, &str) = x!("ROOT_NODES");
 pub const JINGE_IDENT: &str = "$jg$";
 
-const JINGE_IMPORTS: [(&str, &str); 7] = [
+const JINGE_IMPORTS: [(&str, &str); 10] = [
   JINGE_IMPORT_TEXT_RENDER_FN,
   JINGE_IMPORT_CREATE_ELE,
   JINGE_IMPORT_CREATE_ELE_A,
   JINGE_IMPORT_ADD_EVENT,
   JINGE_IMPORT_SET_REF,
   JINGE_IMPORT_ROOT_NODES,
-  JINGE_IMPORT_WATCH,
+  JINGE_IMPORT_PATH_WATCHER,
+  JINGE_IMPORT_DYM_PATH_WATCHER,
+  JINGE_IMPORT_EXPR_WATCHER,
+  JINGE_IMPORT_WATCH_FOR_COMPONENT,
 ];
 
 pub fn gen_import_jinge() -> ModuleItem {
