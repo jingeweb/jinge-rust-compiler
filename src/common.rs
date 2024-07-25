@@ -18,6 +18,7 @@ pub const JINGE_IMPORT_CREATE_ELE: (&str, &str) = x!("createEle");
 pub const JINGE_IMPORT_CREATE_ELE_A: (&str, &str) = x!("createEleA");
 pub const JINGE_IMPORT_ADD_EVENT: (&str, &str) = x!("addEvent");
 pub const JINGE_IMPORT_SET_ATTRIBUTE: (&str, &str) = x!("setAttribute");
+pub const JINGE_IMPORT_IF: (&str, &str) = x!("If");
 pub const JINGE_IMPORT_PATH_WATCHER: (&str, &str) = x!("PathWatcher");
 pub const JINGE_IMPORT_DYM_PATH_WATCHER: (&str, &str) = x!("DymPathWatcher");
 pub const JINGE_IMPORT_EXPR_WATCHER: (&str, &str) = x!("ExprWatcher");
@@ -25,9 +26,14 @@ pub const JINGE_IMPORT_WATCH_FOR_COMPONENT: (&str, &str) = x!("watchForComponent
 
 pub const JINGE_IMPORT_SET_REF: (&str, &str) = x!("setRefForComponent");
 pub const JINGE_IMPORT_ROOT_NODES: (&str, &str) = x!("ROOT_NODES");
-pub const JINGE_IDENT: &str = "$jg$";
+pub const JINGE_IMPORT_SLOTS: (&str, &str) = x!("SLOTS");
+pub const JINGE_IMPORT_DEFAULT_SLOT: (&str, &str) = x!("DEFAULT_SLOT");
 
-const JINGE_IMPORTS: [(&str, &str); 11] = [
+pub const JINGE_IMPORT_NON_ROOT_COMPONENT_NODES: (&str, &str) = x!("NON_ROOT_COMPONENT_NODES");
+pub const JINGE_IDENT: &str = "$jg$";
+pub const JINGE_IDENT_ATTRS: &str = "_$jg$";
+
+const JINGE_IMPORTS: [(&str, &str); 15] = [
   JINGE_IMPORT_TEXT_RENDER_FN,
   JINGE_IMPORT_CREATE_ELE,
   JINGE_IMPORT_CREATE_ELE_A,
@@ -35,10 +41,14 @@ const JINGE_IMPORTS: [(&str, &str); 11] = [
   JINGE_IMPORT_SET_ATTRIBUTE,
   JINGE_IMPORT_SET_REF,
   JINGE_IMPORT_ROOT_NODES,
+  JINGE_IMPORT_NON_ROOT_COMPONENT_NODES,
+  JINGE_IMPORT_SLOTS,
+  JINGE_IMPORT_DEFAULT_SLOT,
   JINGE_IMPORT_PATH_WATCHER,
   JINGE_IMPORT_DYM_PATH_WATCHER,
   JINGE_IMPORT_EXPR_WATCHER,
   JINGE_IMPORT_WATCH_FOR_COMPONENT,
+  JINGE_IMPORT_IF,
 ];
 
 pub fn gen_import_jinge() -> ModuleItem {

@@ -1,11 +1,11 @@
 use crate::ast::{
   ast_create_arg_expr, ast_create_expr_arrow_fn, ast_create_expr_call, ast_create_expr_ident,
   ast_create_expr_lit_bool, ast_create_expr_lit_str, ast_create_expr_lit_string,
-  ast_create_expr_this,
+  ast_create_expr_member, ast_create_expr_new, ast_create_expr_this, ast_create_stmt_decl_const,
 };
 use crate::common::{
-  emit_error, IDL_ATTRIBUTE_SET, JINGE_IDENT, JINGE_IMPORT_ADD_EVENT, JINGE_IMPORT_CREATE_ELE,
-  JINGE_IMPORT_CREATE_ELE_A, JINGE_IMPORT_SET_ATTRIBUTE, JINGE_IMPORT_TEXT_RENDER_FN,
+  emit_error, IDL_ATTRIBUTE_SET, JINGE_IDENT, JINGE_IDENT_ATTRS, JINGE_IMPORT_ADD_EVENT,
+  JINGE_IMPORT_CREATE_ELE, JINGE_IMPORT_CREATE_ELE_A, JINGE_IMPORT_TEXT_RENDER_FN,
   JINGE_IMPORT_WATCH_FOR_COMPONENT,
 };
 use swc_core::common::util::take::Take;
@@ -13,7 +13,7 @@ use swc_core::common::{Spanned, SyntaxContext, DUMMY_SP};
 use swc_core::ecma::ast::*;
 use swc_core::ecma::visit::{Visit, VisitWith};
 use tpl::{
-  tpl_lit_obj, tpl_push_ele_code, tpl_set_attribute, tpl_set_idl_attribute, tpl_set_ref_code,
+  tpl_lit_obj, tpl_push_el_code, tpl_set_attribute, tpl_set_idl_attribute, tpl_set_ref_code,
 };
 
 mod attrs;
@@ -34,7 +34,7 @@ struct Html {
 
 struct Context {
   parent: Parent,
-  expressions: Box<Vec<Box<Expr>>>,
+  expressions: Box<Vec<ExprOrSpread>>,
 }
 
 impl Context {
@@ -82,12 +82,7 @@ impl TemplateParser {
       .expressions
       .take()
       .into_iter()
-      .map(|e| {
-        Some(ExprOrSpread {
-          spread: None,
-          expr: e,
-        })
-      })
+      .map(|e| Some(e))
       .collect();
     if elems.is_empty() {
       None
@@ -100,14 +95,14 @@ impl TemplateParser {
   }
 
   fn parse_html_element(&mut self, tn: &Ident, n: &JSXElement) {
-    let mut attrs = self.parse_attrs(n);
+    let mut attrs = self.parse_attrs(n, false);
     let is_svg = tn.as_ref() == "svg";
     self.push_context(Parent::Html(Html { is_svg }));
     // 此处不能直接用 n.visit_children_with(self)，会再次 visit attributes
     n.children.iter().for_each(|child| {
       child.visit_children_with(self);
     });
-    let children_context = self.pop_context();
+    let mut children_context = self.pop_context();
     let callee_ident = if self.context.is_parent_svg() || tn.sym.eq("svg") {
       if !attrs.const_props.is_empty() {
         JINGE_IMPORT_CREATE_ELE_A.1
@@ -126,7 +121,7 @@ impl TemplateParser {
     ))))];
     let set_ref_code = attrs.ref_prop.take().map(|r| tpl_set_ref_code(r));
     let push_ele_code = if self.context.is_parent_component() {
-      Some(tpl_push_ele_code())
+      Some(tpl_push_el_code(true))
     } else {
       None
     };
@@ -134,13 +129,7 @@ impl TemplateParser {
       args.push(ast_create_arg_expr(tpl_lit_obj(attrs.const_props)));
     }
     if !children_context.expressions.is_empty() {
-      args.append(
-        &mut children_context
-          .expressions
-          .into_iter()
-          .map(|expr| ExprOrSpread { spread: None, expr })
-          .collect::<Vec<ExprOrSpread>>(),
-      );
+      args.append(&mut children_context.expressions);
     }
 
     let output = if set_ref_code.is_some()
@@ -148,24 +137,10 @@ impl TemplateParser {
       || !attrs.evt_props.is_empty()
       || !attrs.watch_props.is_empty()
     {
-      let mut stmts: Vec<Stmt> = vec![Stmt::Decl(Decl::Var(Box::new(VarDecl {
-        ctxt: SyntaxContext::empty(),
-        span: DUMMY_SP,
-        kind: VarDeclKind::Const,
-        declare: false,
-        decls: vec![VarDeclarator {
-          span: DUMMY_SP,
-          name: Pat::Ident(BindingIdent {
-            id: Ident::from(JINGE_IDENT),
-            type_ann: None,
-          }),
-          init: Some(ast_create_expr_call(
-            ast_create_expr_ident(callee_ident),
-            args,
-          )),
-          definite: false,
-        }],
-      })))];
+      let mut stmts: Vec<Stmt> = vec![ast_create_stmt_decl_const(
+        JINGE_IDENT,
+        ast_create_expr_call(ast_create_expr_ident(callee_ident), args),
+      )];
       attrs.evt_props.into_iter().for_each(|evt| {
         let mut args = vec![
           ast_create_arg_expr(ast_create_expr_ident(JINGE_IDENT)),
@@ -258,9 +233,70 @@ impl TemplateParser {
       ast_create_expr_call(ast_create_expr_ident(callee_ident), args)
     };
 
-    self.context.expressions.push(output);
+    self.context.expressions.push(ExprOrSpread {
+      spread: None,
+      expr: output,
+    });
   }
-  fn parse_component_element(&mut self) {}
+  fn parse_component_element(&mut self, tn: &Ident, n: &JSXElement) {
+    let mut attrs = self.parse_attrs(n, true);
+    self.push_context(Parent::Component);
+    // 此处不能直接用 n.visit_children_with(self)，会再次 visit attributes
+    n.children.iter().for_each(|child| {
+      child.visit_children_with(self);
+    });
+    let children_context = self.pop_context();
+
+    if attrs.watch_props.is_empty() {}
+    let set_ref_code = attrs.ref_prop.take().map(|r| tpl_set_ref_code(r));
+    let mut stmts = vec![
+      ast_create_stmt_decl_const(JINGE_IDENT_ATTRS, tpl_lit_obj(attrs.const_props)),
+      ast_create_stmt_decl_const(
+        JINGE_IDENT,
+        ast_create_expr_new(
+          Box::new(Expr::Ident(tn.clone())),
+          Some(vec![ast_create_arg_expr(ast_create_expr_ident(
+            JINGE_IDENT_ATTRS,
+          ))]),
+        ),
+      ),
+      Stmt::Expr(ExprStmt {
+        span: DUMMY_SP,
+        expr: tpl_push_el_code(self.context.is_parent_component()),
+      }),
+    ];
+    if let Some(c) = set_ref_code {
+      stmts.push(Stmt::Expr(ExprStmt {
+        span: DUMMY_SP,
+        expr: c,
+      }))
+    }
+
+    stmts.push(Stmt::Return(ReturnStmt {
+      span: DUMMY_SP,
+      arg: Some(ast_create_expr_call(
+        ast_create_expr_member(
+          ast_create_expr_ident(JINGE_IDENT),
+          MemberProp::Ident(IdentName::from("render")),
+        ),
+        vec![],
+      )),
+    }));
+    self.context.expressions.push(ExprOrSpread {
+      spread: Some(DUMMY_SP),
+      expr: ast_create_expr_call(
+        ast_create_expr_arrow_fn(
+          vec![],
+          Box::new(BlockStmtOrExpr::BlockStmt(BlockStmt {
+            span: DUMMY_SP,
+            ctxt: SyntaxContext::empty(),
+            stmts,
+          })),
+        ),
+        vec![],
+      ),
+    });
+  }
 }
 
 impl Visit for TemplateParser {
@@ -305,7 +341,9 @@ impl Visit for TemplateParser {
     // let tag = tn.as_ref();
     // println!("visit jsx ele: {}", tag);
     match tn.as_ref().chars().next() {
-      Some(c) if c.is_ascii_uppercase() => {}
+      Some(c) if c.is_ascii_uppercase() => {
+        self.parse_component_element(tn, n);
+      }
       Some(c) if c.is_ascii_lowercase() => {
         self.parse_html_element(tn, n);
       }
@@ -324,7 +362,10 @@ impl Visit for TemplateParser {
       self
         .context
         .expressions
-        .push(ast_create_expr_lit_str(text, Some(n.span())));
+        .push(ast_create_arg_expr(ast_create_expr_lit_str(
+          text,
+          Some(n.span()),
+        )));
     }
   }
 
@@ -333,15 +374,18 @@ impl Visit for TemplateParser {
       self
         .context
         .expressions
-        .push(Box::new(Expr::Lit(n.clone())));
+        .push(ast_create_arg_expr(Box::new(Expr::Lit(n.clone()))));
     } else {
-      self.context.expressions.push(ast_create_expr_call(
-        ast_create_expr_ident(JINGE_IMPORT_TEXT_RENDER_FN.1),
-        vec![
-          ast_create_arg_expr(ast_create_expr_this()),
-          ast_create_arg_expr(Box::new(Expr::Lit(n.clone()))),
-        ],
-      ));
+      self
+        .context
+        .expressions
+        .push(ast_create_arg_expr(ast_create_expr_call(
+          ast_create_expr_ident(JINGE_IMPORT_TEXT_RENDER_FN.1),
+          vec![
+            ast_create_arg_expr(ast_create_expr_this()),
+            ast_create_arg_expr(Box::new(Expr::Lit(n.clone()))),
+          ],
+        )));
     }
   }
 }

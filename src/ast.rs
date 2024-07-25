@@ -10,6 +10,35 @@ pub fn ast_create_ident(id: &str) -> Ident {
   }
 }
 #[inline]
+pub fn ast_create_expr_new(callee: Box<Expr>, args: Option<Vec<ExprOrSpread>>) -> Box<Expr> {
+  Box::new(Expr::New(NewExpr {
+    span: DUMMY_SP,
+    ctxt: SyntaxContext::empty(),
+    callee,
+    args,
+    type_args: None,
+  }))
+}
+#[inline]
+pub fn ast_create_stmt_decl_const(ident: &str, init: Box<Expr>) -> Stmt {
+  Stmt::Decl(Decl::Var(Box::new(VarDecl {
+    span: DUMMY_SP,
+    ctxt: SyntaxContext::empty(),
+    kind: VarDeclKind::Const,
+    declare: false,
+    decls: vec![VarDeclarator {
+      span: DUMMY_SP,
+      definite: false,
+      name: Pat::Ident(BindingIdent {
+        id: Ident::from(ident),
+        type_ann: None,
+      }),
+      init: Some(init),
+    }],
+  })))
+}
+
+#[inline]
 pub fn ast_create_arg_expr(arg: Box<Expr>) -> ExprOrSpread {
   ExprOrSpread {
     spread: None,

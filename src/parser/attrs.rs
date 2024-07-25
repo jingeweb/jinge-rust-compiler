@@ -22,7 +22,7 @@ pub struct AttrStore {
 }
 
 impl TemplateParser {
-  pub fn parse_attrs(&mut self, n: &JSXElement) -> AttrStore {
+  pub fn parse_attrs(&mut self, n: &JSXElement, is_component: bool) -> AttrStore {
     let mut attrs = AttrStore {
       ref_prop: None,
       evt_props: vec![],
@@ -54,7 +54,8 @@ impl TemplateParser {
           }
 
           attrs.ref_prop.replace(val.clone());
-        } else if name.starts_with("on")
+        } else if !is_component // html 元素的事件处理要单独处理，把 onClick 等转换成 click 事件。Component 元素的事件处理也是标准的属性传递。
+          && name.starts_with("on")
           && matches!(name.chars().nth(2), Some(c) if c >= 'A' && c <= 'Z')
         {
           let Some(JSXAttrValue::JSXExprContainer(val)) = &attr.value else {
@@ -103,10 +104,20 @@ impl TemplateParser {
                       .const_props
                       .push((an.clone(), Box::new(Expr::Lit(val.clone()))));
                   }
-                  Expr::Fn(_) | Expr::Arrow(_) => emit_error(
-                    attr.name.span(),
-                    "不支持函数作为属性值。如果是想传递事件，请使用 on 打头的属性名，例如 onClick",
-                  ),
+                  Expr::Fn(_) | Expr::Arrow(_) => {
+                    if !is_component {
+                      emit_error(
+                        attr.name.span(),
+                        "不支持函数作为属性值。如果是想传递事件，请使用 on 打头的属性名，例如 onClick",
+                      )
+                    } else {
+                      if let Some(expr) = ExprAttrVisitor::new().parse(expr.as_ref()) {
+                        attrs.watch_props.push((an.clone(), expr));
+                      } else {
+                        attrs.const_props.push((an.clone(), expr.clone()));
+                      }
+                    }
+                  }
                   _ => {
                     // if let AttrExpr::Watch(expr) = parse_expr_attr(expr.as_ref()) {
                     //   //
