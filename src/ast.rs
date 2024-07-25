@@ -65,6 +65,18 @@ pub fn ast_create_expr_call(callee: Box<Expr>, args: Vec<ExprOrSpread>) -> Box<E
     type_args: None,
   }))
 }
+pub fn ast_create_expr_arrow_fn(params: Vec<Pat>, body: Box<BlockStmtOrExpr>) -> Box<Expr> {
+  Box::new(Expr::Arrow(ArrowExpr {
+    span: DUMMY_SP,
+    ctxt: SyntaxContext::empty(),
+    params: params,
+    body,
+    is_async: false,
+    is_generator: false,
+    type_params: None,
+    return_type: None,
+  }))
+}
 pub fn ast_create_console_log() -> ModuleItem {
   ModuleItem::Stmt(Stmt::Expr(ExprStmt {
     span: DUMMY_SP,

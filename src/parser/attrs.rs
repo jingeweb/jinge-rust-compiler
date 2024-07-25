@@ -18,7 +18,7 @@ pub struct AttrStore {
   /// 不需要 watch 监听的表达式属性，例如 `<div a={45 + "hello"} b={_someVar.o} c="hello" d={true} disabled ></div>`
   pub const_props: Vec<(IdentName, Box<Expr>)>,
   // /// 需要 watch 监听的表达式属性，例如 `<div a={this.some}></div>`
-  pub watch_props: Vec<Box<Expr>>,
+  pub watch_props: Vec<(IdentName, Box<Expr>)>,
 }
 
 impl TemplateParser {
@@ -113,8 +113,8 @@ impl TemplateParser {
                     // } else {
                     //   attrs.const_props.push((an.clone(), expr.clone()));
                     // }
-                    if let Some(a) = ExprAttrVisitor::new().parse(expr.as_ref()) {
-                      attrs.watch_props.push(a);
+                    if let Some(expr) = ExprAttrVisitor::new().parse(expr.as_ref()) {
+                      attrs.watch_props.push((an.clone(), expr));
                     } else {
                       attrs.const_props.push((an.clone(), expr.clone()));
                     }

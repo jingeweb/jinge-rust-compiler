@@ -17,6 +17,7 @@ pub const JINGE_IMPORT_TEXT_RENDER_FN: (&str, &str) = x!("textRenderFn");
 pub const JINGE_IMPORT_CREATE_ELE: (&str, &str) = x!("createEle");
 pub const JINGE_IMPORT_CREATE_ELE_A: (&str, &str) = x!("createEleA");
 pub const JINGE_IMPORT_ADD_EVENT: (&str, &str) = x!("addEvent");
+pub const JINGE_IMPORT_SET_ATTRIBUTE: (&str, &str) = x!("setAttribute");
 pub const JINGE_IMPORT_PATH_WATCHER: (&str, &str) = x!("PathWatcher");
 pub const JINGE_IMPORT_DYM_PATH_WATCHER: (&str, &str) = x!("DymPathWatcher");
 pub const JINGE_IMPORT_EXPR_WATCHER: (&str, &str) = x!("ExprWatcher");
@@ -26,11 +27,12 @@ pub const JINGE_IMPORT_SET_REF: (&str, &str) = x!("setRefForComponent");
 pub const JINGE_IMPORT_ROOT_NODES: (&str, &str) = x!("ROOT_NODES");
 pub const JINGE_IDENT: &str = "$jg$";
 
-const JINGE_IMPORTS: [(&str, &str); 10] = [
+const JINGE_IMPORTS: [(&str, &str); 11] = [
   JINGE_IMPORT_TEXT_RENDER_FN,
   JINGE_IMPORT_CREATE_ELE,
   JINGE_IMPORT_CREATE_ELE_A,
   JINGE_IMPORT_ADD_EVENT,
+  JINGE_IMPORT_SET_ATTRIBUTE,
   JINGE_IMPORT_SET_REF,
   JINGE_IMPORT_ROOT_NODES,
   JINGE_IMPORT_PATH_WATCHER,
@@ -64,4 +66,12 @@ pub fn emit_error(sp: Span, msg: &str) {
   HANDLER.with(|h| {
     h.struct_span_err(sp, msg).emit();
   });
+}
+
+lazy_static::lazy_static! {
+  pub static ref IDL_ATTRIBUTE_SET: Vec<&'static str> = {
+    let mut attrs = vec!["disabled", "readOnly", "autoFocus", "autoComplete", "autoPlay", "controls", "required", "checked", "selected", "multiple", "muted", "draggable"];
+    attrs.sort_unstable();
+    attrs
+  };
 }

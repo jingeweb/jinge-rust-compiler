@@ -1,16 +1,20 @@
 use crate::ast::{
-  ast_create_arg_expr, ast_create_expr_call, ast_create_expr_ident, ast_create_expr_lit_bool,
-  ast_create_expr_lit_str, ast_create_expr_lit_string, ast_create_expr_this,
+  ast_create_arg_expr, ast_create_expr_arrow_fn, ast_create_expr_call, ast_create_expr_ident,
+  ast_create_expr_lit_bool, ast_create_expr_lit_str, ast_create_expr_lit_string,
+  ast_create_expr_this,
 };
 use crate::common::{
-  emit_error, JINGE_IDENT, JINGE_IMPORT_ADD_EVENT, JINGE_IMPORT_CREATE_ELE,
-  JINGE_IMPORT_CREATE_ELE_A, JINGE_IMPORT_TEXT_RENDER_FN,
+  emit_error, IDL_ATTRIBUTE_SET, JINGE_IDENT, JINGE_IMPORT_ADD_EVENT, JINGE_IMPORT_CREATE_ELE,
+  JINGE_IMPORT_CREATE_ELE_A, JINGE_IMPORT_SET_ATTRIBUTE, JINGE_IMPORT_TEXT_RENDER_FN,
+  JINGE_IMPORT_WATCH_FOR_COMPONENT,
 };
 use swc_core::common::util::take::Take;
 use swc_core::common::{Spanned, SyntaxContext, DUMMY_SP};
 use swc_core::ecma::ast::*;
 use swc_core::ecma::visit::{Visit, VisitWith};
-use tpl::{tpl_lit_obj, tpl_push_ele_code, tpl_set_ref_code};
+use tpl::{
+  tpl_lit_obj, tpl_push_ele_code, tpl_set_attribute, tpl_set_idl_attribute, tpl_set_ref_code,
+};
 
 mod attrs;
 mod expr;
@@ -176,12 +180,45 @@ impl TemplateParser {
           expr: ast_create_expr_call(ast_create_expr_ident(JINGE_IMPORT_ADD_EVENT.1), args),
         }))
       });
-      attrs.watch_props.into_iter().for_each(|w| {
-        stmts.push(Stmt::Expr(ExprStmt {
-          span: DUMMY_SP,
-          expr: w,
-        }))
-      });
+      attrs
+        .watch_props
+        .into_iter()
+        .for_each(|(attr_name, watch_expr)| {
+          let set_expr = if IDL_ATTRIBUTE_SET
+            .binary_search(&attr_name.sym.as_str())
+            .is_ok()
+          {
+            tpl_set_idl_attribute(
+              ast_create_expr_ident(JINGE_IDENT),
+              attr_name.sym,
+              ast_create_expr_ident("v"),
+            )
+          } else {
+            tpl_set_attribute(
+              ast_create_expr_ident(JINGE_IDENT),
+              attr_name.sym,
+              ast_create_expr_ident("v"),
+            )
+          };
+          let args = vec![
+            ast_create_arg_expr(ast_create_expr_this()),
+            ast_create_arg_expr(watch_expr),
+            ast_create_arg_expr(ast_create_expr_arrow_fn(
+              vec![Pat::Ident(BindingIdent {
+                id: Ident::from("v"),
+                type_ann: None,
+              })],
+              Box::new(BlockStmtOrExpr::Expr(set_expr)),
+            )),
+          ];
+          stmts.push(Stmt::Expr(ExprStmt {
+            span: DUMMY_SP,
+            expr: ast_create_expr_call(
+              ast_create_expr_ident(JINGE_IMPORT_WATCH_FOR_COMPONENT.1),
+              args,
+            ),
+          }));
+        });
       if let Some(c) = set_ref_code {
         stmts.push(Stmt::Expr(ExprStmt {
           span: DUMMY_SP,
