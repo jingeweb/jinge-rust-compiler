@@ -72,7 +72,7 @@ impl ExprAttrVisitor {
         )),
       ];
       Some(ast_create_expr_call(
-        ast_create_expr_ident(JINGE_IMPORT_EXPR_WATCHER.1),
+        ast_create_expr_ident(JINGE_IMPORT_EXPR_WATCHER.local()),
         args,
       ))
     }
@@ -118,9 +118,9 @@ impl VisitAll for ExprAttrVisitor {
     }
     self.expressions.push(ast_create_expr_call(
       ast_create_expr_ident(if mem_parser.computed {
-        JINGE_IMPORT_DYM_PATH_WATCHER.1
+        JINGE_IMPORT_DYM_PATH_WATCHER.local()
       } else {
-        JINGE_IMPORT_PATH_WATCHER.1
+        JINGE_IMPORT_PATH_WATCHER.local()
       }),
       args,
     ))

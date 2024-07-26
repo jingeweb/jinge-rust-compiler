@@ -7,7 +7,7 @@ use swc_core::{
 use crate::{
   ast::{
     ast_create_arg_expr, ast_create_expr_call, ast_create_expr_ident, ast_create_expr_member,
-    ast_create_expr_this,
+    ast_create_expr_this, ast_create_id_of_container, ast_create_id_of_el,
   },
   common::{
     JINGE_IDENT, JINGE_IMPORT_NON_ROOT_COMPONENT_NODES, JINGE_IMPORT_ROOT_NODES,
@@ -15,30 +15,31 @@ use crate::{
   },
 };
 
-pub fn tpl_set_ref_code(r: Lit) -> Box<Expr> {
+pub fn tpl_set_ref_code(r: Box<Expr>, slot_level: usize) -> Box<Expr> {
   let args = vec![
-    ast_create_arg_expr(ast_create_expr_this()),
-    ast_create_arg_expr(Box::new(Expr::Lit(r))),
-    ast_create_arg_expr(ast_create_expr_ident(JINGE_IDENT)),
-    ast_create_arg_expr(ast_create_expr_this()),
+    ast_create_arg_expr(ast_create_id_of_container(slot_level)),
+    ast_create_arg_expr(r),
+    ast_create_arg_expr(ast_create_expr_ident(ast_create_id_of_el(slot_level))),
   ];
-  ast_create_expr_call(ast_create_expr_ident(JINGE_IMPORT_SET_REF.1), args)
+  ast_create_expr_call(ast_create_expr_ident(JINGE_IMPORT_SET_REF.local()), args)
 }
 
-pub fn tpl_push_el_code(root: bool) -> Box<Expr> {
-  let args = vec![ast_create_arg_expr(ast_create_expr_ident(JINGE_IDENT))];
+pub fn tpl_push_el_code(root: bool, slot_level: usize) -> Box<Expr> {
+  let args = vec![ast_create_arg_expr(ast_create_expr_ident(
+    ast_create_id_of_el(slot_level),
+  ))];
   Box::new(Expr::Call(CallExpr {
     ctxt: SyntaxContext::empty(),
     span: DUMMY_SP,
     callee: Callee::Expr(ast_create_expr_member(
       ast_create_expr_member(
-        ast_create_expr_this(),
+        ast_create_id_of_container(slot_level),
         MemberProp::Computed(ComputedPropName {
           span: DUMMY_SP,
           expr: ast_create_expr_ident(if root {
-            JINGE_IMPORT_ROOT_NODES.1
+            JINGE_IMPORT_ROOT_NODES.local()
           } else {
-            JINGE_IMPORT_NON_ROOT_COMPONENT_NODES.1
+            JINGE_IMPORT_NON_ROOT_COMPONENT_NODES.local()
           }),
         }),
       ),
@@ -66,7 +67,7 @@ pub fn tpl_lit_obj(lit_arr: Vec<(IdentName, Box<Expr>)>) -> Box<Expr> {
 
 pub fn tpl_set_attribute(el: Box<Expr>, attr_name: Atom, attr_value: Box<Expr>) -> Box<Expr> {
   ast_create_expr_call(
-    ast_create_expr_ident(JINGE_IMPORT_SET_ATTRIBUTE.1),
+    ast_create_expr_ident(JINGE_IMPORT_SET_ATTRIBUTE.local()),
     vec![
       ast_create_arg_expr(el),
       ast_create_arg_expr(Box::new(Expr::Lit(Lit::Str(Str::from(attr_name))))),

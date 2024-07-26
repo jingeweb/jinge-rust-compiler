@@ -12,7 +12,9 @@ pub struct AttrEvt {
 }
 pub struct AttrStore {
   /// ref 属性，例如 `<div ref="some"></div>`
-  pub ref_prop: Option<Lit>,
+  pub ref_prop: Option<Box<Expr>>,
+  /// key 属性
+  pub key_prop: Option<Box<Expr>>,
   /// 事件属性，例如 `<div onClick={(evt) => {}}></div>`
   pub evt_props: Vec<AttrEvt>,
   /// 不需要 watch 监听的表达式属性，例如 `<div a={45 + "hello"} b={_someVar.o} c="hello" d={true} disabled ></div>`
@@ -25,6 +27,7 @@ impl TemplateParser {
   pub fn parse_attrs(&mut self, n: &JSXElement, is_component: bool) -> AttrStore {
     let mut attrs = AttrStore {
       ref_prop: None,
+      key_prop: None,
       evt_props: vec![],
       const_props: vec![],
       watch_props: vec![],
@@ -44,15 +47,16 @@ impl TemplateParser {
             emit_error(attr.span(), "不能重复指定 ref");
             return;
           }
-          let Some(JSXAttrValue::Lit(val)) = &attr.value else {
-            emit_error(attr.span(), "ref 属性值只能是字符串");
+      
+          let Some(JSXAttrValue::JSXExprContainer(val)) = &attr.value else {
+            emit_error(attr.value.span(), "ref 属性值不合法");
             return;
           };
-          if !matches!(val, Lit::Str(_)) {
-            emit_error(attr.span(), "ref 属性值只能是字符串");
+         
+          let JSXExpr::Expr(val) = &val.expr else {
+            emit_error(val.expr.span(), "ref 属性值不合法");
             return;
-          }
-
+          };
           attrs.ref_prop.replace(val.clone());
         } else if !is_component // html 元素的事件处理要单独处理，把 onClick 等转换成 click 事件。Component 元素的事件处理也是标准的属性传递。
           && name.starts_with("on")

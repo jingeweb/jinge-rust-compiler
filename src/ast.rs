@@ -1,14 +1,11 @@
-use swc_core::{common::*, ecma::ast::*, ecma::atoms::*};
+use swc_core::{
+  alloc::Type,
+  common::*,
+  ecma::{ast::*, atoms::*},
+};
 
-#[inline]
-pub fn ast_create_ident(id: &str) -> Ident {
-  Ident {
-    ctxt: SyntaxContext::empty(),
-    span: DUMMY_SP,
-    sym: Atom::from(id),
-    optional: false,
-  }
-}
+use crate::common::JINGE_IDENT;
+
 #[inline]
 pub fn ast_create_expr_new(callee: Box<Expr>, args: Option<Vec<ExprOrSpread>>) -> Box<Expr> {
   Box::new(Expr::New(NewExpr {
@@ -20,7 +17,23 @@ pub fn ast_create_expr_new(callee: Box<Expr>, args: Option<Vec<ExprOrSpread>>) -
   }))
 }
 #[inline]
-pub fn ast_create_stmt_decl_const(ident: &str, init: Box<Expr>) -> Stmt {
+pub fn ast_create_id_of_el(slot_level: usize) -> Ident {
+  if slot_level > 0 {
+    Ident::from(format!("{}_{}", JINGE_IDENT.sym.as_str(), slot_level))
+  } else {
+    JINGE_IDENT.clone()
+  }
+}
+#[inline]
+pub fn ast_create_id_of_container(slot_level: usize) -> Box<Expr> {
+  if slot_level == 0 {
+    ast_create_expr_this()
+  } else {
+    ast_create_expr_ident(ast_create_id_of_el(slot_level - 1))
+  }
+}
+#[inline]
+pub fn ast_create_stmt_decl_const(ident: Ident, init: Box<Expr>) -> Stmt {
   Stmt::Decl(Decl::Var(Box::new(VarDecl {
     span: DUMMY_SP,
     ctxt: SyntaxContext::empty(),
@@ -29,10 +42,7 @@ pub fn ast_create_stmt_decl_const(ident: &str, init: Box<Expr>) -> Stmt {
     decls: vec![VarDeclarator {
       span: DUMMY_SP,
       definite: false,
-      name: Pat::Ident(BindingIdent {
-        id: Ident::from(ident),
-        type_ann: None,
-      }),
+      name: Pat::Ident(ident.into()),
       init: Some(init),
     }],
   })))
@@ -49,10 +59,12 @@ pub fn ast_create_arg_expr(arg: Box<Expr>) -> ExprOrSpread {
 pub fn ast_create_expr_this() -> Box<Expr> {
   Box::new(Expr::This(ThisExpr { span: DUMMY_SP }))
 }
+
 #[inline]
-pub fn ast_create_expr_ident(id: &str) -> Box<Expr> {
-  Box::new(Expr::Ident(ast_create_ident(id)))
+pub fn ast_create_expr_ident(id: Ident) -> Box<Expr> {
+  Box::new(Expr::Ident(id))
 }
+
 #[inline]
 pub fn ast_create_expr_member(obj: Box<Expr>, prop: MemberProp) -> Box<Expr> {
   Box::new(Expr::Member(MemberExpr {
