@@ -4,7 +4,7 @@ use swc_core::{
   ecma::{ast::*, atoms::*},
 };
 
-use crate::common::JINGE_IDENT;
+use crate::common::{JINGE_EL_IDENT, JINGE_HOST_IDENT};
 
 #[inline]
 pub fn ast_create_expr_new(callee: Box<Expr>, args: Option<Vec<ExprOrSpread>>) -> Box<Expr> {
@@ -16,20 +16,28 @@ pub fn ast_create_expr_new(callee: Box<Expr>, args: Option<Vec<ExprOrSpread>>) -
     type_args: None,
   }))
 }
+// #[inline]
+// pub fn ast_create_id_of_el(slot_level: usize) -> Ident {
+//   if slot_level > 0 {
+//     Ident::from(format!("{}${}$", JINGE_EL_IDENT.sym.as_str(), slot_level))
+//   } else {
+//     JINGE_EL_IDENT.clone()
+//   }
+// }
+// #[inline]
+// pub fn ast_create_id_of_container(slot_level: usize) -> Box<Expr> {
+//   if slot_level == 0 {
+//     ast_create_expr_this()
+//   } else {
+//     ast_create_expr_ident(ast_create_id_of_el(slot_level - 1))
+//   }
+// }
 #[inline]
-pub fn ast_create_id_of_el(slot_level: usize) -> Ident {
-  if slot_level > 0 {
-    Ident::from(format!("{}_{}", JINGE_IDENT.sym.as_str(), slot_level))
-  } else {
-    JINGE_IDENT.clone()
-  }
-}
-#[inline]
-pub fn ast_create_id_of_container(slot_level: usize) -> Box<Expr> {
-  if slot_level == 0 {
+pub fn ast_create_id_of_container(is_root_container: bool) -> Box<Expr> {
+  if is_root_container {
     ast_create_expr_this()
   } else {
-    ast_create_expr_ident(ast_create_id_of_el(slot_level - 1))
+    ast_create_expr_ident(JINGE_HOST_IDENT.clone())
   }
 }
 #[inline]
@@ -106,6 +114,7 @@ pub fn ast_create_expr_call(callee: Box<Expr>, args: Vec<ExprOrSpread>) -> Box<E
     type_args: None,
   }))
 }
+#[inline]
 pub fn ast_create_expr_arrow_fn(params: Vec<Pat>, body: Box<BlockStmtOrExpr>) -> Box<Expr> {
   Box::new(Expr::Arrow(ArrowExpr {
     span: DUMMY_SP,
@@ -118,6 +127,16 @@ pub fn ast_create_expr_arrow_fn(params: Vec<Pat>, body: Box<BlockStmtOrExpr>) ->
     return_type: None,
   }))
 }
+#[inline]
+pub fn ast_create_expr_assign_mem(target: MemberExpr, value: Box<Expr>) -> Box<Expr> {
+  Box::new(Expr::Assign(AssignExpr {
+    span: DUMMY_SP,
+    op: AssignOp::Assign,
+    left: AssignTarget::Simple(SimpleAssignTarget::Member(target)),
+    right: value,
+  }))
+}
+#[inline]
 pub fn ast_create_console_log() -> ModuleItem {
   ModuleItem::Stmt(Stmt::Expr(ExprStmt {
     span: DUMMY_SP,

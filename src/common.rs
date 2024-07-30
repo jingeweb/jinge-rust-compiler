@@ -45,17 +45,17 @@ lazy_static::lazy_static! {
   pub static ref JINGE_IMPORT_DYM_PATH_WATCHER: JingeImport = x!("DymPathWatcher");
   pub static ref JINGE_IMPORT_EXPR_WATCHER: JingeImport = x!("ExprWatcher");
   pub static ref JINGE_IMPORT_WATCH_FOR_COMPONENT: JingeImport = x!("watchForComponent");
-
+  pub static ref JINGE_IMPORT_VM: JingeImport = x!("vm");
   pub static ref JINGE_IMPORT_SET_REF: JingeImport = x!("setRefForComponent");
   pub static ref JINGE_IMPORT_ROOT_NODES: JingeImport = x!("ROOT_NODES");
   pub static ref JINGE_IMPORT_NEW_COM_SLOTS: JingeImport = x!("newComponentWithSlots");
   pub static ref JINGE_IMPORT_NEW_COM_DEFAULT_SLOT: JingeImport = x!("newComponentWithDefaultSlot");
 
   pub static ref JINGE_IMPORT_NON_ROOT_COMPONENT_NODES: JingeImport = x!("NON_ROOT_COMPONENT_NODES");
-  pub static ref JINGE_IDENT: Ident = "$jg$".into();
-  pub static ref JINGE_IDENT_ATTRS: Ident = "attrs$jg$".into();
-  pub static ref V_IDENT: Ident = "v".into();
-
+  pub static ref JINGE_EL_IDENT: Ident = "$jg$".into();
+  pub static ref JINGE_ATTR_IDENT: Ident = "attrs$jg$".into();
+  pub static ref JINGE_V_IDENT: Ident = "v".into();
+  pub static ref JINGE_HOST_IDENT: Ident = "host$jg$".into();
   pub static ref IDL_ATTRIBUTE_SET: Vec<Atom> = {
     let mut attrs = vec!["disabled", "readOnly", "autoFocus", "autoComplete", "autoPlay", "controls", "required", "checked", "selected", "multiple", "muted", "draggable"];
     attrs.sort_unstable();
@@ -64,10 +64,11 @@ lazy_static::lazy_static! {
 }
 
 pub fn gen_import_jinge() -> ModuleItem {
-  let imports: [&'static JingeImport; 15] = [
+  let imports: [&'static JingeImport; 16] = [
     &JINGE_IMPORT_TEXT_RENDER_FN,
     &JINGE_IMPORT_CREATE_ELE,
     &JINGE_IMPORT_CREATE_ELE_A,
+    &JINGE_IMPORT_VM,
     &JINGE_IMPORT_ADD_EVENT,
     &JINGE_IMPORT_SET_ATTRIBUTE,
     &JINGE_IMPORT_SET_REF,
