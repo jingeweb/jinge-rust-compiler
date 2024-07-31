@@ -5,6 +5,7 @@ use crate::ast::{
   ast_create_id_of_container, ast_create_stmt_decl_const,
 };
 use crate::common::*;
+use swc_core::atoms::Atom;
 use swc_core::common::util::take::Take;
 use swc_core::common::{Spanned, SyntaxContext, DUMMY_SP};
 use swc_core::ecma::ast::*;
@@ -25,14 +26,35 @@ enum Parent {
   Svg,
 }
 
+struct Slot {
+  name: Option<Atom>,
+  params: Vec<Pat>,
+  expressions: Vec<ExprOrSpread>,
+}
+impl Slot {
+  fn new() -> Self {
+    Self {
+      name: None, // None 代表默认 DEFAULT_SLOT
+      params: vec![],
+      expressions: vec![],
+    }
+  }
+}
 struct Context {
   // container_component_level: usize,
   root_container: bool,
   parent: Parent,
-  expressions: Box<Vec<ExprOrSpread>>,
+  slots: Vec<Slot>,
 }
 
 impl Context {
+  fn new(parent: Parent, root_container: bool) -> Self {
+    Self {
+      root_container,
+      parent,
+      slots: vec![Slot::new()], // 第 0 个 Slot 是默认 DEFAULT_SLOT
+    }
+  }
   #[inline]
   pub fn is_parent_svg(&self) -> bool {
     matches!(self.parent, Parent::Svg)
@@ -55,32 +77,14 @@ pub struct TemplateParser {
 
 impl TemplateParser {
   pub fn new() -> Self {
-    let root_context = Context {
-      // container_component_level: 0,
-      root_container: true,
-      parent: Parent::Component,
-      expressions: Box::new(vec![]),
-    };
     Self {
-      context: root_context,
+      context: Context::new(Parent::Component, true),
       stack: vec![],
     }
   }
   fn push_context(&mut self, parent: Parent, root_container: bool) {
-    // let container_component_level = self.context.container_component_level;
-    let current_context = std::mem::replace(
-      &mut self.context,
-      Context {
-        // container_component_level: if inc_container_component_level {
-        //   container_component_level + 1
-        // } else {
-        //   container_component_level
-        // },
-        root_container,
-        parent,
-        expressions: Box::new(vec![]),
-      },
-    );
+    let current_context =
+      std::mem::replace(&mut self.context, Context::new(parent, root_container));
     self.stack.push(current_context);
   }
   fn pop_context(&mut self) -> Context {
@@ -122,6 +126,8 @@ impl TemplateParser {
     });
     let root_container = self.context.root_container;
     let mut children_context = self.pop_context();
+    // html 元素下不可能出现多个 slots。事实上，html 元素没有 slot 概念，只是用统一的数据结构保存子节点。
+    assert_eq!(children_context.slots.len(), 1);
     let callee_ident = if self.context.is_parent_svg() || tn.sym.eq("svg") {
       if !attrs.const_props.is_empty() {
         JINGE_IMPORT_CREATE_ELE_A.local()
@@ -147,8 +153,8 @@ impl TemplateParser {
     if !attrs.const_props.is_empty() {
       args.push(ast_create_arg_expr(tpl_lit_obj(attrs.const_props)));
     }
-    if !children_context.expressions.is_empty() {
-      args.append(&mut children_context.expressions);
+    if !children_context.slots[0].expressions.is_empty() {
+      args.append(&mut children_context.slots[0].expressions);
     }
 
     let output = if set_ref_code.is_some()
@@ -245,11 +251,17 @@ impl TemplateParser {
     } else {
       ast_create_expr_call(ast_create_expr_ident(callee_ident), args)
     };
-
-    self.context.expressions.push(ExprOrSpread {
-      spread: None,
-      expr: output,
-    });
+    // 当前 html 元素添加到父亲的最顶部 Slot 中。最顶部 Slot 可能是默认 Slot(比如父亲也是 html 元素则也是存放在默认 Slot)，也可能是命名 Slot(只可能出现在父亲是组件的情况)
+    self
+      .context
+      .slots
+      .last_mut()
+      .unwrap()
+      .expressions
+      .push(ExprOrSpread {
+        spread: None,
+        expr: output,
+      });
   }
   fn parse_component_element(&mut self, tn: &Ident, n: &JSXElement) {
     let mut attrs = self.parse_attrs(n, true);
@@ -364,32 +376,78 @@ impl TemplateParser {
 }
 
 impl Visit for TemplateParser {
+  fn visit_jsx_expr(&mut self, node: &JSXExpr) {
+    if let JSXExpr::Expr(expr) = node {
+      self.visit_expr(expr.as_ref());
+    }
+  }
   fn visit_expr(&mut self, n: &Expr) {
     match n {
       Expr::JSXElement(n) => {
         self.visit_jsx_element(&*n);
       }
-      Expr::Call(n) => emit_error(n.span(), "不支持函数调用"),
+      Expr::Call(expr) => {
+        // 如果是 this.props.children() 或 this.props.children.xx() 的调用，则转换为 Slot
+      }
       Expr::Cond(_) => {
         emit_error(n.span(), "不支持二元条件表达式，请使用 <If> 组件");
       }
-      Expr::Bin(b) => match b.op {
-        BinaryOp::Add
-        | BinaryOp::Exp
-        | BinaryOp::Sub
-        | BinaryOp::Mul
-        | BinaryOp::LShift
-        | BinaryOp::RShift
-        | BinaryOp::ZeroFillRShift
-        | BinaryOp::Mod
-        | BinaryOp::Div
-        | BinaryOp::BitAnd
-        | BinaryOp::BitOr
-        | BinaryOp::BitXor => b.visit_children_with(self),
-        _ => emit_error(b.span(), "不支持条件表达式，请使用 <If> 组件"),
-      },
+      Expr::Fn(f) => {
+        emit_error(f.span(), "tsx 中不支持函数，如果是定义 Slot 请使用箭头函数");
+      }
+      Expr::Arrow(expr) => {
+        if !self.context.is_parent_component() || self.context.root_container {
+          emit_error(expr.span(), "Slot 定义必须位于组件下");
+          return;
+        }
+        match &*expr.body {
+          BlockStmtOrExpr::BlockStmt(_) => {
+            emit_error(
+              expr.span(),
+              "使用箭头函数定义默认 Slot 时必须直接在箭头后返回值",
+            );
+          }
+          BlockStmtOrExpr::Expr(e) => {
+            if !expr.params.is_empty() {
+              self.context.slots[0]
+                .params
+                .append(&mut expr.params.clone());
+            }
+            e.as_ref().visit_children_with(self);
+          }
+        }
+      }
+      Expr::Object(obj) => {
+        if !self.context.is_parent_component() || self.context.root_container {
+          emit_error(obj.span(), "Slot 定义必须位于组件下");
+          return;
+        }
+        obj.props.iter().for_each(|prop| match prop {
+          PropOrSpread::Spread(e) => {
+            emit_error(e.dot3_token.span(), "Slot 定义不支持 ... 的书写方式");
+          }
+          PropOrSpread::Prop(p) => match p.as_ref() {
+            Prop::KeyValue(KeyValueProp { key, value }) => {
+              match key {
+                PropName::Ident(id) => {}
+                PropName::Str(s) => {}
+                _ => {
+                  emit_error(key.span(), "Slot 定义的名称必须是常量字符串");
+                  return;
+                }
+              }
+              match value.as_ref() {
+                Expr::Arrow(expr) => {}
+                _ => emit_error(value.span(), "定义指定名称 Slot 时，值必须是箭头函数"),
+              }
+            }
+            _ => emit_error(p.span(), "Slot 定义必须是 Key: Value 的形式"),
+          },
+        })
+      }
+      Expr::Array(e) => emit_error(e.span(), "tsx 中不能直接使用数组表达式"),
       _ => {
-        n.visit_children_with(self);
+        emit_error(n.span(), "tsx 中不支持该表达式");
       }
     }
   }

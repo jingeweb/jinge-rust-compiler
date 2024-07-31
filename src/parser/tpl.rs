@@ -80,3 +80,7 @@ pub fn tpl_set_idl_attribute(el: Box<Expr>, attr_name: Atom, attr_value: Box<Exp
     right: attr_value,
   }))
 }
+
+pub fn tpl_slot() -> Stmt {
+  
+}
