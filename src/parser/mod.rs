@@ -1,40 +1,38 @@
 use crate::ast::{
   ast_create_arg_expr, ast_create_expr_arrow_fn, ast_create_expr_assign_mem, ast_create_expr_call,
   ast_create_expr_ident, ast_create_expr_lit_bool, ast_create_expr_lit_str,
-  ast_create_expr_lit_string, ast_create_expr_member, ast_create_expr_this,
-  ast_create_id_of_container, ast_create_stmt_decl_const,
+  ast_create_expr_lit_string, ast_create_expr_member, ast_create_stmt_decl_const,
 };
 use crate::common::*;
+use expr::{ExprParseResult, ExprVisitor};
 use swc_core::atoms::Atom;
-use swc_core::common::util::take::Take;
 use swc_core::common::{Spanned, SyntaxContext, DUMMY_SP};
 use swc_core::ecma::ast::*;
 use swc_core::ecma::visit::{Visit, VisitWith};
 use tpl::{
-  tpl_lit_obj, tpl_push_el_code, tpl_set_attribute, tpl_set_idl_attribute, tpl_set_ref_code,
+  tpl_lit_obj, tpl_push_el_code, tpl_render_const, tpl_set_ref_code, tpl_watch_and_render,
+  tpl_watch_and_set_component_attr, tpl_watch_and_set_html_attr,
 };
 
 mod attrs;
 mod expr;
 mod tpl;
 
-#[derive(Debug)]
 enum Parent {
-  Root,
   Component,
   Html,
   Svg,
 }
 
 struct Slot {
-  name: Option<Atom>,
+  name: Atom,
   params: Vec<Pat>,
   expressions: Vec<ExprOrSpread>,
 }
 impl Slot {
-  fn new() -> Self {
+  fn new(name: Atom) -> Self {
     Self {
-      name: None, // None 代表默认 DEFAULT_SLOT
+      name,
       params: vec![],
       expressions: vec![],
     }
@@ -52,7 +50,7 @@ impl Context {
     Self {
       root_container,
       parent,
-      slots: vec![Slot::new()], // 第 0 个 Slot 是默认 DEFAULT_SLOT
+      slots: vec![Slot::new(Atom::default())], // 第 0 个 Slot 是默认 DEFAULT_SLOT
     }
   }
   #[inline]
@@ -62,11 +60,6 @@ impl Context {
   #[inline]
   pub fn is_parent_component(&self) -> bool {
     matches!(self.parent, Parent::Component)
-  }
-
-  #[inline]
-  pub fn is_parent_html(&self) -> bool {
-    matches!(self.parent, Parent::Html)
   }
 }
 
@@ -90,12 +83,26 @@ impl TemplateParser {
   fn pop_context(&mut self) -> Context {
     std::mem::replace(&mut self.context, self.stack.pop().unwrap())
   }
+  #[inline]
+  /// push expression to last slot
+  fn push_expression(&mut self, e: Box<Expr>) {
+    self
+      .context
+      .slots
+      .last_mut()
+      .unwrap()
+      .expressions
+      .push(ast_create_arg_expr(e));
+  }
   pub fn parse(&mut self, expr: &Expr) -> Option<Box<Expr>> {
     self.visit_expr(expr);
+    assert_eq!(self.context.slots.len(), 1);
     let elems: Vec<Option<ExprOrSpread>> = self
       .context
+      .slots
+      .pop()
+      .unwrap()
       .expressions
-      .take()
       .into_iter()
       .map(|e| Some(e))
       .collect();
@@ -184,33 +191,9 @@ impl TemplateParser {
         .watch_props
         .into_iter()
         .for_each(|(attr_name, watch_expr)| {
-          let set_expr = if IDL_ATTRIBUTE_SET.binary_search(&attr_name.sym).is_ok() {
-            tpl_set_idl_attribute(
-              ast_create_expr_ident(JINGE_EL_IDENT.clone()),
-              attr_name.sym,
-              ast_create_expr_ident(JINGE_V_IDENT.clone()),
-            )
-          } else {
-            tpl_set_attribute(
-              ast_create_expr_ident(JINGE_EL_IDENT.clone()),
-              attr_name.sym,
-              ast_create_expr_ident(JINGE_V_IDENT.clone()),
-            )
-          };
-          let args = vec![
-            ast_create_arg_expr(ast_create_expr_this()),
-            ast_create_arg_expr(watch_expr),
-            ast_create_arg_expr(ast_create_expr_arrow_fn(
-              vec![Pat::Ident(BindingIdent::from(JINGE_V_IDENT.clone()))],
-              Box::new(BlockStmtOrExpr::Expr(set_expr)),
-            )),
-          ];
           stmts.push(Stmt::Expr(ExprStmt {
             span: DUMMY_SP,
-            expr: ast_create_expr_call(
-              ast_create_expr_ident(JINGE_IMPORT_WATCH_FOR_COMPONENT.local()),
-              args,
-            ),
+            expr: tpl_watch_and_set_html_attr(attr_name, watch_expr),
           }));
         });
       if let Some(c) = set_ref_code {
@@ -272,11 +255,6 @@ impl TemplateParser {
     });
     let children_context = self.pop_context();
     let root_container = self.context.root_container;
-    let elems: Vec<_> = children_context
-      .expressions
-      .into_iter()
-      .map(|e| Some(e))
-      .collect();
 
     let mut stmts: Vec<Stmt> = vec![ast_create_stmt_decl_const(
       JINGE_ATTR_IDENT.clone(),
@@ -292,48 +270,62 @@ impl TemplateParser {
     attrs
       .watch_props
       .into_iter()
-      .for_each(|(attr_name, watch_expr)| {
-        let x = ast_create_expr_assign_mem(
-          MemberExpr {
-            span: DUMMY_SP,
-            obj: ast_create_expr_ident(JINGE_ATTR_IDENT.clone()),
-            prop: MemberProp::Ident(attr_name),
-          },
-          ast_create_expr_ident(JINGE_V_IDENT.clone()),
-        );
-        let set_expr = ast_create_expr_arrow_fn(
-          vec![Pat::Ident(BindingIdent::from(JINGE_V_IDENT.clone()))],
-          Box::new(BlockStmtOrExpr::Expr(x)),
-        );
-        let args = vec![
-          ast_create_arg_expr(ast_create_expr_this()),
-          ast_create_arg_expr(watch_expr),
-          ast_create_arg_expr(set_expr),
-        ];
+      .for_each(|(attr_name, expr_result)| {
         stmts.push(Stmt::Expr(ExprStmt {
           span: DUMMY_SP,
-          expr: ast_create_expr_call(
-            ast_create_expr_ident(JINGE_IMPORT_WATCH_FOR_COMPONENT.local()),
-            args,
-          ),
+          expr: tpl_watch_and_set_component_attr(attr_name, expr_result),
         }));
       });
 
     let set_ref_code = attrs.ref_prop.take().map(|r| tpl_set_ref_code(r));
+    let mut slots = children_context.slots;
+
     stmts.push(ast_create_stmt_decl_const(
       JINGE_EL_IDENT.clone(),
       ast_create_expr_call(
-        ast_create_expr_ident(JINGE_IMPORT_NEW_COM_DEFAULT_SLOT.local()),
+        ast_create_expr_ident(if slots.len() > 1 {
+          assert!(slots[0].expressions.is_empty());
+          JINGE_IMPORT_NEW_COM_SLOTS.local()
+        } else {
+          JINGE_IMPORT_NEW_COM_DEFAULT_SLOT.local()
+        }),
         vec![
           ast_create_arg_expr(Box::new(Expr::Ident(Ident::from(tn.sym.clone())))),
           ast_create_arg_expr(ast_create_expr_ident(JINGE_ATTR_IDENT.clone())),
-          ast_create_arg_expr(ast_create_expr_arrow_fn(
-            vec![Pat::Ident(BindingIdent::from(JINGE_HOST_IDENT.clone()))],
-            Box::new(BlockStmtOrExpr::Expr(Box::new(Expr::Array(ArrayLit {
-              span: DUMMY_SP,
-              elems,
-            })))),
-          )),
+          ast_create_arg_expr(if slots.len() > 1 {
+            let x: Vec<_> = slots
+              .into_iter()
+              .skip(1) // 跳过默认 DEFAULT_SLOT，一定是空的
+              .map(|mut s| {
+                let mut params = vec![Pat::Ident(BindingIdent::from(JINGE_HOST_IDENT.clone()))];
+                params.append(&mut s.params);
+                (
+                  IdentName::from(s.name),
+                  ast_create_expr_arrow_fn(
+                    params,
+                    Box::new(BlockStmtOrExpr::Expr(Box::new(Expr::Array(ArrayLit {
+                      span: DUMMY_SP,
+                      elems: s.expressions.into_iter().map(|e| Some(e)).collect(),
+                    })))),
+                  ),
+                )
+              })
+              .collect();
+            tpl_lit_obj(x)
+          } else {
+            let default_slot = slots.pop().unwrap();
+            ast_create_expr_arrow_fn(
+              vec![Pat::Ident(BindingIdent::from(JINGE_HOST_IDENT.clone()))],
+              Box::new(BlockStmtOrExpr::Expr(Box::new(Expr::Array(ArrayLit {
+                span: DUMMY_SP,
+                elems: default_slot
+                  .expressions
+                  .into_iter()
+                  .map(|e| Some(e))
+                  .collect(),
+              })))),
+            )
+          }),
         ],
       ),
     ));
@@ -358,20 +350,26 @@ impl TemplateParser {
         vec![],
       )),
     }));
-    self.context.expressions.push(ExprOrSpread {
-      spread: Some(DUMMY_SP),
-      expr: ast_create_expr_call(
-        ast_create_expr_arrow_fn(
+    self
+      .context
+      .slots
+      .last_mut()
+      .unwrap()
+      .expressions
+      .push(ExprOrSpread {
+        spread: Some(DUMMY_SP),
+        expr: ast_create_expr_call(
+          ast_create_expr_arrow_fn(
+            vec![],
+            Box::new(BlockStmtOrExpr::BlockStmt(BlockStmt {
+              span: DUMMY_SP,
+              ctxt: SyntaxContext::empty(),
+              stmts,
+            })),
+          ),
           vec![],
-          Box::new(BlockStmtOrExpr::BlockStmt(BlockStmt {
-            span: DUMMY_SP,
-            ctxt: SyntaxContext::empty(),
-            stmts,
-          })),
         ),
-        vec![],
-      ),
-    });
+      });
   }
 }
 
@@ -386,6 +384,11 @@ impl Visit for TemplateParser {
       Expr::JSXElement(n) => {
         self.visit_jsx_element(&*n);
       }
+      Expr::JSXEmpty(_) => (),
+      Expr::JSXFragment(f) => {
+        f.visit_children_with(self);
+      }
+      Expr::JSXMember(_) | Expr::JSXNamespacedName(_) => emit_error(n.span(), "不支持的 jsx 格式"),
       Expr::Call(expr) => {
         // 如果是 this.props.children() 或 this.props.children.xx() 的调用，则转换为 Slot
       }
@@ -429,25 +432,76 @@ impl Visit for TemplateParser {
           PropOrSpread::Prop(p) => match p.as_ref() {
             Prop::KeyValue(KeyValueProp { key, value }) => {
               match key {
-                PropName::Ident(id) => {}
-                PropName::Str(s) => {}
+                PropName::Ident(id) => self.context.slots.push(Slot::new(id.sym.clone())),
+                PropName::Str(s) => self.context.slots.push(Slot::new(s.value.clone())),
                 _ => {
                   emit_error(key.span(), "Slot 定义的名称必须是常量字符串");
                   return;
                 }
               }
-              match value.as_ref() {
-                Expr::Arrow(expr) => {}
-                _ => emit_error(value.span(), "定义指定名称 Slot 时，值必须是箭头函数"),
-              }
+              self.visit_expr(value);
+              // match value.as_ref() {
+              //   Expr::Arrow(expr) => {
+              //     let top_slot = self.context.slots.last_mut().unwrap();
+              //     top_slot.params.append(&mut expr.params.clone());
+              //     expr.body.visit_children_with(self);
+              //   }
+              //   _ => emit_error(value.span(), "定义指定名称 Slot 时，值必须是箭头函数"),
+              // }
             }
             _ => emit_error(p.span(), "Slot 定义必须是 Key: Value 的形式"),
           },
         })
       }
       Expr::Array(e) => emit_error(e.span(), "tsx 中不能直接使用数组表达式"),
+      Expr::Paren(e) => self.visit_expr(&e.expr),
+      Expr::Lit(e) => self.visit_lit(e),
       _ => {
-        emit_error(n.span(), "tsx 中不支持该表达式");
+        let expr_result = ExprVisitor::new().parse(n);
+        match expr_result {
+          ExprParseResult::None => self.push_expression(tpl_render_const(
+            Box::new(n.clone()),
+            self.context.is_parent_component(),
+            self.context.root_container,
+          )),
+          _ => {
+            let render_fn = ast_create_expr_assign_mem(
+              ast_create_expr_ident(JINGE_EL_IDENT.clone()),
+              TEXT_CONTENT.sym.clone(),
+              ast_create_expr_ident(JINGE_V_IDENT.clone()),
+            );
+
+            let stmts = vec![
+              ast_create_stmt_decl_const(
+                Ident::from(JINGE_EL_IDENT.clone()),
+                ast_create_expr_call(
+                  ast_create_expr_ident(Ident::from(JINGE_IMPORT_CREATE_TEXT_NODE.local())),
+                  vec![ast_create_arg_expr(ast_create_expr_lit_str(""))],
+                ),
+              ),
+              Stmt::Expr(ExprStmt {
+                span: DUMMY_SP,
+                expr: tpl_watch_and_render(render_fn, expr_result),
+              }),
+              Stmt::Return(ReturnStmt {
+                span: DUMMY_SP,
+                arg: Some(ast_create_expr_ident(JINGE_EL_IDENT.clone())),
+              }),
+            ];
+
+            self.push_expression(ast_create_expr_call(
+              ast_create_expr_arrow_fn(
+                vec![],
+                Box::new(BlockStmtOrExpr::BlockStmt(BlockStmt {
+                  span: DUMMY_SP,
+                  ctxt: SyntaxContext::empty(),
+                  stmts,
+                })),
+              ),
+              vec![],
+            ));
+          }
+        }
       }
     }
   }
@@ -478,48 +532,26 @@ impl Visit for TemplateParser {
       }
     }
   }
-  fn visit_jsx_text(&mut self, n: &JSXText) {
-    let text = n.value.trim();
-    if text.is_empty() {
+  fn visit_jsx_text(&mut self, t: &JSXText) {
+    let t = t.value.trim_ascii();
+    if t.is_empty() {
       return;
     }
-    // println!("sll {} {}", container_component_level, self.context.is_parent_component());
-    if !self.context.is_parent_component() {
-      self
-        .context
-        .expressions
-        .push(ast_create_arg_expr(ast_create_expr_lit_str(text, None)));
-    } else {
-      self
-        .context
-        .expressions
-        .push(ast_create_arg_expr(ast_create_expr_call(
-          ast_create_expr_ident(JINGE_IMPORT_TEXT_RENDER_FN.local()),
-          vec![
-            ast_create_arg_expr(ast_create_id_of_container(self.context.root_container)),
-            ast_create_arg_expr(ast_create_expr_lit_str(text, None)),
-          ],
-        )));
-    }
+    self.push_expression(tpl_render_const(
+      ast_create_expr_lit_str(t),
+      self.context.is_parent_component(),
+      self.context.root_container,
+    ))
   }
-
   fn visit_lit(&mut self, n: &Lit) {
-    if !self.context.is_parent_component() {
-      self
-        .context
-        .expressions
-        .push(ast_create_arg_expr(Box::new(Expr::Lit(n.clone()))));
+    if let Lit::JSXText(t) = n {
+      self.visit_jsx_text(t);
     } else {
-      self
-        .context
-        .expressions
-        .push(ast_create_arg_expr(ast_create_expr_call(
-          ast_create_expr_ident(JINGE_IMPORT_TEXT_RENDER_FN.local()),
-          vec![
-            ast_create_arg_expr(ast_create_expr_this()),
-            ast_create_arg_expr(Box::new(Expr::Lit(n.clone()))),
-          ],
-        )));
-    }
+      self.push_expression(tpl_render_const(
+        Box::new(Expr::Lit(n.clone())),
+        self.context.is_parent_component(),
+        self.context.root_container,
+      ))
+    };
   }
 }

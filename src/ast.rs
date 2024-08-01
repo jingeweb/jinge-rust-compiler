@@ -1,10 +1,9 @@
 use swc_core::{
-  alloc::Type,
   common::*,
   ecma::{ast::*, atoms::*},
 };
 
-use crate::common::{JINGE_EL_IDENT, JINGE_HOST_IDENT};
+use crate::common::JINGE_HOST_IDENT;
 
 #[inline]
 pub fn ast_create_expr_new(callee: Box<Expr>, args: Option<Vec<ExprOrSpread>>) -> Box<Expr> {
@@ -82,20 +81,16 @@ pub fn ast_create_expr_member(obj: Box<Expr>, prop: MemberProp) -> Box<Expr> {
   }))
 }
 #[inline]
-pub fn ast_create_expr_lit_str(v: &str, sp: Option<Span>) -> Box<Expr> {
-  Box::new(Expr::Lit(Lit::Str(Str {
-    span: sp.unwrap_or(DUMMY_SP),
-    value: Atom::from(v),
-    raw: None,
-  })))
+pub fn ast_create_expr_lit_str(v: &str) -> Box<Expr> {
+  Box::new(Expr::Lit(Lit::Str(Str::from(v))))
 }
 #[inline]
 pub fn ast_create_expr_lit_string(v: String) -> Box<Expr> {
-  Box::new(Expr::Lit(Lit::Str(Str {
-    span: DUMMY_SP,
-    value: Atom::from(v),
-    raw: None,
-  })))
+  Box::new(Expr::Lit(Lit::Str(Str::from(v))))
+}
+#[inline]
+pub fn ast_create_expr_lit_atom_str(v: Atom) -> Box<Expr> {
+  Box::new(Expr::Lit(Lit::Str(Str::from(v))))
 }
 #[inline]
 pub fn ast_create_expr_lit_bool(v: bool) -> Box<Expr> {
@@ -128,11 +123,15 @@ pub fn ast_create_expr_arrow_fn(params: Vec<Pat>, body: Box<BlockStmtOrExpr>) ->
   }))
 }
 #[inline]
-pub fn ast_create_expr_assign_mem(target: MemberExpr, value: Box<Expr>) -> Box<Expr> {
+pub fn ast_create_expr_assign_mem(obj: Box<Expr>, prop: Atom, value: Box<Expr>) -> Box<Expr> {
   Box::new(Expr::Assign(AssignExpr {
     span: DUMMY_SP,
     op: AssignOp::Assign,
-    left: AssignTarget::Simple(SimpleAssignTarget::Member(target)),
+    left: AssignTarget::Simple(SimpleAssignTarget::Member(MemberExpr {
+      span: DUMMY_SP,
+      obj,
+      prop: MemberProp::Ident(IdentName::from(prop)),
+    })),
     right: value,
   }))
 }

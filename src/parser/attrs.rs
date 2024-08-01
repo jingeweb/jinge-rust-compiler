@@ -3,7 +3,7 @@ use crate::parser::TemplateParser;
 use swc_core::common::Spanned;
 use swc_core::ecma::ast::*;
 
-use super::expr::ExprAttrVisitor;
+use super::expr::{ExprParseResult, ExprVisitor};
 
 pub struct AttrEvt {
   pub event_name: String,
@@ -19,11 +19,11 @@ pub struct AttrStore {
   pub evt_props: Vec<AttrEvt>,
   /// 不需要 watch 监听的表达式属性，例如 `<div a={45 + "hello"} b={_someVar.o} c="hello" d={true} disabled ></div>`
   pub const_props: Vec<(IdentName, Box<Expr>)>,
-  // /// 需要 watch 监听的表达式属性，例如 `<div a={this.some}></div>`
-  pub watch_props: Vec<(IdentName, Box<Expr>)>,
+  pub watch_props: Vec<(IdentName, ExprParseResult)>,
 }
 
 impl TemplateParser {
+  
   pub fn parse_attrs(&mut self, n: &JSXElement, is_component: bool) -> AttrStore {
     let mut attrs = AttrStore {
       ref_prop: None,
@@ -115,23 +115,26 @@ impl TemplateParser {
                         "不支持函数作为属性值。如果是想传递事件，请使用 on 打头的属性名，例如 onClick",
                       )
                     } else {
-                      if let Some(expr) = ExprAttrVisitor::new().parse(expr.as_ref()) {
-                        attrs.watch_props.push((an.clone(), expr));
-                      } else {
-                        attrs.const_props.push((an.clone(), expr.clone()));
+                      let r = ExprVisitor::new().parse(expr.as_ref());
+                      match r {
+                        ExprParseResult::None => {
+                          attrs.const_props.push((an.clone(), expr.clone()));
+                        }
+                        _ => {
+                          attrs.watch_props.push((an.clone(), r))
+                        }
                       }
                     }
                   }
                   _ => {
-                    // if let AttrExpr::Watch(expr) = parse_expr_attr(expr.as_ref()) {
-                    //   //
-                    // } else {
-                    //   attrs.const_props.push((an.clone(), expr.clone()));
-                    // }
-                    if let Some(expr) = ExprAttrVisitor::new().parse(expr.as_ref()) {
-                      attrs.watch_props.push((an.clone(), expr));
-                    } else {
-                      attrs.const_props.push((an.clone(), expr.clone()));
+                    let r = ExprVisitor::new().parse(expr.as_ref());
+                    match r {
+                      ExprParseResult::None => {
+                        attrs.const_props.push((an.clone(), expr.clone()));
+                      }
+                      _ => {
+                        attrs.watch_props.push((an.clone(), r))
+                      }
                     }
                   }
                 },

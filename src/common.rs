@@ -37,6 +37,8 @@ macro_rules! x {
 lazy_static::lazy_static! {
   pub static ref JINGE_IMPORT_TEXT_RENDER_FN: JingeImport = x!("textRenderFn");
   pub static ref JINGE_IMPORT_CREATE_ELE: JingeImport = x!("createEle");
+  pub static ref JINGE_IMPORT_CREATE_TEXT_NODE: JingeImport = x!("createTextNode");
+
   pub static ref JINGE_IMPORT_CREATE_ELE_A: JingeImport = x!("createEleA");
   pub static ref JINGE_IMPORT_ADD_EVENT: JingeImport = x!("addEvent");
   pub static ref JINGE_IMPORT_SET_ATTRIBUTE: JingeImport = x!("setAttribute");
@@ -44,7 +46,10 @@ lazy_static::lazy_static! {
   pub static ref JINGE_IMPORT_PATH_WATCHER: JingeImport = x!("PathWatcher");
   pub static ref JINGE_IMPORT_DYM_PATH_WATCHER: JingeImport = x!("DymPathWatcher");
   pub static ref JINGE_IMPORT_EXPR_WATCHER: JingeImport = x!("ExprWatcher");
-  pub static ref JINGE_IMPORT_WATCH_FOR_COMPONENT: JingeImport = x!("watchForComponent");
+  pub static ref JINGE_IMPORT_WATCH_FOR_RENDER: JingeImport = x!("watchForRender");
+  pub static ref JINGE_IMPORT_WATCH_PATH_FOR_RENDER_2: JingeImport = x!("watchPathForRender2");
+  pub static ref JINGE_IMPORT_WATCH_PATH_FOR_RENDER: JingeImport = x!("watchPathForRender");
+
   pub static ref JINGE_IMPORT_VM: JingeImport = x!("vm");
   pub static ref JINGE_IMPORT_SET_REF: JingeImport = x!("setRefForComponent");
   pub static ref JINGE_IMPORT_ROOT_NODES: JingeImport = x!("ROOT_NODES");
@@ -56,6 +61,8 @@ lazy_static::lazy_static! {
   pub static ref JINGE_ATTR_IDENT: Ident = "attrs$jg$".into();
   pub static ref JINGE_V_IDENT: Ident = "v".into();
   pub static ref JINGE_HOST_IDENT: Ident = "host$jg$".into();
+  pub static ref TEXT_CONTENT: Ident = "textContent".into();
+
   pub static ref IDL_ATTRIBUTE_SET: Vec<Atom> = {
     let mut attrs = vec!["disabled", "readOnly", "autoFocus", "autoComplete", "autoPlay", "controls", "required", "checked", "selected", "multiple", "muted", "draggable"];
     attrs.sort_unstable();
@@ -64,10 +71,11 @@ lazy_static::lazy_static! {
 }
 
 pub fn gen_import_jinge() -> ModuleItem {
-  let imports: [&'static JingeImport; 16] = [
+  let imports: [&'static JingeImport; 19] = [
     &JINGE_IMPORT_TEXT_RENDER_FN,
     &JINGE_IMPORT_CREATE_ELE,
     &JINGE_IMPORT_CREATE_ELE_A,
+    &JINGE_IMPORT_CREATE_TEXT_NODE,
     &JINGE_IMPORT_VM,
     &JINGE_IMPORT_ADD_EVENT,
     &JINGE_IMPORT_SET_ATTRIBUTE,
@@ -79,7 +87,9 @@ pub fn gen_import_jinge() -> ModuleItem {
     &JINGE_IMPORT_PATH_WATCHER,
     &JINGE_IMPORT_DYM_PATH_WATCHER,
     &JINGE_IMPORT_EXPR_WATCHER,
-    &JINGE_IMPORT_WATCH_FOR_COMPONENT,
+    &JINGE_IMPORT_WATCH_FOR_RENDER,
+    &JINGE_IMPORT_WATCH_PATH_FOR_RENDER,
+    &JINGE_IMPORT_WATCH_PATH_FOR_RENDER_2,
     &JINGE_IMPORT_IF,
   ];
   let specs: Vec<_> = imports
