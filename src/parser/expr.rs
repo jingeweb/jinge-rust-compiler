@@ -25,6 +25,7 @@ enum Root {
 
 pub struct SimpleExprParseResult {
   pub vm: Box<Expr>,
+  pub is_this: bool,
   pub path: Box<Expr>,
   pub not_op: i8,
 }
@@ -149,8 +150,12 @@ impl VisitAll for ExprVisitor {
     }
 
     let mut args: Vec<ExprOrSpread> = Vec::with_capacity(mem_parser.path.len() + 2);
+    let mut is_this = false;
     let target = match mem_parser.root {
-      Root::This => ast_create_expr_this(),
+      Root::This => {
+        is_this = true;
+        ast_create_expr_this()
+      }
       Root::Id(id) => Box::new(Expr::Ident(Ident::from(id))),
       Root::None => unreachable!(),
     };
@@ -170,6 +175,7 @@ impl VisitAll for ExprVisitor {
         vm: target.clone(),
         path: watch_path.clone(),
         not_op: 0,
+        is_this,
       })
     }
 

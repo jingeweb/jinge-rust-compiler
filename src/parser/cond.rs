@@ -28,6 +28,8 @@ impl TemplateParser {
             cons: expr.cons.clone(),
             alt: expr.alt.clone(),
           })),
+          self.context.is_parent_component(),
+          self.context.root_container,
         ));
       }
       return; // important to return !!

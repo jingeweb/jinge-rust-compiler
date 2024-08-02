@@ -1,7 +1,7 @@
 use crate::ast::{
-  ast_create_arg_expr, ast_create_expr_arrow_fn, ast_create_expr_assign_mem, ast_create_expr_call,
-  ast_create_expr_ident, ast_create_expr_lit_bool, ast_create_expr_lit_str,
-  ast_create_expr_lit_string, ast_create_expr_member, ast_create_stmt_decl_const,
+  ast_create_arg_expr, ast_create_expr_arrow_fn, ast_create_expr_call, ast_create_expr_ident,
+  ast_create_expr_lit_bool, ast_create_expr_lit_str, ast_create_expr_lit_string,
+  ast_create_expr_member, ast_create_stmt_decl_const,
 };
 use crate::common::*;
 use expr::{ExprParseResult, ExprVisitor};
@@ -11,7 +11,7 @@ use swc_core::ecma::ast::*;
 use swc_core::ecma::visit::{Visit, VisitWith};
 use tpl::{
   tpl_lit_obj, tpl_push_el_code, tpl_render_const_text, tpl_render_expr_text, tpl_set_ref_code,
-  tpl_watch_and_render, tpl_watch_and_set_component_attr, tpl_watch_and_set_html_attr,
+  tpl_watch_and_set_component_attr, tpl_watch_and_set_html_attr,
 };
 
 mod attrs;
@@ -194,7 +194,7 @@ impl TemplateParser {
         .for_each(|(attr_name, watch_expr)| {
           stmts.push(Stmt::Expr(ExprStmt {
             span: DUMMY_SP,
-            expr: tpl_watch_and_set_html_attr(attr_name, watch_expr),
+            expr: tpl_watch_and_set_html_attr(attr_name, watch_expr, self.context.root_container),
           }));
         });
       if let Some(c) = set_ref_code {
@@ -274,7 +274,11 @@ impl TemplateParser {
       .for_each(|(attr_name, expr_result)| {
         stmts.push(Stmt::Expr(ExprStmt {
           span: DUMMY_SP,
-          expr: tpl_watch_and_set_component_attr(attr_name, expr_result),
+          expr: tpl_watch_and_set_component_attr(
+            attr_name,
+            expr_result,
+            self.context.root_container,
+          ),
         }));
       });
 
@@ -461,6 +465,8 @@ impl Visit for TemplateParser {
             self.push_expression(tpl_render_expr_text(
               expr_result,
               ast_create_expr_ident(JINGE_V_IDENT.clone()),
+              self.context.is_parent_component(),
+              self.context.root_container,
             ));
           }
         }

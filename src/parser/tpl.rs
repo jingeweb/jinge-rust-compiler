@@ -88,7 +88,12 @@ pub fn tpl_render_const_text(
   }
 }
 
-pub fn tpl_render_expr_text(expr_result: ExprParseResult, value: Box<Expr>) -> Box<Expr> {
+pub fn tpl_render_expr_text(
+  expr_result: ExprParseResult,
+  value: Box<Expr>,
+  is_parent_component: bool,
+  is_root_container: bool,
+) -> Box<Expr> {
   let render_fn = ast_create_expr_call(
     ast_create_expr_ident(JINGE_IMPORT_SET_TEXT_CONTENT.local()),
     vec![
@@ -97,7 +102,7 @@ pub fn tpl_render_expr_text(expr_result: ExprParseResult, value: Box<Expr>) -> B
     ],
   );
 
-  let stmts = vec![
+  let mut stmts = vec![
     ast_create_stmt_decl_const(
       Ident::from(JINGE_EL_IDENT.clone()),
       ast_create_expr_call(
@@ -107,13 +112,20 @@ pub fn tpl_render_expr_text(expr_result: ExprParseResult, value: Box<Expr>) -> B
     ),
     Stmt::Expr(ExprStmt {
       span: DUMMY_SP,
-      expr: tpl_watch_and_render(render_fn, expr_result),
-    }),
-    Stmt::Return(ReturnStmt {
-      span: DUMMY_SP,
-      arg: Some(ast_create_expr_ident(JINGE_EL_IDENT.clone())),
+      expr: tpl_watch_and_render(render_fn, expr_result, is_root_container),
     }),
   ];
+
+  if is_parent_component {
+    stmts.push(Stmt::Expr(ExprStmt {
+      span: DUMMY_SP,
+      expr: tpl_push_el_code(true, is_root_container),
+    }));
+  }
+  stmts.push(Stmt::Return(ReturnStmt {
+    span: DUMMY_SP,
+    arg: Some(ast_create_expr_ident(JINGE_EL_IDENT.clone())),
+  }));
 
   ast_create_expr_call(
     ast_create_expr_arrow_fn(
@@ -128,7 +140,11 @@ pub fn tpl_render_expr_text(expr_result: ExprParseResult, value: Box<Expr>) -> B
   )
 }
 
-pub fn tpl_watch_and_render(render_fn_body: Box<Expr>, expr_result: ExprParseResult) -> Box<Expr> {
+pub fn tpl_watch_and_render(
+  render_fn_body: Box<Expr>,
+  expr_result: ExprParseResult,
+  is_root_container: bool,
+) -> Box<Expr> {
   match expr_result {
     ExprParseResult::None => unreachable!(),
     ExprParseResult::Complex(watch_expr) => {
@@ -138,6 +154,8 @@ pub fn tpl_watch_and_render(render_fn_body: Box<Expr>, expr_result: ExprParseRes
           vec![Pat::Ident(BindingIdent::from(JINGE_V_IDENT.clone()))],
           Box::new(BlockStmtOrExpr::Expr(render_fn_body)),
         )),
+        // 复杂表达式，会有 PathWatcher/ExprWatcher 等的封装，统一加到 [HOST_WATCH] 中，在 host component 销毁时卸载。
+        ast_create_arg_expr(ast_create_id_of_container(is_root_container)),
       ];
       ast_create_expr_call(
         ast_create_expr_ident(JINGE_IMPORT_WATCH_FOR_RENDER.local()),
@@ -158,6 +176,15 @@ pub fn tpl_watch_and_render(render_fn_body: Box<Expr>, expr_result: ExprParseRes
           Number::from(sr.not_op as usize),
         )))));
       }
+      if !is_root_container || !sr.is_this {
+        // 简单表达式，如果不是 root container，说明一定有 Slot 传递的 host component，需要添加 [HOST WATCH]
+        // 如果表达式不是 this. 打头的，也就是监听的可能是全局 vm，或监听的 Slot 传递进来的 vm。
+        // 如果监听全局 vm，则要把对全局变量 vm 的监听放到 this 组件的 [HOST_WATCH]中，在 this 组件销毁时卸载。
+        // 如果监听的传递进来的 vm ，也同理。
+        args.push(ast_create_arg_expr(ast_create_id_of_container(
+          is_root_container,
+        )));
+      }
       ast_create_expr_call(
         ast_create_expr_ident(if sr.not_op > 0 {
           JINGE_IMPORT_WATCH_PATH_FOR_RENDER_2.local()
@@ -173,6 +200,7 @@ pub fn tpl_watch_and_render(render_fn_body: Box<Expr>, expr_result: ExprParseRes
 pub fn tpl_watch_and_set_html_attr(
   attr_name: IdentName,
   expr_result: ExprParseResult,
+  is_root_container: bool,
 ) -> Box<Expr> {
   let set_fn = if IDL_ATTRIBUTE_SET.binary_search(&attr_name.sym).is_ok() {
     ast_create_expr_assign_mem(
@@ -187,17 +215,18 @@ pub fn tpl_watch_and_set_html_attr(
       ast_create_expr_ident(JINGE_V_IDENT.clone()),
     )
   };
-  tpl_watch_and_render(set_fn, expr_result)
+  tpl_watch_and_render(set_fn, expr_result, is_root_container)
 }
 
 pub fn tpl_watch_and_set_component_attr(
   attr_name: IdentName,
   expr_result: ExprParseResult,
+  is_root_container: bool,
 ) -> Box<Expr> {
   let set_fn = ast_create_expr_assign_mem(
     ast_create_expr_ident(JINGE_ATTR_IDENT.clone()),
     attr_name.sym,
     ast_create_expr_ident(JINGE_V_IDENT.clone()),
   );
-  tpl_watch_and_render(set_fn, expr_result)
+  tpl_watch_and_render(set_fn, expr_result, is_root_container)
 }
