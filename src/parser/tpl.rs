@@ -70,7 +70,7 @@ pub fn tpl_set_attribute(el: Box<Expr>, attr_name: Atom, attr_value: Box<Expr>) 
   )
 }
 
-pub fn tpl_render_const(
+pub fn tpl_render_const_text(
   c: Box<Expr>,
   is_parent_component: bool,
   is_root_container: bool,
@@ -86,6 +86,46 @@ pub fn tpl_render_const(
   } else {
     c
   }
+}
+
+pub fn tpl_render_expr_text(expr_result: ExprParseResult, value: Box<Expr>) -> Box<Expr> {
+  let render_fn = ast_create_expr_call(
+    ast_create_expr_ident(JINGE_IMPORT_SET_TEXT_CONTENT.local()),
+    vec![
+      ast_create_arg_expr(ast_create_expr_ident(JINGE_EL_IDENT.clone())),
+      ast_create_arg_expr(value),
+    ],
+  );
+
+  let stmts = vec![
+    ast_create_stmt_decl_const(
+      Ident::from(JINGE_EL_IDENT.clone()),
+      ast_create_expr_call(
+        ast_create_expr_ident(Ident::from(JINGE_IMPORT_CREATE_TEXT_NODE.local())),
+        vec![ast_create_arg_expr(ast_create_expr_lit_str(""))],
+      ),
+    ),
+    Stmt::Expr(ExprStmt {
+      span: DUMMY_SP,
+      expr: tpl_watch_and_render(render_fn, expr_result),
+    }),
+    Stmt::Return(ReturnStmt {
+      span: DUMMY_SP,
+      arg: Some(ast_create_expr_ident(JINGE_EL_IDENT.clone())),
+    }),
+  ];
+
+  ast_create_expr_call(
+    ast_create_expr_arrow_fn(
+      vec![],
+      Box::new(BlockStmtOrExpr::BlockStmt(BlockStmt {
+        span: DUMMY_SP,
+        ctxt: SyntaxContext::empty(),
+        stmts,
+      })),
+    ),
+    vec![],
+  )
 }
 
 pub fn tpl_watch_and_render(render_fn_body: Box<Expr>, expr_result: ExprParseResult) -> Box<Expr> {
@@ -154,14 +194,10 @@ pub fn tpl_watch_and_set_component_attr(
   attr_name: IdentName,
   expr_result: ExprParseResult,
 ) -> Box<Expr> {
-  let x = ast_create_expr_assign_mem(
+  let set_fn = ast_create_expr_assign_mem(
     ast_create_expr_ident(JINGE_ATTR_IDENT.clone()),
     attr_name.sym,
     ast_create_expr_ident(JINGE_V_IDENT.clone()),
-  );
-  let set_fn = ast_create_expr_arrow_fn(
-    vec![Pat::Ident(BindingIdent::from(JINGE_V_IDENT.clone()))],
-    Box::new(BlockStmtOrExpr::Expr(x)),
   );
   tpl_watch_and_render(set_fn, expr_result)
 }

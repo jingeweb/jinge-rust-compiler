@@ -10,11 +10,12 @@ use swc_core::common::{Spanned, SyntaxContext, DUMMY_SP};
 use swc_core::ecma::ast::*;
 use swc_core::ecma::visit::{Visit, VisitWith};
 use tpl::{
-  tpl_lit_obj, tpl_push_el_code, tpl_render_const, tpl_set_ref_code, tpl_watch_and_render,
-  tpl_watch_and_set_component_attr, tpl_watch_and_set_html_attr,
+  tpl_lit_obj, tpl_push_el_code, tpl_render_const_text, tpl_render_expr_text, tpl_set_ref_code,
+  tpl_watch_and_render, tpl_watch_and_set_component_attr, tpl_watch_and_set_html_attr,
 };
 
 mod attrs;
+mod cond;
 mod expr;
 mod tpl;
 
@@ -392,8 +393,8 @@ impl Visit for TemplateParser {
       Expr::Call(expr) => {
         // 如果是 this.props.children() 或 this.props.children.xx() 的调用，则转换为 Slot
       }
-      Expr::Cond(_) => {
-        emit_error(n.span(), "不支持二元条件表达式，请使用 <If> 组件");
+      Expr::Cond(e) => {
+        self.parse_cond_expr(e);
       }
       Expr::Fn(f) => {
         emit_error(f.span(), "tsx 中不支持函数，如果是定义 Slot 请使用箭头函数");
@@ -440,14 +441,6 @@ impl Visit for TemplateParser {
                 }
               }
               self.visit_expr(value);
-              // match value.as_ref() {
-              //   Expr::Arrow(expr) => {
-              //     let top_slot = self.context.slots.last_mut().unwrap();
-              //     top_slot.params.append(&mut expr.params.clone());
-              //     expr.body.visit_children_with(self);
-              //   }
-              //   _ => emit_error(value.span(), "定义指定名称 Slot 时，值必须是箭头函数"),
-              // }
             }
             _ => emit_error(p.span(), "Slot 定义必须是 Key: Value 的形式"),
           },
@@ -459,46 +452,15 @@ impl Visit for TemplateParser {
       _ => {
         let expr_result = ExprVisitor::new().parse(n);
         match expr_result {
-          ExprParseResult::None => self.push_expression(tpl_render_const(
+          ExprParseResult::None => self.push_expression(tpl_render_const_text(
             Box::new(n.clone()),
             self.context.is_parent_component(),
             self.context.root_container,
           )),
           _ => {
-            let render_fn = ast_create_expr_assign_mem(
-              ast_create_expr_ident(JINGE_EL_IDENT.clone()),
-              TEXT_CONTENT.sym.clone(),
+            self.push_expression(tpl_render_expr_text(
+              expr_result,
               ast_create_expr_ident(JINGE_V_IDENT.clone()),
-            );
-
-            let stmts = vec![
-              ast_create_stmt_decl_const(
-                Ident::from(JINGE_EL_IDENT.clone()),
-                ast_create_expr_call(
-                  ast_create_expr_ident(Ident::from(JINGE_IMPORT_CREATE_TEXT_NODE.local())),
-                  vec![ast_create_arg_expr(ast_create_expr_lit_str(""))],
-                ),
-              ),
-              Stmt::Expr(ExprStmt {
-                span: DUMMY_SP,
-                expr: tpl_watch_and_render(render_fn, expr_result),
-              }),
-              Stmt::Return(ReturnStmt {
-                span: DUMMY_SP,
-                arg: Some(ast_create_expr_ident(JINGE_EL_IDENT.clone())),
-              }),
-            ];
-
-            self.push_expression(ast_create_expr_call(
-              ast_create_expr_arrow_fn(
-                vec![],
-                Box::new(BlockStmtOrExpr::BlockStmt(BlockStmt {
-                  span: DUMMY_SP,
-                  ctxt: SyntaxContext::empty(),
-                  stmts,
-                })),
-              ),
-              vec![],
             ));
           }
         }
@@ -533,11 +495,11 @@ impl Visit for TemplateParser {
     }
   }
   fn visit_jsx_text(&mut self, t: &JSXText) {
-    let t = t.value.trim_ascii();
+    let t = t.value.trim();
     if t.is_empty() {
       return;
     }
-    self.push_expression(tpl_render_const(
+    self.push_expression(tpl_render_const_text(
       ast_create_expr_lit_str(t),
       self.context.is_parent_component(),
       self.context.root_container,
@@ -547,7 +509,7 @@ impl Visit for TemplateParser {
     if let Lit::JSXText(t) = n {
       self.visit_jsx_text(t);
     } else {
-      self.push_expression(tpl_render_const(
+      self.push_expression(tpl_render_const_text(
         Box::new(Expr::Lit(n.clone())),
         self.context.is_parent_component(),
         self.context.root_container,

@@ -4,7 +4,6 @@ mod config;
 mod parser;
 mod visitor;
 
-use config::Config;
 use swc_core::ecma::{
   ast::Program,
   transforms::testing::test_inline,
@@ -12,7 +11,6 @@ use swc_core::ecma::{
 };
 use swc_core::plugin::metadata::*;
 use swc_core::plugin::{plugin_transform, proxies::TransformPluginProgramMetadata};
-use swc_ecma_parser::TsSyntax;
 use visitor::TransformVisitor;
 
 #[plugin_transform]

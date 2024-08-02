@@ -42,6 +42,7 @@ lazy_static::lazy_static! {
   pub static ref JINGE_IMPORT_CREATE_ELE_A: JingeImport = x!("createEleA");
   pub static ref JINGE_IMPORT_ADD_EVENT: JingeImport = x!("addEvent");
   pub static ref JINGE_IMPORT_SET_ATTRIBUTE: JingeImport = x!("setAttribute");
+  pub static ref JINGE_IMPORT_SET_TEXT_CONTENT: JingeImport = x!("setTextContent");
   pub static ref JINGE_IMPORT_IF: JingeImport = x!("If");
   pub static ref JINGE_IMPORT_PATH_WATCHER: JingeImport = x!("PathWatcher");
   pub static ref JINGE_IMPORT_DYM_PATH_WATCHER: JingeImport = x!("DymPathWatcher");
@@ -71,11 +72,12 @@ lazy_static::lazy_static! {
 }
 
 pub fn gen_import_jinge() -> ModuleItem {
-  let imports: [&'static JingeImport; 19] = [
+  let imports: [&'static JingeImport; 20] = [
     &JINGE_IMPORT_TEXT_RENDER_FN,
     &JINGE_IMPORT_CREATE_ELE,
     &JINGE_IMPORT_CREATE_ELE_A,
     &JINGE_IMPORT_CREATE_TEXT_NODE,
+    &JINGE_IMPORT_SET_TEXT_CONTENT,
     &JINGE_IMPORT_VM,
     &JINGE_IMPORT_ADD_EVENT,
     &JINGE_IMPORT_SET_ATTRIBUTE,

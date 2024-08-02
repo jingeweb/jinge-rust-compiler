@@ -5,16 +5,16 @@ use swc_core::{
 
 use crate::common::JINGE_HOST_IDENT;
 
-#[inline]
-pub fn ast_create_expr_new(callee: Box<Expr>, args: Option<Vec<ExprOrSpread>>) -> Box<Expr> {
-  Box::new(Expr::New(NewExpr {
-    span: DUMMY_SP,
-    ctxt: SyntaxContext::empty(),
-    callee,
-    args,
-    type_args: None,
-  }))
-}
+// #[inline]
+// pub fn ast_create_expr_new(callee: Box<Expr>, args: Option<Vec<ExprOrSpread>>) -> Box<Expr> {
+//   Box::new(Expr::New(NewExpr {
+//     span: DUMMY_SP,
+//     ctxt: SyntaxContext::empty(),
+//     callee,
+//     args,
+//     type_args: None,
+//   }))
+// }
 // #[inline]
 // pub fn ast_create_id_of_el(slot_level: usize) -> Ident {
 //   if slot_level > 0 {
@@ -88,10 +88,10 @@ pub fn ast_create_expr_lit_str(v: &str) -> Box<Expr> {
 pub fn ast_create_expr_lit_string(v: String) -> Box<Expr> {
   Box::new(Expr::Lit(Lit::Str(Str::from(v))))
 }
-#[inline]
-pub fn ast_create_expr_lit_atom_str(v: Atom) -> Box<Expr> {
-  Box::new(Expr::Lit(Lit::Str(Str::from(v))))
-}
+// #[inline]
+// pub fn ast_create_expr_lit_atom_str(v: Atom) -> Box<Expr> {
+//   Box::new(Expr::Lit(Lit::Str(Str::from(v))))
+// }
 #[inline]
 pub fn ast_create_expr_lit_bool(v: bool) -> Box<Expr> {
   Box::new(Expr::Lit(Lit::Bool(Bool {
@@ -135,27 +135,27 @@ pub fn ast_create_expr_assign_mem(obj: Box<Expr>, prop: Atom, value: Box<Expr>) 
     right: value,
   }))
 }
-#[inline]
-pub fn ast_create_console_log() -> ModuleItem {
-  ModuleItem::Stmt(Stmt::Expr(ExprStmt {
-    span: DUMMY_SP,
-    expr: Box::new(Expr::Call(CallExpr {
-      ctxt: SyntaxContext::empty(),
-      span: DUMMY_SP,
-      callee: Callee::Expr(Box::new(Expr::Member(MemberExpr {
-        span: DUMMY_SP,
-        obj: Box::new(Expr::Ident(Ident::from("console"))),
-        prop: MemberProp::Ident(IdentName::from("log")),
-      }))),
-      args: vec![ExprOrSpread {
-        spread: None,
-        expr: Box::new(Expr::Lit(Lit::Str(Str {
-          span: DUMMY_SP,
-          value: Atom::from("hello"),
-          raw: None,
-        }))),
-      }],
-      type_args: None,
-    })),
-  }))
-}
+// #[inline]
+// pub fn ast_create_console_log() -> ModuleItem {
+//   ModuleItem::Stmt(Stmt::Expr(ExprStmt {
+//     span: DUMMY_SP,
+//     expr: Box::new(Expr::Call(CallExpr {
+//       ctxt: SyntaxContext::empty(),
+//       span: DUMMY_SP,
+//       callee: Callee::Expr(Box::new(Expr::Member(MemberExpr {
+//         span: DUMMY_SP,
+//         obj: Box::new(Expr::Ident(Ident::from("console"))),
+//         prop: MemberProp::Ident(IdentName::from("log")),
+//       }))),
+//       args: vec![ExprOrSpread {
+//         spread: None,
+//         expr: Box::new(Expr::Lit(Lit::Str(Str {
+//           span: DUMMY_SP,
+//           value: Atom::from("hello"),
+//           raw: None,
+//         }))),
+//       }],
+//       type_args: None,
+//     })),
+//   }))
+// }
