@@ -1,34 +1,49 @@
 {
   "name": "jinge-compiler",
   "version": "4.0.0",
-  "description": "template compiler(swc plugin) for jinge mvvm framework",
+  "description": "template compiler for jinge mvvm framework",
   "author": "Yuhang Ge<abeyuhang@gmail.com>",
   "license": "ISC",
   "type": "module",
-  "main": "index.js",
-  "module": "index.js",
-  "types": "index.d.ts",
+  "main": "dist/index.js",
+  "types": "lib/index.d.ts",
   "keywords": [
     "jinge",
     "compiler",
     "swc"
   ],
   "scripts": {
-    "dev": "cargo watch -x build-wasi",
-    "build": "cargo build-wasi --release",
-    "prepublishOnly": "cargo build-wasi --release"
+    "build-ts": "tsup ts/index.ts --format esm",
+    "dev": "concurrently \"tsup ts/index.ts --format esm --watch\" \"cargo watch -i lib -i ts -- pnpm build-debug\"",
+    "build-debug": "pnpm build-ts && cargo build && cp target/debug/libjinge_compiler.so index.debug.node",
+    "build": "tsc && pnpm build-ts && cargo build --release && cp target/release/libjinge_compiler.so index.node"
   },
   "files": [
     "package.json",
     "LICENSE",
     "README.md",
-    "index.js",
-    "index.d.ts",
-    "target/wasm32-wasi/debug/jinge_swc_compiler.wasm",
-    "target/wasm32-wasi/release/jinge_swc_compiler.wasm"
+    "lib",
+    "platform"
   ],
   "preferUnplugged": true,
   "devDependencies": {
-    "@types/node": "^22.1.0"
+    "@types/node": "^20.14.13",
+    "@typescript-eslint/eslint-plugin": "^7.18.0",
+    "@typescript-eslint/parser": "^7.18.0",
+    "concurrently": "^8.2.2",
+    "eslint": "^8.57.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-define-config": "^2.1.0",
+    "eslint-plugin-import": "npm:eslint-plugin-i@^2.29.1",
+    "eslint-plugin-prettier": "^5.2.1",
+    "husky": "^9.1.4",
+    "lint-staged": "^15.2.7",
+    "prettier": "^3.3.3",
+    "tsup": "^8.2.4",
+    "typescript": "^5.5.4",
+    "vite": "^5.4.0"
+  },
+  "dependencies": {
+    "@neon-rs/load": "^0.1.73"
   }
 }

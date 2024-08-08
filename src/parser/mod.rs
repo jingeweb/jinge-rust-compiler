@@ -284,54 +284,59 @@ impl TemplateParser {
 
     let set_ref_code = attrs.ref_prop.take().map(|r| tpl_set_ref_code(r));
     let mut slots = children_context.slots;
+    let mut args = vec![
+      ast_create_arg_expr(Box::new(Expr::Ident(Ident::from(tn.sym.clone())))),
+      ast_create_arg_expr(ast_create_expr_ident(JINGE_ATTR_IDENT.clone())),
+    ];
+    let has_named_slots = slots.len() > 1;
+    if has_named_slots {
+      assert!(slots[0].expressions.is_empty());
+      let x: Vec<_> = slots
+        .into_iter()
+        .skip(1)
+        .filter(|s| !s.expressions.is_empty()) // 跳过默认 DEFAULT_SLOT，一定是空的
+        .map(|mut s| {
+          let mut params = vec![Pat::Ident(BindingIdent::from(JINGE_HOST_IDENT.clone()))];
+          params.append(&mut s.params);
+          (
+            IdentName::from(s.name),
+            ast_create_expr_arrow_fn(
+              params,
+              Box::new(BlockStmtOrExpr::Expr(Box::new(Expr::Array(ArrayLit {
+                span: DUMMY_SP,
+                elems: s.expressions.into_iter().map(|e| Some(e)).collect(),
+              })))),
+            ),
+          )
+        })
+        .collect();
+      args.push(ast_create_arg_expr(tpl_lit_obj(x)));
+    } else {
+      let default_slot = slots.pop().unwrap();
+      if !default_slot.expressions.is_empty() {
+        args.push(ast_create_arg_expr(ast_create_expr_arrow_fn(
+          vec![Pat::Ident(BindingIdent::from(JINGE_HOST_IDENT.clone()))],
+          Box::new(BlockStmtOrExpr::Expr(Box::new(Expr::Array(ArrayLit {
+            span: DUMMY_SP,
+            elems: default_slot
+              .expressions
+              .into_iter()
+              .map(|e| Some(e))
+              .collect(),
+          })))),
+        )))
+      }
+    }
 
     stmts.push(ast_create_stmt_decl_const(
       JINGE_EL_IDENT.clone(),
       ast_create_expr_call(
-        ast_create_expr_ident(if slots.len() > 1 {
-          assert!(slots[0].expressions.is_empty());
+        ast_create_expr_ident(if has_named_slots {
           JINGE_IMPORT_NEW_COM_SLOTS.local()
         } else {
           JINGE_IMPORT_NEW_COM_DEFAULT_SLOT.local()
         }),
-        vec![
-          ast_create_arg_expr(Box::new(Expr::Ident(Ident::from(tn.sym.clone())))),
-          ast_create_arg_expr(ast_create_expr_ident(JINGE_ATTR_IDENT.clone())),
-          ast_create_arg_expr(if slots.len() > 1 {
-            let x: Vec<_> = slots
-              .into_iter()
-              .skip(1) // 跳过默认 DEFAULT_SLOT，一定是空的
-              .map(|mut s| {
-                let mut params = vec![Pat::Ident(BindingIdent::from(JINGE_HOST_IDENT.clone()))];
-                params.append(&mut s.params);
-                (
-                  IdentName::from(s.name),
-                  ast_create_expr_arrow_fn(
-                    params,
-                    Box::new(BlockStmtOrExpr::Expr(Box::new(Expr::Array(ArrayLit {
-                      span: DUMMY_SP,
-                      elems: s.expressions.into_iter().map(|e| Some(e)).collect(),
-                    })))),
-                  ),
-                )
-              })
-              .collect();
-            tpl_lit_obj(x)
-          } else {
-            let default_slot = slots.pop().unwrap();
-            ast_create_expr_arrow_fn(
-              vec![Pat::Ident(BindingIdent::from(JINGE_HOST_IDENT.clone()))],
-              Box::new(BlockStmtOrExpr::Expr(Box::new(Expr::Array(ArrayLit {
-                span: DUMMY_SP,
-                elems: default_slot
-                  .expressions
-                  .into_iter()
-                  .map(|e| Some(e))
-                  .collect(),
-              })))),
-            )
-          }),
-        ],
+        args,
       ),
     ));
     stmts.push(Stmt::Expr(ExprStmt {

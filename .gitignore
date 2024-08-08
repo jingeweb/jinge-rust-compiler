@@ -2,3 +2,7 @@
 ^target/
 target
 node_modules
+/lib
+/dist
+index.node
+index.debug.node
