@@ -6,7 +6,7 @@
   "license": "ISC",
   "type": "module",
   "main": "dist/index.js",
-  "types": "lib/index.d.ts",
+  "types": "ts/index.ts",
   "keywords": [
     "jinge",
     "compiler",
@@ -14,9 +14,10 @@
   ],
   "scripts": {
     "build-ts": "tsup ts/index.ts --format esm",
-    "dev": "concurrently \"tsup ts/index.ts --format esm --watch\" \"cargo watch -i lib -i ts -- pnpm build-debug\"",
-    "build-debug": "pnpm build-ts && cargo build && cp target/debug/libjinge_compiler.so index.debug.node",
-    "build": "tsc && pnpm build-ts && cargo build --release && cp target/release/libjinge_compiler.so index.node"
+    "watch-cargo": "cargo watch -i lib -i ts -- pnpm build-debug",
+    "dev": "concurrently \"tsup ts/index.ts --format esm --watch\" \"pnpm watch-cargo\"",
+    "build-debug": "pnpm build-ts && cargo build && cp target/debug/libjinge_compiler.dylib index.debug.node",
+    "build": "tsc && pnpm build-ts && cargo build --release && cp target/release/libjinge_compiler.dylib index.node"
   },
   "files": [
     "package.json",
@@ -27,7 +28,7 @@
   ],
   "preferUnplugged": true,
   "devDependencies": {
-    "@types/node": "^20.14.13",
+    "@types/node": "^22.2.0",
     "@typescript-eslint/eslint-plugin": "^7.18.0",
     "@typescript-eslint/parser": "^7.18.0",
     "concurrently": "^8.2.2",
@@ -37,7 +38,7 @@
     "eslint-plugin-import": "npm:eslint-plugin-i@^2.29.1",
     "eslint-plugin-prettier": "^5.2.1",
     "husky": "^9.1.4",
-    "lint-staged": "^15.2.7",
+    "lint-staged": "^15.2.9",
     "prettier": "^3.3.3",
     "tsup": "^8.2.4",
     "typescript": "^5.5.4",

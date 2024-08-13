@@ -1,9 +1,9 @@
-import type { Plugin } from 'vite';
+import type { PluginOption } from 'vite';
 import { loadBinding } from './binding.js';
 export function JingeCompilerVitePlugin(options?: {
   debug?: boolean;
   sourcemap?: boolean;
-}): Plugin[] {
+}): PluginOption[] {
   return [
     {
       name: 'vite:jinge',
@@ -13,12 +13,11 @@ export function JingeCompilerVitePlugin(options?: {
           esbuild: false,
         };
       },
-      transform(code, id) {
+      transform(code: string, id: string) {
         if (!id.endsWith('.tsx') && !id.endsWith('.ts')) return;
         const binding = loadBinding(options?.debug);
-        const output = binding.transform(code, { sourcemap: options?.sourcemap });
-        console.log(JSON.stringify(output.code));
-        return output;
+        const output = binding.transform(id, code, true);
+        return { code: output.code, map: output.map };
       },
     },
   ];

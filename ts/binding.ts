@@ -6,8 +6,9 @@ export interface TransformOptions {
 /** rust binding compiler interface */
 export interface JingeCompiler {
   transform(
+    filename: string,
     code: string,
-    options: TransformOptions,
+    sourcemap: boolean,
   ): {
     code: string;
     map?: string;
