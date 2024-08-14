@@ -6,3 +6,4 @@ node_modules
 /dist
 index.node
 index.debug.node
+/bindings

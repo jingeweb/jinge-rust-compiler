@@ -1,0 +1,7 @@
+{
+  "name": "jinge-compiler-core-macos-aarch64",
+  "version": "1.0.0",
+  "description": "rust core for jinge-compiler on macos-aarch64",
+  "main": "index.node",
+  "author": "Yuhang Ge<abeyuhang@gmail.com>"
+}

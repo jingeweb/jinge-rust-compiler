@@ -1,0 +1,7 @@
+{
+  "name": "jinge-compiler-core-linux-aarch64",
+  "version": "1.0.0",
+  "description": "rust core for jinge-compiler on linux-aarch64",
+  "main": "index.node",
+  "author": "Yuhang Ge<abeyuhang@gmail.com>"
+}
