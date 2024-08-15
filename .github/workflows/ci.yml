@@ -57,4 +57,4 @@ jobs:
         run: mv target/${{ matrix.platform.target }}/release/${{ matrix.platform.bin }} platform/${{ matrix.platform.os_name }}/index.node
       - name: Publish to npm
         working-directory: platform/${{ matrix.platform.os_name }}
-        run: npm config set _authToken ${{secrets.NPM_TOKEN}} && npm publish
+        run: npm config set //registry.npmjs.org/:_authToken ${{secrets.NPM_TOKEN}} && npm publish
