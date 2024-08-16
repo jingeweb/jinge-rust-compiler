@@ -197,6 +197,7 @@ fn transform(mut cx: FunctionContext) -> JsResult<JsObject> {
 
 #[neon::main]
 fn main(mut cx: ModuleContext) -> NeonResult<()> {
+  // println!("rust core loaded");
   cx.export_function("transform", transform)?;
   Ok(())
 }

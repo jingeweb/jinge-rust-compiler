@@ -14,10 +14,10 @@
   ],
   "scripts": {
     "build-ts": "tsup ts/index.ts --format esm",
-    "watch-cargo": "cargo watch -i lib -i ts -- pnpm build-debug",
-    "dev": "concurrently \"tsup ts/index.ts --format esm --watch\" \"pnpm watch-cargo\"",
-    "build-debug": "pnpm build-ts && cargo build && cp target/debug/libjinge_compiler.dylib index.debug.node",
-    "build": "tsc && pnpm build-ts && echo 'build ts done. '"
+    "build-cargo-debug": "cargo build && cp target/debug/libjinge_compiler.so index.node 2>/dev/null || : && cp target/debug/libjinge_compiler.dylib index.node 2>/dev/null || :",
+    "watch-cargo": "cargo watch -i lib -i ts -- pnpm build-cargo-debug",
+    "dev": "concurrently \"pnpm build-ts --watch\" \"pnpm watch-cargo\"",
+    "build": "tsc && pnpm build-ts --silent && echo 'Build ts done. Use github actions to build and release rust core!!'"
   },
   "files": [
     "package.json",
@@ -26,7 +26,6 @@
     "ts",
     "dist"
   ],
-  "preferUnplugged": true,
   "devDependencies": {
     "@types/node": "^22.2.0",
     "@typescript-eslint/eslint-plugin": "^7.18.0",
@@ -45,6 +44,10 @@
     "vite": "^5.4.0"
   },
   "dependencies": {
-    "@neon-rs/load": "^0.1.73"
+    "jinge-compiler-core-macos-aarch64": "^1.0.0",
+    "jinge-compiler-core-linux-aarch64": "^1.0.0",
+    "jinge-compiler-core-macos-x86_64": "^1.0.0",
+    "jinge-compiler-core-linux-x86_64": "^1.0.0",
+    "jinge-compiler-core-windows-x86_64": "^1.0.0"
   }
 }

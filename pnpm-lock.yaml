@@ -8,9 +8,21 @@ importers:
 
   .:
     dependencies:
-      '@neon-rs/load':
-        specifier: ^0.1.73
-        version: 0.1.73
+      jinge-compiler-core-linux-aarch64:
+        specifier: ^1.0.0
+        version: 1.0.0
+      jinge-compiler-core-linux-x86_64:
+        specifier: ^1.0.0
+        version: 1.0.0
+      jinge-compiler-core-macos-aarch64:
+        specifier: ^1.0.0
+        version: 1.0.0
+      jinge-compiler-core-macos-x86_64:
+        specifier: ^1.0.0
+        version: 1.0.0
+      jinge-compiler-core-windows-x86_64:
+        specifier: ^1.0.0
+        version: 1.0.0
     devDependencies:
       '@types/node':
         specifier: ^22.2.0
@@ -398,9 +410,6 @@ packages:
 
   '@jridgewell/trace-mapping@0.3.25':
     resolution: {integrity: sha512-vNk6aEwybGtawWmy/PzwnGDOjCkLWSD2wqvjGGAgOAwCGWySYXfYoxt00IJkTF+8Lb57DwOb3Aa0o9CApepiYQ==}
-
-  '@neon-rs/load@0.1.73':
-    resolution: {integrity: sha512-iflBHUbPHBwlaltsS8O4ASE9nE3JCjGp8uvz0n+ItA1f6aBchW+WNU1AiwdQsh5BEBIKFjozZq/h+VmZsP/CsQ==}
 
   '@nodelib/fs.scandir@2.1.5':
     resolution: {integrity: sha512-vq24Bq3ym5HEQm2NKCr3yXDwjc7vTsEThRDnkp2DK9p1uqLR+DHurm/NOTo0KG7HYHU7eppKZj3MyqYuMBf62g==}
@@ -1066,6 +1075,21 @@ packages:
 
   jackspeak@3.4.3:
     resolution: {integrity: sha512-OGlZQpz2yfahA/Rd1Y8Cd9SIEsqvXkLVoSw/cgwhnhFMDbsQFeZYoJJ7bIZBS9BcamUW96asq/npPWugM+RQBw==}
+
+  jinge-compiler-core-linux-aarch64@1.0.0:
+    resolution: {integrity: sha512-mfPHeDU9TbpZsWv+5EjOn2AEV8ZXhiWMyFfKnFtVhYRz7XF1uwDK6DeWpLuwPejS9Rt1H9ak7Pb/pIYIp3Gd1w==, tarball: https://registry.npmjs.org/jinge-compiler-core-linux-aarch64/-/jinge-compiler-core-linux-aarch64-1.0.0.tgz}
+
+  jinge-compiler-core-linux-x86_64@1.0.0:
+    resolution: {integrity: sha512-rBn91Ee4pntK6FSts6sidDJ7TUwh8RlcidYSQt6yHDtNt03AgwRT2CCbmOAsCPnUmC5z8ShrZ5EK6VsEvHyu1w==, tarball: https://registry.npmjs.org/jinge-compiler-core-linux-x86_64/-/jinge-compiler-core-linux-x86_64-1.0.0.tgz}
+
+  jinge-compiler-core-macos-aarch64@1.0.0:
+    resolution: {integrity: sha512-ejmSWrmXLwaFr+qVtwIqf267F87jYJwWD8DMI7I6F2hLuJu10PfebdhMYpVMgVWQtuLxDNWM763lmzoJBReozg==, tarball: https://registry.npmjs.org/jinge-compiler-core-macos-aarch64/-/jinge-compiler-core-macos-aarch64-1.0.0.tgz}
+
+  jinge-compiler-core-macos-x86_64@1.0.0:
+    resolution: {integrity: sha512-62DxMSFWbvtDnHfG2RSCOQRKDRHpUkJEkzLQeVmrF7cQMG9CD433ANmeNlaXfZmMPB/ZFwKSPG8AnBA6QOkziA==, tarball: https://registry.npmjs.org/jinge-compiler-core-macos-x86_64/-/jinge-compiler-core-macos-x86_64-1.0.0.tgz}
+
+  jinge-compiler-core-windows-x86_64@1.0.0:
+    resolution: {integrity: sha512-yrBPQmdHQXITcJlokuYtkkYflm+y2wkwZXRpw3F3l3Xi0xgm/OudbzHd2J2r8uVZ/Wr6f/uj91sKi8L2KumRoA==, tarball: https://registry.npmjs.org/jinge-compiler-core-windows-x86_64/-/jinge-compiler-core-windows-x86_64-1.0.0.tgz}
 
   joycon@3.1.1:
     resolution: {integrity: sha512-34wB/Y7MW7bzjKRjUKTa46I2Z7eV62Rkhva+KkopW7Qvv/OSWBqvkSY7vusOPrNuZcUG3tApvdVgNB8POj3SPw==}
@@ -1839,8 +1863,6 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.0
 
-  '@neon-rs/load@0.1.73': {}
-
   '@nodelib/fs.scandir@2.1.5':
     dependencies:
       '@nodelib/fs.stat': 2.0.5
@@ -2531,6 +2553,16 @@ snapshots:
       '@isaacs/cliui': 8.0.2
     optionalDependencies:
       '@pkgjs/parseargs': 0.11.0
+
+  jinge-compiler-core-linux-aarch64@1.0.0: {}
+
+  jinge-compiler-core-linux-x86_64@1.0.0: {}
+
+  jinge-compiler-core-macos-aarch64@1.0.0: {}
+
+  jinge-compiler-core-macos-x86_64@1.0.0: {}
+
+  jinge-compiler-core-windows-x86_64@1.0.0: {}
 
   joycon@3.1.1: {}
 
