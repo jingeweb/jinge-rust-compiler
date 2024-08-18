@@ -1,3 +1,4 @@
+use swc_common::Spanned;
 use swc_core::{common::DUMMY_SP, ecma::ast::*};
 
 use crate::ast::*;
@@ -5,8 +6,56 @@ use crate::ast::*;
 use super::{
   expr::{ExprParseResult, ExprVisitor},
   tpl::{tpl_render_const_text, tpl_render_expr_text},
-  TemplateParser, JINGE_V_IDENT,
+  TemplateParser, JINGE_IMPORT_IF, JINGE_V_IDENT,
 };
+
+lazy_static::lazy_static! {
+  static ref IF: Ident = Ident::from("If");
+  static ref EXPECT: IdentName = IdentName::from("expect");
+  static ref TRUE: IdentName = IdentName::from("true");
+  static ref FALSE: IdentName = IdentName::from("false");
+}
+
+/// 将形如 `test ? cons : alt` 的二元条件表达式，转换为 `If` 组件： `<If expect={test}>{{ true: cons, false: alt }}</If>`
+fn gen_if_component(expr: &CondExpr) -> JSXElement {
+  JSXElement {
+    span: expr.span(),
+    opening: JSXOpeningElement {
+      name: JSXElementName::Ident(IF.clone()),
+      span: expr.cons.span(),
+      attrs: vec![JSXAttrOrSpread::JSXAttr(JSXAttr {
+        span: expr.test.span(),
+        name: JSXAttrName::Ident(EXPECT.clone()),
+        value: Some(JSXAttrValue::JSXExprContainer(JSXExprContainer {
+          span: expr.test.span(),
+          expr: JSXExpr::Expr(expr.test.clone()),
+        })),
+      })],
+      self_closing: false,
+      type_args: None,
+    },
+    children: vec![JSXElementChild::JSXExprContainer(JSXExprContainer {
+      span: expr.alt.span(),
+      expr: JSXExpr::Expr(Box::new(Expr::Object(ObjectLit {
+        span: DUMMY_SP,
+        props: vec![
+          PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
+            key: PropName::Ident(TRUE.clone()),
+            value: expr.cons.clone(),
+          }))),
+          PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
+            key: PropName::Ident(FALSE.clone()),
+            value: expr.alt.clone(),
+          }))),
+        ],
+      }))),
+    })],
+    closing: Some(JSXClosingElement {
+      name: JSXElementName::Ident(IF.clone()),
+      span: DUMMY_SP,
+    }),
+  }
+}
 
 impl TemplateParser {
   pub fn parse_cond_expr(&mut self, expr: &CondExpr) {
@@ -34,5 +83,14 @@ impl TemplateParser {
       }
       return; // important to return !!
     }
+
+    /* 如果是复杂的 ? : 表达式，比如 `this.submitting ? <p>Submitting</p> : <span>SUBMIT</span>`，
+    * 转换为 `If` 组件：```<If expect={this.submitting}>{{
+         true: <p>Submitting</p>,
+         false: <span>SUBMIT</p>
+       }}</If>```
+    */
+    let if_component = gen_if_component(expr);
+    self.parse_component_element(&JINGE_IMPORT_IF.local(), &if_component);
   }
 }

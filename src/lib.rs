@@ -201,3 +201,17 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
   cx.export_function("transform", transform)?;
   Ok(())
 }
+
+#[test]
+fn test_transform() {
+  let (code, _) = inner_transform("test.tsx".into(), "export class C extends Component {
+  render() {
+  return <If expect={this.ii === 1}>
+          {{
+            true: 'One',
+            false: 'kk', // <If expect={this.ii === 2}>{{ true: 'Two', false: 'More than two' }}</If>,
+          }}
+        </If>}}".into());
+  println!("{}", code);
+  assert_eq!(code, "x");
+}

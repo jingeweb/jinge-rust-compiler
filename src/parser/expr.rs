@@ -86,11 +86,12 @@ impl ExprVisitor {
         sr.not_op = not_op;
         ExprParseResult::Simple(sr)
       } else {
-        ExprParseResult::Complex(self.expressions.pop().unwrap())
+        // println!("{:?}", self.expressions.first().unwrap());
+        ExprParseResult::Complex(self.covert(expr))
       }
     } else {
       // 如果 simple_result 为 None，则说明第一个 member expr 有 computed 属性
-      ExprParseResult::Complex(self.expressions.pop().unwrap())
+      ExprParseResult::Complex(self.covert(expr))
     }
   }
   fn covert(&mut self, expr: &Expr) -> Box<Expr> {
