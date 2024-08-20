@@ -1,10 +1,9 @@
 use std::ops::Deref;
 
-use swc_core::common::Spanned;
 use swc_core::ecma::ast::*;
 use swc_core::ecma::visit::VisitMut;
 
-use crate::common::{emit_error, gen_import_jinge};
+use crate::common::gen_import_jinge;
 use crate::parser;
 
 pub struct TransformVisitor {
@@ -84,15 +83,15 @@ impl TransformVisitor {
     self.v_class(Some(&n.ident), &mut n.class);
   }
 
-  fn v_class(&mut self, ident: Option<&Ident>, class: &mut Class) {
+  fn v_class(&mut self, _ident: Option<&Ident>, class: &mut Class) {
     let render = class.body.iter_mut().find(|it| matches!(it, ClassMember::Method(it) if matches!(&it.key, PropName::Ident(it) if it.sym.as_str() == "render")));
     let Some(render) = render else {
-      let span = if let Some(ident) = ident {
-        ident.span()
-      } else {
-        class.span()
-      };
-      emit_error(span, "组件缺失 render() 函数");
+      // let span = if let Some(ident) = ident {
+      //   ident.span()
+      // } else {
+      //   class.span()
+      // };
+      // emit_error(span, "组件缺失 render() 函数");
       return;
     };
     let render_fn = match render {

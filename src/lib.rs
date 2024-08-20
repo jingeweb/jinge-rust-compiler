@@ -18,18 +18,17 @@ use neon::prelude::*;
 
 use swc_common::{
   collections::AHashMap,
-  comments::SingleThreadedComments,
   errors::{ColorConfig, Handler, HANDLER},
   source_map::SourceMapGenConfig,
   sync::Lrc,
-  BytePos, FileName, Globals, Mark, SourceFile, SourceMap, GLOBALS,
+  BytePos, FileName, Globals, Mark, SourceMap, GLOBALS,
 };
-use swc_core::ecma::ast::{Ident, IdentName, Program};
-use swc_ecma_codegen::{text_writer::JsWriter, to_code_default, Emitter, Node};
+use swc_core::ecma::ast::{Ident, IdentName};
+use swc_ecma_codegen::{text_writer::JsWriter, Emitter, Node};
 use swc_ecma_parser::{lexer::Lexer, Parser, StringInput, Syntax, TsSyntax};
-use swc_ecma_transforms_base::{fixer::fixer, hygiene::hygiene, resolver};
+use swc_ecma_transforms_base::fixer::fixer;
 use swc_ecma_transforms_typescript::strip;
-use swc_ecma_visit::{as_folder, noop_visit_type, FoldWith, Visit, VisitAll, VisitAllWith};
+use swc_ecma_visit::{as_folder, noop_visit_type, FoldWith, VisitAll, VisitAllWith};
 use visitor::TransformVisitor;
 
 struct SourceMapConfig<'a> {
@@ -143,12 +142,9 @@ fn inner_transform(filename: String, code: String) -> (String, Option<String>) {
     .map_err(|e| e.into_diagnostic(&handler).emit())
     .expect("failed to parse module.");
 
-  let globals = Globals::default();
-  let output = GLOBALS.set(&globals, || {
+  let output = GLOBALS.set(&Globals::default(), || {
     let unresolved_mark = Mark::new();
     let top_level_mark = Mark::new();
-
-    let t = TransformVisitor::new();
 
     // Optionally transforms decorators here before the resolver pass
     // as it might produce runtime declarations.
@@ -158,26 +154,29 @@ fn inner_transform(filename: String, code: String) -> (String, Option<String>) {
 
     // Remove typescript types
     let module = module.fold_with(&mut strip(unresolved_mark, top_level_mark));
-    let module = module.fold_with(&mut as_folder(t));
 
-    // Fix up any identifiers with the same name, but different contexts
-    // let module = module.fold_with(&mut hygiene());
+    HANDLER.set(&handler, move || {
+      let t = TransformVisitor::new();
+      let module = module.fold_with(&mut as_folder(t));
+      // Fix up any identifiers with the same name, but different contexts
+      // let module = module.fold_with(&mut hygiene());
 
-    // Ensure that we have enough parenthesis.
-    let module = module.fold_with(&mut fixer(None));
+      // Ensure that we have enough parenthesis.
+      let module = module.fold_with(&mut fixer(None));
 
-    let source_map_names = if true {
-      let mut v = IdentCollector {
-        names: Default::default(),
+      let source_map_names = if true {
+        let mut v = IdentCollector {
+          names: Default::default(),
+        };
+
+        module.visit_with(&mut v);
+
+        v.names
+      } else {
+        Default::default()
       };
-
-      module.visit_with(&mut v);
-
-      v.names
-    } else {
-      Default::default()
-    };
-    print(&filename, cm, &module, true, &source_map_names)
+      print(&filename, cm, &module, true, &source_map_names)
+    })
   });
   output
 }
@@ -204,14 +203,15 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
 
 #[test]
 fn test_transform() {
-  let (code, _) = inner_transform("test.tsx".into(), "export class C extends Component {
+  let (code, _) = inner_transform(
+    "test.tsx".into(),
+    "export class C extends Component {
   render() {
-  return <If expect={this.ii === 1}>
-          {{
-            true: 'One',
-            false: 'kk', // <If expect={this.ii === 2}>{{ true: 'Two', false: 'More than two' }}</If>,
-          }}
-        </If>}}".into());
+    return this[SLOTS][DEFAULT_SLOT]?.(this, this); 
+  }
+}"
+    .into(),
+  );
   println!("{}", code);
   assert_eq!(code, "x");
 }

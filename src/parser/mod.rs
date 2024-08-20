@@ -69,6 +69,18 @@ pub struct TemplateParser {
   stack: Vec<Context>,
 }
 
+fn is_jsx(expr: &Expr) -> bool {
+  match expr {
+    Expr::JSXElement(_) | Expr::JSXFragment(_) => true,
+    Expr::Cond(e) => {
+      return is_jsx(&e.alt) || is_jsx(&e.cons);
+    }
+    _ => {
+      return false;
+    }
+  }
+}
+
 impl TemplateParser {
   pub fn new() -> Self {
     Self {
@@ -96,7 +108,12 @@ impl TemplateParser {
       .push(ast_create_arg_expr(e));
   }
   pub fn parse(&mut self, expr: &Expr) -> Option<Box<Expr>> {
-    self.visit_expr(expr);
+    // self.visit_expr(expr);
+    if is_jsx(expr) || matches!(expr, Expr::Lit(_)) {
+      self.visit_expr(expr);
+    } else {
+      return None;
+    }
     assert_eq!(self.context.slots.len(), 1);
     let elems: Vec<Option<ExprOrSpread>> = self
       .context
@@ -384,11 +401,6 @@ impl TemplateParser {
 }
 
 impl Visit for TemplateParser {
-  fn visit_jsx_expr(&mut self, node: &JSXExpr) {
-    if let JSXExpr::Expr(expr) = node {
-      self.visit_expr(expr.as_ref());
-    }
-  }
   fn visit_expr(&mut self, n: &Expr) {
     match n {
       Expr::JSXElement(n) => {
@@ -478,7 +490,6 @@ impl Visit for TemplateParser {
       }
     }
   }
-
   fn visit_jsx_element(&mut self, n: &JSXElement) {
     let JSXElementName::Ident(tn) = &n.opening.name else {
       emit_error(
@@ -488,7 +499,7 @@ impl Visit for TemplateParser {
       return;
     };
     // let tag = tn.as_ref();
-    println!("visit jsx ele: {}", tn.as_ref());
+    // println!("visit jsx ele: {}", tn.as_ref());
     match tn.as_ref().chars().next() {
       Some(c) if c.is_ascii_uppercase() => {
         self.parse_component_element(tn, n);
@@ -503,6 +514,12 @@ impl Visit for TemplateParser {
         );
         return;
       }
+    }
+  }
+
+  fn visit_jsx_expr(&mut self, node: &JSXExpr) {
+    if let JSXExpr::Expr(expr) = node {
+      self.visit_expr(expr.as_ref());
     }
   }
   fn visit_jsx_text(&mut self, t: &JSXText) {
