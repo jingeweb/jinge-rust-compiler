@@ -75,6 +75,7 @@ fn is_jsx(expr: &Expr) -> bool {
     Expr::Cond(e) => {
       return is_jsx(&e.alt) || is_jsx(&e.cons);
     }
+    Expr::Paren(e) => return is_jsx(&e.expr),
     _ => {
       return false;
     }
@@ -329,10 +330,12 @@ impl TemplateParser {
         .collect();
       args.push(ast_create_arg_expr(tpl_lit_obj(x)));
     } else {
-      let default_slot = slots.pop().unwrap();
+      let mut default_slot = slots.pop().unwrap();
       if !default_slot.expressions.is_empty() {
+        let mut params = vec![Pat::Ident(BindingIdent::from(JINGE_HOST_IDENT.clone()))];
+        params.append(&mut default_slot.params);
         args.push(ast_create_arg_expr(ast_create_expr_arrow_fn(
-          vec![Pat::Ident(BindingIdent::from(JINGE_HOST_IDENT.clone()))],
+          params,
           Box::new(BlockStmtOrExpr::Expr(Box::new(Expr::Array(ArrayLit {
             span: DUMMY_SP,
             elems: default_slot
