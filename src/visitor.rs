@@ -3,7 +3,7 @@ use std::ops::Deref;
 use swc_core::ecma::ast::*;
 use swc_core::ecma::visit::VisitMut;
 
-use crate::common::gen_import_jinge;
+use crate::common::JINGE_IMPORT_MODULE_ITEM;
 use crate::parser;
 
 pub struct TransformVisitor {
@@ -59,7 +59,7 @@ impl VisitMut for TransformVisitor {
 
     if self.changed {
       let mut new_items = Vec::with_capacity(n.body.len() + 1);
-      new_items.push(gen_import_jinge());
+      new_items.push(JINGE_IMPORT_MODULE_ITEM.clone());
       new_items.append(&mut n.body);
 
       n.body = new_items;

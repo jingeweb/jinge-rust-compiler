@@ -10,7 +10,6 @@ use super::{
 };
 
 lazy_static::lazy_static! {
-  static ref IF: Ident = Ident::from("If");
   static ref EXPECT: IdentName = IdentName::from("expect");
   static ref TRUE: IdentName = IdentName::from("true");
   static ref FALSE: IdentName = IdentName::from("false");
@@ -21,7 +20,7 @@ fn gen_if_component(expr: &CondExpr) -> JSXElement {
   JSXElement {
     span: expr.span(),
     opening: JSXOpeningElement {
-      name: JSXElementName::Ident(IF.clone()),
+      name: JSXElementName::Ident(JINGE_IMPORT_IF.local()),
       span: expr.cons.span(),
       attrs: vec![JSXAttrOrSpread::JSXAttr(JSXAttr {
         span: expr.test.span(),
@@ -51,7 +50,7 @@ fn gen_if_component(expr: &CondExpr) -> JSXElement {
       }))),
     })],
     closing: Some(JSXClosingElement {
-      name: JSXElementName::Ident(IF.clone()),
+      name: JSXElementName::Ident(JINGE_IMPORT_IF.local()),
       span: DUMMY_SP,
     }),
   }

@@ -1,7 +1,7 @@
 use crate::ast::{
   ast_create_arg_expr, ast_create_expr_arrow_fn, ast_create_expr_call, ast_create_expr_ident,
   ast_create_expr_lit_bool, ast_create_expr_lit_str, ast_create_expr_lit_string,
-  ast_create_expr_member, ast_create_stmt_decl_const,
+  ast_create_expr_member, ast_create_id_of_container, ast_create_stmt_decl_const,
 };
 use crate::common::*;
 use expr::{ExprParseResult, ExprVisitor};
@@ -139,7 +139,7 @@ impl TemplateParser {
   fn parse_html_element(&mut self, tn: &Ident, n: &JSXElement) {
     let mut attrs = self.parse_attrs(n, false);
     self.push_context(
-      if tn.as_ref() == "svg" {
+      if JINGE_SVG.eq(&tn.sym) {
         Parent::Svg
       } else {
         Parent::Html
@@ -306,6 +306,13 @@ impl TemplateParser {
     let mut args = vec![
       ast_create_arg_expr(Box::new(Expr::Ident(Ident::from(tn.sym.clone())))),
       ast_create_arg_expr(ast_create_expr_ident(JINGE_ATTR_IDENT.clone())),
+      ast_create_arg_expr(ast_create_expr_member(
+        ast_create_id_of_container(root_container),
+        MemberProp::Computed(ComputedPropName {
+          span: DUMMY_SP,
+          expr: ast_create_expr_ident(JINGE_IMPORT_CONTEXT.local()),
+        }),
+      )),
     ];
     let has_named_slots = slots.len() > 1;
     if has_named_slots {
@@ -376,7 +383,7 @@ impl TemplateParser {
       arg: Some(ast_create_expr_call(
         ast_create_expr_member(
           ast_create_expr_ident(JINGE_EL_IDENT.clone()),
-          MemberProp::Ident(IdentName::from("render")),
+          MemberProp::Ident(IdentName::from(JINGE_RENDER.clone())),
         ),
         vec![],
       )),

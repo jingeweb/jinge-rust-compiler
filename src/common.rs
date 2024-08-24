@@ -50,12 +50,16 @@ lazy_static::lazy_static! {
   pub static ref JINGE_IMPORT_WATCH_FOR_RENDER: JingeImport = x!("watchForRender");
   pub static ref JINGE_IMPORT_WATCH_PATH_FOR_RENDER_2: JingeImport = x!("watchPathForRender2");
   pub static ref JINGE_IMPORT_WATCH_PATH_FOR_RENDER: JingeImport = x!("watchPathForRender");
+  pub static ref JINGE_IMPORT_CONTEXT: JingeImport = x!("CONTEXT");
 
   pub static ref JINGE_IMPORT_VM: JingeImport = x!("vm");
   pub static ref JINGE_IMPORT_SET_REF: JingeImport = x!("setRefForComponent");
   pub static ref JINGE_IMPORT_ROOT_NODES: JingeImport = x!("ROOT_NODES");
+  pub static ref JINGE_IMPORT_SLOTS: JingeImport = x!("SLOTS");
+  pub static ref JINGE_IMPORT_DEFAULT_SLOT: JingeImport = x!("DEFAULT_SLOT");
   pub static ref JINGE_IMPORT_NEW_COM_SLOTS: JingeImport = x!("newComponentWithSlots");
   pub static ref JINGE_IMPORT_NEW_COM_DEFAULT_SLOT: JingeImport = x!("newComponentWithDefaultSlot");
+  pub static ref JINGE_IMPORT_NEW_SLOT_RENDER_COM: JingeImport = x!("newSlotRenderComponent");
 
   pub static ref JINGE_IMPORT_NON_ROOT_COMPONENT_NODES: JingeImport = x!("NON_ROOT_COMPONENT_NODES");
   pub static ref JINGE_EL_IDENT: Ident = "$jg$".into();
@@ -63,19 +67,26 @@ lazy_static::lazy_static! {
   pub static ref JINGE_V_IDENT: Ident = "v".into();
   pub static ref JINGE_HOST_IDENT: Ident = "host$jg$".into();
   pub static ref TEXT_CONTENT: Ident = "textContent".into();
+  pub static ref JINGE: Atom = "jinge".into();
+  pub static ref JINGE_RENDER: Atom = "render".into();
+  pub static ref JINGE_SVG: Atom = "svg".into();
+  pub static ref JINGE_SLOTS: Atom = "slots".into();
 
   pub static ref IDL_ATTRIBUTE_SET: Vec<Atom> = {
     let mut attrs = vec!["disabled", "readOnly", "autoFocus", "autoComplete", "autoPlay", "controls", "required", "checked", "selected", "multiple", "muted", "draggable"];
     attrs.sort_unstable();
     attrs.into_iter().map(|s| Atom::from(s)).collect()
   };
+
+  pub static ref JINGE_IMPORT_MODULE_ITEM: ModuleItem = gen_import_jinge();
 }
 
-pub fn gen_import_jinge() -> ModuleItem {
-  let imports: [&'static JingeImport; 20] = [
+fn gen_import_jinge() -> ModuleItem {
+  let imports: [&'static JingeImport; 24] = [
     &JINGE_IMPORT_TEXT_RENDER_FN,
     &JINGE_IMPORT_CREATE_ELE,
     &JINGE_IMPORT_CREATE_ELE_A,
+    &JINGE_IMPORT_CONTEXT,
     &JINGE_IMPORT_CREATE_TEXT_NODE,
     &JINGE_IMPORT_SET_TEXT_CONTENT,
     &JINGE_IMPORT_VM,
@@ -83,9 +94,12 @@ pub fn gen_import_jinge() -> ModuleItem {
     &JINGE_IMPORT_SET_ATTRIBUTE,
     &JINGE_IMPORT_SET_REF,
     &JINGE_IMPORT_ROOT_NODES,
+    &JINGE_IMPORT_SLOTS,
+    &JINGE_IMPORT_DEFAULT_SLOT,
     &JINGE_IMPORT_NON_ROOT_COMPONENT_NODES,
     &JINGE_IMPORT_NEW_COM_SLOTS,
     &JINGE_IMPORT_NEW_COM_DEFAULT_SLOT,
+    &JINGE_IMPORT_NEW_SLOT_RENDER_COM,
     &JINGE_IMPORT_PATH_WATCHER,
     &JINGE_IMPORT_DYM_PATH_WATCHER,
     &JINGE_IMPORT_EXPR_WATCHER,
@@ -108,7 +122,7 @@ pub fn gen_import_jinge() -> ModuleItem {
   ModuleItem::ModuleDecl(ModuleDecl::Import(ImportDecl {
     span: DUMMY_SP,
     specifiers: specs,
-    src: Box::new(Str::from("jinge")),
+    src: Box::new(Str::from(JINGE.clone())),
     type_only: false,
     with: None,
     phase: ImportPhase::Evaluation,
