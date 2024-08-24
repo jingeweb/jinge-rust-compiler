@@ -1,6 +1,5 @@
 mod ast;
 mod common;
-mod config;
 mod parser;
 mod visitor;
 
@@ -28,7 +27,7 @@ use swc_ecma_codegen::{text_writer::JsWriter, Emitter, Node};
 use swc_ecma_parser::{lexer::Lexer, Parser, StringInput, Syntax, TsSyntax};
 use swc_ecma_transforms_base::fixer::fixer;
 use swc_ecma_transforms_typescript::strip;
-use swc_ecma_visit::{as_folder, noop_visit_type, FoldWith, VisitAll, VisitAllWith};
+use swc_ecma_visit::{as_folder, noop_visit_type, FoldWith, Visit, VisitWith};
 use visitor::TransformVisitor;
 
 struct SourceMapConfig<'a> {
@@ -51,7 +50,7 @@ pub struct IdentCollector {
   pub names: AHashMap<BytePos, swc_core::atoms::JsWord>,
 }
 
-impl VisitAll for IdentCollector {
+impl Visit for IdentCollector {
   noop_visit_type!();
 
   fn visit_ident(&mut self, ident: &Ident) {

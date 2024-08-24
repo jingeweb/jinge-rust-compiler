@@ -1,6 +1,9 @@
+use std::rc::Rc;
+
 use crate::common::emit_error;
 use crate::parser::TemplateParser;
-use swc_core::common::Spanned;
+use hashbrown::HashSet;
+use swc_core::{atoms::Atom, common::Spanned};
 use swc_core::ecma::ast::*;
 
 use super::expr::{ExprParseResult, ExprVisitor};
@@ -13,8 +16,6 @@ pub struct AttrEvt {
 pub struct AttrStore {
   /// ref 属性，例如 `<div ref="some"></div>`
   pub ref_prop: Option<Box<Expr>>,
-  /// key 属性
-  pub key_prop: Option<Box<Expr>>,
   /// 事件属性，例如 `<div onClick={(evt) => {}}></div>`
   pub evt_props: Vec<AttrEvt>,
   /// 不需要 watch 监听的表达式属性，例如 `<div a={45 + "hello"} b={_someVar.o} c="hello" d={true} disabled ></div>`
@@ -23,11 +24,9 @@ pub struct AttrStore {
 }
 
 impl TemplateParser {
-  
   pub fn parse_attrs(&mut self, n: &JSXElement, is_component: bool) -> AttrStore {
     let mut attrs = AttrStore {
       ref_prop: None,
-      key_prop: None,
       evt_props: vec![],
       const_props: vec![],
       watch_props: vec![],
@@ -115,7 +114,30 @@ impl TemplateParser {
                         "不支持函数作为属性值。如果是想传递事件，请使用 on 打头的属性名，例如 onClick",
                       )
                     } else {
-                      let r = ExprVisitor::new().parse(expr.as_ref());
+                      let mut set: HashSet<Atom> = HashSet::new();
+                      match expr.as_ref() {
+                        Expr::Fn(e) => {
+                           e.function.params.iter().for_each(|p| {
+                             if let Pat::Ident(id) = &p.pat {
+                               set.insert(id.sym.clone());
+                             }
+                           })
+                        },
+                        Expr::Arrow(e) => {
+                          e.params.iter().for_each(|p| {
+                            if let Pat::Ident(id) = p {
+                              set.insert(id.sym.clone());
+                            }
+                          })
+                        },
+                        _ => ()
+                      }
+                      println!("{:?}", set);
+                      let r = ExprVisitor::new_with_exclude_roots(if set.is_empty() {
+                        None
+                      } else {
+                        Some(Rc::new(set))
+                      }).parse(expr.as_ref());
                       match r {
                         ExprParseResult::None => {
                           attrs.const_props.push((an.clone(), expr.clone()));

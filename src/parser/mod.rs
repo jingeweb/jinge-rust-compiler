@@ -17,6 +17,7 @@ use tpl::{
 mod attrs;
 mod cond;
 mod expr;
+mod slot;
 mod tpl;
 
 enum Parent {
@@ -401,6 +402,24 @@ impl TemplateParser {
         ),
       });
   }
+  fn parse_expr(&mut self, expr: &Expr) {
+    let expr_result = ExprVisitor::new().parse(expr);
+    match expr_result {
+      ExprParseResult::None => self.push_expression(tpl_render_const_text(
+        Box::new(expr.clone()),
+        self.context.is_parent_component(),
+        self.context.root_container,
+      )),
+      _ => {
+        self.push_expression(tpl_render_expr_text(
+          expr_result,
+          ast_create_expr_ident(JINGE_V_IDENT.clone()),
+          self.context.is_parent_component(),
+          self.context.root_container,
+        ));
+      }
+    }
+  }
 }
 
 impl Visit for TemplateParser {
@@ -415,7 +434,10 @@ impl Visit for TemplateParser {
       }
       Expr::JSXMember(_) | Expr::JSXNamespacedName(_) => emit_error(n.span(), "不支持的 jsx 格式"),
       Expr::Call(expr) => {
-        // 如果是 this.props.children() 或 this.props.children.xx() 的调用，则转换为 Slot
+        // 如果是 this.slots() 或 this.slots.xx() 的调用，则转换为 Slot
+        if !self.parse_slot_call_expr(expr) {
+          self.parse_expr(n);
+        }
       }
       Expr::Cond(e) => {
         self.parse_cond_expr(e);
@@ -473,24 +495,7 @@ impl Visit for TemplateParser {
       Expr::Array(e) => emit_error(e.span(), "tsx 中不能直接使用数组表达式"),
       Expr::Paren(e) => self.visit_expr(&e.expr),
       Expr::Lit(e) => self.visit_lit(e),
-      _ => {
-        let expr_result = ExprVisitor::new().parse(n);
-        match expr_result {
-          ExprParseResult::None => self.push_expression(tpl_render_const_text(
-            Box::new(n.clone()),
-            self.context.is_parent_component(),
-            self.context.root_container,
-          )),
-          _ => {
-            self.push_expression(tpl_render_expr_text(
-              expr_result,
-              ast_create_expr_ident(JINGE_V_IDENT.clone()),
-              self.context.is_parent_component(),
-              self.context.root_container,
-            ));
-          }
-        }
-      }
+      _ => self.parse_expr(n),
     }
   }
   fn visit_jsx_element(&mut self, n: &JSXElement) {

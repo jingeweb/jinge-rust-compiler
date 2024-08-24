@@ -1,11 +1,15 @@
+use std::rc::Rc;
+
+use hashbrown::HashSet;
 use swc_core::{
   atoms::Atom,
   common::{Spanned, DUMMY_SP},
   ecma::{
     ast::*,
-    visit::{Visit, VisitAll, VisitAllWith, VisitMut, VisitMutWith},
+    visit::{Visit, VisitMut, VisitMutWith},
   },
 };
+use swc_ecma_visit::VisitWith;
 
 use crate::{
   ast::{
@@ -34,29 +38,37 @@ pub enum ExprParseResult {
   Simple(SimpleExprParseResult),
   Complex(Box<Expr>),
 }
+
+type ExcludeRoots = Option<Rc<HashSet<Atom>>>;
+
 pub struct ExprVisitor {
-  meet_error: bool,
+  no_watch: bool,
   expressions: Vec<Box<Expr>>,
   level: usize,
   simple_result: Option<SimpleExprParseResult>,
+  exclude_roots: ExcludeRoots,
 }
 
 impl ExprVisitor {
   pub fn new() -> Self {
-    Self::new_with_level(0)
+    Self::new_with_level(0, None)
   }
-  fn new_with_level(level: usize) -> Self {
+  pub fn new_with_exclude_roots(exclude_roots: ExcludeRoots) -> Self {
+    Self::new_with_level(0, exclude_roots)
+  }
+  fn new_with_level(level: usize, watch_exclude_roots: ExcludeRoots) -> Self {
     Self {
       level,
-      meet_error: false,
+      no_watch: false,
       expressions: vec![],
       simple_result: None,
+      exclude_roots: watch_exclude_roots,
     }
   }
 
   pub fn parse(&mut self, expr: &Expr) -> ExprParseResult {
     self.visit_expr(expr);
-    if self.meet_error || self.expressions.is_empty() {
+    if self.no_watch || self.expressions.is_empty() {
       return ExprParseResult::None;
     }
     if self.expressions.len() > 1 {
@@ -120,7 +132,7 @@ impl ExprVisitor {
   }
   fn inner_parse(&mut self, expr: &Expr) -> Option<Box<Expr>> {
     self.visit_expr(expr);
-    if self.meet_error || self.expressions.is_empty() {
+    if self.no_watch || self.expressions.is_empty() {
       return None;
     }
     // 如果表达式整个是一个 MemberExpr，则不需要使用 ExprWatcher 进一步封装。
@@ -131,22 +143,22 @@ impl ExprVisitor {
     }
   }
 }
-impl VisitAll for ExprVisitor {
+impl Visit for ExprVisitor {
   fn visit_expr(&mut self, node: &Expr) {
-    if self.meet_error {
+    if self.no_watch {
       return;
     }
     node.visit_children_with(self);
   }
   fn visit_member_expr(&mut self, node: &MemberExpr) {
-    if self.meet_error {
+    if self.no_watch {
       return;
     }
-    let mut mem_parser = MemberExprVisitor::new(self.level);
+    let mut mem_parser = MemberExprVisitor::new(self.level, self.exclude_roots.clone());
     mem_parser.visit_member_expr(node);
     if mem_parser.meet_error || mem_parser.path.is_empty() || matches!(&mem_parser.root, Root::None)
     {
-      self.meet_error = true;
+      self.no_watch = true;
       return;
     }
 
@@ -235,9 +247,10 @@ struct MemberExprVisitor {
   meet_private: bool,
   level: usize,
   computed: bool,
+  exclude_roots: ExcludeRoots,
 }
 impl MemberExprVisitor {
-  fn new(level: usize) -> Self {
+  fn new(level: usize, exclude_roots: ExcludeRoots) -> Self {
     Self {
       level,
       root: Root::None,
@@ -245,6 +258,7 @@ impl MemberExprVisitor {
       meet_error: false,
       meet_private: false,
       computed: false,
+      exclude_roots,
     }
   }
 }
@@ -256,7 +270,15 @@ impl Visit for MemberExprVisitor {
       }
       Expr::Ident(id) => {
         if !id.sym.starts_with('_') {
-          self.root = Root::Id(id.sym.clone());
+          if let Some(exclude_roots) = &self.exclude_roots {
+            if exclude_roots.contains(&id.sym) {
+              self.meet_private = true;
+            } else {
+              self.root = Root::Id(id.sym.clone());
+            }
+          } else {
+            self.root = Root::Id(id.sym.clone());
+          }
         } else {
           self.meet_private = true;
         }
@@ -304,7 +326,10 @@ impl Visit for MemberExprVisitor {
           },
 
           _ => {
-            if let Some(result) = ExprVisitor::new_with_level(self.level + 1).inner_parse(expr) {
+            if let Some(result) =
+              ExprVisitor::new_with_level(self.level + 1, self.exclude_roots.clone())
+                .inner_parse(expr)
+            {
               self.computed = true;
               self.path.push(result);
             } else {

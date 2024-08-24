@@ -14,6 +14,7 @@ pub struct TransformVisitor {
 }
 impl TransformVisitor {
   pub fn new() -> Self {
+    // println!("new transform visitor");
     Self { changed: false }
   }
 }
