@@ -71,6 +71,8 @@ lazy_static::lazy_static! {
   pub static ref JINGE_RENDER: Atom = "render".into();
   pub static ref JINGE_SVG: Atom = "svg".into();
   pub static ref JINGE_SLOTS: Atom = "slots".into();
+  pub static ref JINGE_UNDEFINED: Atom = "undefined".into();
+  pub static ref JINGE_EMPTY_STR: Atom = "".into();
 
   pub static ref IDL_ATTRIBUTE_SET: Vec<Atom> = {
     let mut attrs = vec!["disabled", "readOnly", "autoFocus", "autoComplete", "autoPlay", "controls", "required", "checked", "selected", "multiple", "muted", "draggable"];

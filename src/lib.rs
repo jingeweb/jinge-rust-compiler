@@ -206,7 +206,9 @@ fn test_transform() {
     "test.tsx".into(),
     "export class C extends Component {
   render() {
-    return this[SLOTS][DEFAULT_SLOT]?.(this, this); 
+    return  <B>
+        {{
+          a: (vm) => vm.i }}</B>;
   }
 }"
     .into(),

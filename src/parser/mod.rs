@@ -411,6 +411,7 @@ impl TemplateParser {
   }
   fn parse_expr(&mut self, expr: &Expr) {
     let expr_result = ExprVisitor::new().parse(expr);
+    // println!("{:#?}", expr);
     match expr_result {
       ExprParseResult::None => self.push_expression(tpl_render_const_text(
         Box::new(expr.clone()),
@@ -474,7 +475,9 @@ impl Visit for TemplateParser {
                 .params
                 .append(&mut expr.params.clone());
             }
-            e.as_ref().visit_children_with(self);
+            // println!("{:#?}", e);
+            self.visit_expr(e);
+            // e.as_ref().visit_children_with(self);
           }
         }
       }
