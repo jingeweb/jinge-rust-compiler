@@ -466,7 +466,11 @@ impl Visit for TemplateParser {
           }
           BlockStmtOrExpr::Expr(e) => {
             if !expr.params.is_empty() {
-              self.context.slots[0]
+              self
+                .context
+                .slots
+                .last_mut()
+                .unwrap()
                 .params
                 .append(&mut expr.params.clone());
             }

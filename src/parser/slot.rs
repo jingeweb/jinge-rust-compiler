@@ -18,9 +18,7 @@ use crate::{
     ast_create_stmt_decl_const,
   },
   parser::{
-    expr::ExprVisitor,
-    tpl::{tpl_lit_obj, tpl_watch_and_render, tpl_watch_and_set_component_attr},
-    JINGE_ATTR_IDENT, JINGE_IMPORT_VM, JINGE_V_IDENT,
+    expr::ExprVisitor, tpl::tpl_watch_and_render, JINGE_ATTR_IDENT, JINGE_IMPORT_VM, JINGE_V_IDENT,
   },
 };
 
@@ -165,140 +163,147 @@ fn parse_slot_arg(expr: &CallExpr) -> SlotVm {
   }
   vm
 }
+
 impl TemplateParser {
-  pub fn parse_slot_call_expr(&mut self, expr: &CallExpr) -> bool {
-    let x = get_slot(expr);
-    println!("{:?}", x);
-    match x {
-      Slot::None => false,
-      Slot::Default => {
-        let slot_arg_vm = parse_slot_arg(expr);
+  fn transform_slot(&mut self, expr: &CallExpr, slot_name: Option<Atom>) {
+    let slot_arg_vm = parse_slot_arg(expr);
 
-        let root_container = self.context.root_container;
-        let args = vec![
-          ast_create_arg_expr(ast_create_expr_ident(JINGE_ATTR_IDENT.clone())),
-          ast_create_arg_expr(ast_create_expr_member(
-            ast_create_id_of_container(root_container),
-            MemberProp::Computed(ComputedPropName {
-              span: DUMMY_SP,
-              expr: ast_create_expr_ident(JINGE_IMPORT_CONTEXT.local()),
-            }),
-          )),
-          ast_create_arg_expr(ast_create_expr_member(
-            ast_create_expr_member(
-              ast_create_expr_this(),
-              MemberProp::Computed(ComputedPropName {
-                span: DUMMY_SP,
-                expr: ast_create_expr_ident(JINGE_IMPORT_SLOTS.local()),
-              }),
-            ),
-            MemberProp::Computed(ComputedPropName {
-              span: DUMMY_SP,
-              expr: ast_create_expr_ident(JINGE_IMPORT_DEFAULT_SLOT.local()),
-            }),
-          )),
-        ];
-        let mut stmts: Vec<Stmt> = vec![
-          ast_create_stmt_decl_const(
-            JINGE_ATTR_IDENT.clone(),
-            ast_create_expr_call(
-              ast_create_expr_ident(JINGE_IMPORT_VM.local()),
-              vec![ast_create_arg_expr(Box::new(Expr::Object(ObjectLit {
-                span: DUMMY_SP,
-                props: slot_arg_vm
-                  .const_props
-                  .into_iter()
-                  .map(|(prop, value)| {
-                    PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp { key: prop, value })))
-                  })
-                  .collect(),
-              })))],
-            ),
-          ),
-          ast_create_stmt_decl_const(
-            JINGE_EL_IDENT.clone(),
-            ast_create_expr_call(
-              ast_create_expr_ident(JINGE_IMPORT_NEW_SLOT_RENDER_COM.local()),
-              args,
-            ),
-          ),
-          Stmt::Expr(ExprStmt {
-            span: DUMMY_SP,
-            expr: tpl_push_el_code(self.context.is_parent_component(), root_container),
-          }),
-        ];
-
-        slot_arg_vm
-          .watch_props
-          .into_iter()
-          .for_each(|(attr_name, watch_expr)| {
-            let set_fn = Box::new(Expr::Assign(AssignExpr {
-              span: DUMMY_SP,
-              op: AssignOp::Assign,
-              left: AssignTarget::Simple(SimpleAssignTarget::Member(MemberExpr {
-                span: DUMMY_SP,
-                obj: ast_create_expr_ident(JINGE_ATTR_IDENT.clone()),
-                prop: match attr_name {
-                  PropName::Ident(id) => MemberProp::Ident(id),
-                  PropName::Computed(e) => MemberProp::Computed(e),
-                  PropName::Num(x) => MemberProp::Computed(ComputedPropName {
-                    span: DUMMY_SP,
-                    expr: Box::new(Expr::Lit(Lit::Num(x))),
-                  }),
-                  PropName::Str(x) => MemberProp::Computed(ComputedPropName {
-                    span: DUMMY_SP,
-                    expr: Box::new(Expr::Lit(Lit::Str(x))),
-                  }),
-                  PropName::BigInt(x) => MemberProp::Computed(ComputedPropName {
-                    span: DUMMY_SP,
-                    expr: Box::new(Expr::Lit(Lit::BigInt(x))),
-                  }),
-                },
-              })),
-              right: ast_create_expr_ident(JINGE_V_IDENT.clone()),
-            }));
-
-            stmts.push(Stmt::Expr(ExprStmt {
-              span: DUMMY_SP,
-              expr: tpl_watch_and_render(set_fn, watch_expr, self.context.root_container),
-            }));
-          });
-
-        stmts.push(Stmt::Return(ReturnStmt {
+    let root_container = self.context.root_container;
+    let args = vec![
+      ast_create_arg_expr(ast_create_expr_ident(JINGE_ATTR_IDENT.clone())),
+      ast_create_arg_expr(ast_create_expr_member(
+        ast_create_id_of_container(root_container),
+        MemberProp::Computed(ComputedPropName {
           span: DUMMY_SP,
-          arg: Some(ast_create_expr_call(
-            ast_create_expr_member(
-              ast_create_expr_ident(JINGE_EL_IDENT.clone()),
-              MemberProp::Ident(IdentName::from(JINGE_RENDER.clone())),
-            ),
-            vec![],
-          )),
+          expr: ast_create_expr_ident(JINGE_IMPORT_CONTEXT.local()),
+        }),
+      )),
+      ast_create_arg_expr(ast_create_expr_member(
+        ast_create_expr_member(
+          ast_create_expr_this(),
+          MemberProp::Computed(ComputedPropName {
+            span: DUMMY_SP,
+            expr: ast_create_expr_ident(JINGE_IMPORT_SLOTS.local()),
+          }),
+        ),
+        if let Some(slot_name) = slot_name {
+          MemberProp::Ident(IdentName::from(slot_name))
+        } else {
+          MemberProp::Computed(ComputedPropName {
+            span: DUMMY_SP,
+            expr: ast_create_expr_ident(JINGE_IMPORT_DEFAULT_SLOT.local()),
+          })
+        },
+      )),
+    ];
+    let mut stmts: Vec<Stmt> = vec![ast_create_stmt_decl_const(
+      JINGE_ATTR_IDENT.clone(),
+      ast_create_expr_call(
+        ast_create_expr_ident(JINGE_IMPORT_VM.local()),
+        vec![ast_create_arg_expr(Box::new(Expr::Object(ObjectLit {
+          span: DUMMY_SP,
+          props: slot_arg_vm
+            .const_props
+            .into_iter()
+            .map(|(prop, value)| {
+              PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp { key: prop, value })))
+            })
+            .collect(),
+        })))],
+      ),
+    )];
+
+    slot_arg_vm
+      .watch_props
+      .into_iter()
+      .for_each(|(attr_name, watch_expr)| {
+        let set_fn = Box::new(Expr::Assign(AssignExpr {
+          span: DUMMY_SP,
+          op: AssignOp::Assign,
+          left: AssignTarget::Simple(SimpleAssignTarget::Member(MemberExpr {
+            span: DUMMY_SP,
+            obj: ast_create_expr_ident(JINGE_ATTR_IDENT.clone()),
+            prop: match attr_name {
+              PropName::Ident(id) => MemberProp::Ident(id),
+              PropName::Computed(e) => MemberProp::Computed(e),
+              PropName::Num(x) => MemberProp::Computed(ComputedPropName {
+                span: DUMMY_SP,
+                expr: Box::new(Expr::Lit(Lit::Num(x))),
+              }),
+              PropName::Str(x) => MemberProp::Computed(ComputedPropName {
+                span: DUMMY_SP,
+                expr: Box::new(Expr::Lit(Lit::Str(x))),
+              }),
+              PropName::BigInt(x) => MemberProp::Computed(ComputedPropName {
+                span: DUMMY_SP,
+                expr: Box::new(Expr::Lit(Lit::BigInt(x))),
+              }),
+            },
+          })),
+          right: ast_create_expr_ident(JINGE_V_IDENT.clone()),
         }));
 
-        self
-          .context
-          .slots
-          .last_mut()
-          .unwrap()
-          .expressions
-          .push(ExprOrSpread {
-            spread: Some(DUMMY_SP),
-            expr: ast_create_expr_call(
-              ast_create_expr_arrow_fn(
-                vec![],
-                Box::new(BlockStmtOrExpr::BlockStmt(BlockStmt {
-                  span: DUMMY_SP,
-                  ctxt: SyntaxContext::empty(),
-                  stmts,
-                })),
-              ),
-              vec![],
-            ),
-          });
+        stmts.push(Stmt::Expr(ExprStmt {
+          span: DUMMY_SP,
+          expr: tpl_watch_and_render(set_fn, watch_expr, self.context.root_container),
+        }));
+      });
 
+    stmts.push(ast_create_stmt_decl_const(
+      JINGE_EL_IDENT.clone(),
+      ast_create_expr_call(
+        ast_create_expr_ident(JINGE_IMPORT_NEW_SLOT_RENDER_COM.local()),
+        args,
+      ),
+    ));
+    stmts.push(Stmt::Expr(ExprStmt {
+      span: DUMMY_SP,
+      expr: tpl_push_el_code(self.context.is_parent_component(), root_container),
+    }));
+
+    stmts.push(Stmt::Return(ReturnStmt {
+      span: DUMMY_SP,
+      arg: Some(ast_create_expr_call(
+        ast_create_expr_member(
+          ast_create_expr_ident(JINGE_EL_IDENT.clone()),
+          MemberProp::Ident(IdentName::from(JINGE_RENDER.clone())),
+        ),
+        vec![],
+      )),
+    }));
+
+    self
+      .context
+      .slots
+      .last_mut()
+      .unwrap()
+      .expressions
+      .push(ExprOrSpread {
+        spread: Some(DUMMY_SP),
+        expr: ast_create_expr_call(
+          ast_create_expr_arrow_fn(
+            vec![],
+            Box::new(BlockStmtOrExpr::BlockStmt(BlockStmt {
+              span: DUMMY_SP,
+              ctxt: SyntaxContext::empty(),
+              stmts,
+            })),
+          ),
+          vec![],
+        ),
+      });
+  }
+  pub fn parse_slot_call_expr(&mut self, expr: &CallExpr) -> bool {
+    match get_slot(expr) {
+      Slot::None => false,
+      Slot::Default => {
+        self.transform_slot(expr, None);
         true
       }
-      Slot::Named(n) => true,
+      Slot::Named(n) => {
+        self.transform_slot(expr, Some(n));
+        true
+      }
     }
   }
 }
