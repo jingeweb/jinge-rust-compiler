@@ -3,14 +3,6 @@ mod common;
 mod parser;
 mod visitor;
 
-// use swc_core::ecma::{
-//   ast::Program,
-//   transforms::testing::test_inline,
-//   visit::{as_folder, FoldWith},
-// };
-// use swc_core::plugin::metadata::*;
-// use swc_core::plugin::{plugin_transform, proxies::TransformPluginProgramMetadata};
-
 use std::path::PathBuf;
 
 use neon::prelude::*;
@@ -206,9 +198,7 @@ fn test_transform() {
     "test.tsx".into(),
     "export class C extends Component {
   render() {
-    return  <B>
-        {{
-          a: (vm) => vm.i }}</B>;
+    return  this.a && <span>oo</span>;
   }
 }"
     .into(),

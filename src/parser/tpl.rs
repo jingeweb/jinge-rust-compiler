@@ -107,7 +107,9 @@ pub fn tpl_render_expr_text(
       Ident::from(JINGE_EL_IDENT.clone()),
       ast_create_expr_call(
         ast_create_expr_ident(Ident::from(JINGE_IMPORT_CREATE_TEXT_NODE.local())),
-        vec![ast_create_arg_expr(ast_create_expr_lit_str(""))],
+        vec![ast_create_arg_expr(ast_create_expr_lit_str(
+          JINGE_EMPTY_STR.clone(),
+        ))],
       ),
     ),
     Stmt::Expr(ExprStmt {

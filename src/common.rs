@@ -60,6 +60,7 @@ lazy_static::lazy_static! {
   pub static ref JINGE_IMPORT_NEW_COM_SLOTS: JingeImport = x!("newComponentWithSlots");
   pub static ref JINGE_IMPORT_NEW_COM_DEFAULT_SLOT: JingeImport = x!("newComponentWithDefaultSlot");
   pub static ref JINGE_IMPORT_NEW_SLOT_RENDER_COM: JingeImport = x!("newSlotRenderComponent");
+  pub static ref JINGE_IMPORT_BIND_VM_PARENT: JingeImport = x!("bindInitedClassMemberVmParent");
 
   pub static ref JINGE_IMPORT_NON_ROOT_COMPONENT_NODES: JingeImport = x!("NON_ROOT_COMPONENT_NODES");
   pub static ref JINGE_EL_IDENT: Ident = "$jg$".into();
@@ -84,7 +85,7 @@ lazy_static::lazy_static! {
 }
 
 fn gen_import_jinge() -> ModuleItem {
-  let imports: [&'static JingeImport; 24] = [
+  let imports: [&'static JingeImport; 25] = [
     &JINGE_IMPORT_TEXT_RENDER_FN,
     &JINGE_IMPORT_CREATE_ELE,
     &JINGE_IMPORT_CREATE_ELE_A,
@@ -99,6 +100,7 @@ fn gen_import_jinge() -> ModuleItem {
     &JINGE_IMPORT_SLOTS,
     &JINGE_IMPORT_DEFAULT_SLOT,
     &JINGE_IMPORT_NON_ROOT_COMPONENT_NODES,
+    &JINGE_IMPORT_BIND_VM_PARENT,
     &JINGE_IMPORT_NEW_COM_SLOTS,
     &JINGE_IMPORT_NEW_COM_DEFAULT_SLOT,
     &JINGE_IMPORT_NEW_SLOT_RENDER_COM,

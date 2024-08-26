@@ -1,7 +1,7 @@
 use crate::ast::{
   ast_create_arg_expr, ast_create_expr_arrow_fn, ast_create_expr_call, ast_create_expr_ident,
-  ast_create_expr_lit_bool, ast_create_expr_lit_str, ast_create_expr_lit_string,
-  ast_create_expr_member, ast_create_id_of_container, ast_create_stmt_decl_const,
+  ast_create_expr_lit_bool, ast_create_expr_lit_str, ast_create_expr_member,
+  ast_create_id_of_container, ast_create_stmt_decl_const,
 };
 use crate::common::*;
 use expr::{ExprParseResult, ExprVisitor};
@@ -70,13 +70,14 @@ pub struct TemplateParser {
   stack: Vec<Context>,
 }
 
-fn is_jsx(expr: &Expr) -> bool {
+fn has_jsx(expr: &Expr) -> bool {
   match expr {
     Expr::JSXElement(_) | Expr::JSXFragment(_) => true,
     Expr::Cond(e) => {
-      return is_jsx(&e.alt) || is_jsx(&e.cons);
+      return has_jsx(&e.alt) || has_jsx(&e.cons);
     }
-    Expr::Paren(e) => return is_jsx(&e.expr),
+    Expr::Bin(e) => return e.op == BinaryOp::LogicalAnd && has_jsx(&e.right),
+    Expr::Paren(e) => return has_jsx(&e.expr),
     _ => {
       return false;
     }
@@ -110,8 +111,7 @@ impl TemplateParser {
       .push(ast_create_arg_expr(e));
   }
   pub fn parse(&mut self, expr: &Expr) -> Option<Box<Expr>> {
-    // self.visit_expr(expr);
-    if is_jsx(expr) || matches!(expr, Expr::Lit(_)) {
+    if has_jsx(expr) || matches!(expr, Expr::Lit(_)) {
       self.visit_expr(expr);
     } else {
       return None;
@@ -196,7 +196,7 @@ impl TemplateParser {
       attrs.evt_props.into_iter().for_each(|evt| {
         let mut args = vec![
           ast_create_arg_expr(ast_create_expr_ident(JINGE_EL_IDENT.clone())),
-          ast_create_arg_expr(ast_create_expr_lit_string(evt.event_name)),
+          ast_create_arg_expr(ast_create_expr_lit_str(evt.event_name)),
           ast_create_arg_expr(evt.event_handler),
         ];
         if evt.capture {
@@ -450,6 +450,13 @@ impl Visit for TemplateParser {
       Expr::Cond(e) => {
         self.parse_cond_expr(e);
       }
+      Expr::Bin(e) => {
+        if e.op == BinaryOp::LogicalAnd {
+          self.parse_logic_and_expr(e);
+        } else {
+          self.parse_expr(n);
+        }
+      }
       Expr::Fn(f) => {
         emit_error(f.span(), "tsx 中不支持函数，如果是定义 Slot 请使用箭头函数");
       }
@@ -550,7 +557,7 @@ impl Visit for TemplateParser {
       return;
     }
     self.push_expression(tpl_render_const_text(
-      ast_create_expr_lit_str(t),
+      ast_create_expr_lit_str(Atom::from(t)),
       self.context.is_parent_component(),
       self.context.root_container,
     ))

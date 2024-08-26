@@ -9,7 +9,7 @@ use swc_core::ecma::ast::*;
 use super::expr::{ExprParseResult, ExprVisitor};
 
 pub struct AttrEvt {
-  pub event_name: String,
+  pub event_name: Atom,
   pub event_handler: Box<Expr>,
   pub capture: bool,
 }
@@ -80,7 +80,7 @@ impl TemplateParser {
             capture = true;
           }
           attrs.evt_props.push(AttrEvt {
-            event_name: event_name.to_lowercase(),
+            event_name: event_name.to_lowercase().into(),
             event_handler: val.clone(),
             capture,
           })

@@ -3,7 +3,7 @@ use swc_core::{
   ecma::{ast::*, atoms::*},
 };
 
-use crate::common::JINGE_HOST_IDENT;
+use crate::common::{JINGE_EMPTY_STR, JINGE_HOST_IDENT};
 
 // #[inline]
 // pub fn ast_create_expr_new(callee: Box<Expr>, args: Option<Vec<ExprOrSpread>>) -> Box<Expr> {
@@ -81,17 +81,25 @@ pub fn ast_create_expr_member(obj: Box<Expr>, prop: MemberProp) -> Box<Expr> {
   }))
 }
 #[inline]
-pub fn ast_create_expr_lit_str(v: &str) -> Box<Expr> {
+pub fn ast_create_expr_lit_str(v: Atom) -> Box<Expr> {
   Box::new(Expr::Lit(Lit::Str(Str::from(v))))
 }
 #[inline]
-pub fn ast_create_expr_lit_string(v: String) -> Box<Expr> {
-  Box::new(Expr::Lit(Lit::Str(Str::from(v))))
+pub fn ast_create_constructor(params: Vec<ParamOrTsParamProp>, stmts: Vec<Stmt>) -> Constructor {
+  Constructor {
+    span: DUMMY_SP,
+    params,
+    is_optional: false,
+    key: PropName::Ident(IdentName::from(JINGE_EMPTY_STR.clone())),
+    accessibility: None,
+    ctxt: SyntaxContext::empty(),
+    body: Some(BlockStmt {
+      span: DUMMY_SP,
+      ctxt: SyntaxContext::empty(),
+      stmts,
+    }),
+  }
 }
-// #[inline]
-// pub fn ast_create_expr_lit_atom_str(v: Atom) -> Box<Expr> {
-//   Box::new(Expr::Lit(Lit::Str(Str::from(v))))
-// }
 #[inline]
 pub fn ast_create_expr_lit_bool(v: bool) -> Box<Expr> {
   Box::new(Expr::Lit(Lit::Bool(Bool {
@@ -105,6 +113,16 @@ pub fn ast_create_expr_call(callee: Box<Expr>, args: Vec<ExprOrSpread>) -> Box<E
     ctxt: SyntaxContext::empty(),
     span: DUMMY_SP,
     callee: Callee::Expr(callee),
+    args,
+    type_args: None,
+  }))
+}
+#[inline]
+pub fn ast_create_expr_call_super(args: Vec<ExprOrSpread>) -> Box<Expr> {
+  Box::new(Expr::Call(CallExpr {
+    ctxt: SyntaxContext::empty(),
+    span: DUMMY_SP,
+    callee: Callee::Super(Super { span: DUMMY_SP }),
     args,
     type_args: None,
   }))

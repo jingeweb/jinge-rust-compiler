@@ -17,46 +17,45 @@ lazy_static::lazy_static! {
 
 /// 将形如 `test ? cons : alt` 的二元条件表达式，转换为 `If` 组件： `<If expect={test}>{{ true: cons, false: alt }}</If>`
 fn gen_if_component(
-  expr: &CondExpr,
-  is_alt_null_undef: bool,
-  is_cons_null_undef: bool,
+  test: &Box<Expr>,
+  alt: Option<&Box<Expr>>,
+  cons: Option<&Box<Expr>>,
 ) -> JSXElement {
-  let mut slots = Vec::with_capacity(if is_alt_null_undef || is_cons_null_undef {
+  let mut slots = Vec::with_capacity(if alt.is_none() || cons.is_none() {
     1
   } else {
     2
   });
-  println!("{}, {}", is_alt_null_undef, is_cons_null_undef);
-  if !is_cons_null_undef {
+  if let Some(cons) = cons {
     slots.push(PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
       key: PropName::Ident(TRUE.clone()),
-      value: expr.cons.clone(),
+      value: cons.clone(),
     }))));
   }
-  if !is_alt_null_undef {
+  if let Some(alt) = alt {
     slots.push(PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
       key: PropName::Ident(FALSE.clone()),
-      value: expr.alt.clone(),
+      value: alt.clone(),
     }))));
   }
   JSXElement {
-    span: expr.span(),
+    span: DUMMY_SP,
     opening: JSXOpeningElement {
       name: JSXElementName::Ident(JINGE_IMPORT_IF.local()),
-      span: expr.cons.span(),
+      span: cons.span(),
       attrs: vec![JSXAttrOrSpread::JSXAttr(JSXAttr {
-        span: expr.test.span(),
+        span: test.span(),
         name: JSXAttrName::Ident(EXPECT.clone()),
         value: Some(JSXAttrValue::JSXExprContainer(JSXExprContainer {
-          span: expr.test.span(),
-          expr: JSXExpr::Expr(expr.test.clone()),
+          span: test.span(),
+          expr: JSXExpr::Expr(test.clone()),
         })),
       })],
       self_closing: false,
       type_args: None,
     },
     children: vec![JSXElementChild::JSXExprContainer(JSXExprContainer {
-      span: expr.alt.span(),
+      span: DUMMY_SP,
       expr: JSXExpr::Expr(Box::new(Expr::Object(ObjectLit {
         span: DUMMY_SP,
         props: slots,
@@ -142,7 +141,27 @@ impl TemplateParser {
 
     // 如果是 alt 和 cons 是非常量的表达式，比如 `this.submitting ? <p>Submitting</p> : <span>SUBMIT</span>`，
     // 转换为 `If` 组件：```<If expect={this.submitting}>{{true: <p>Submitting</p>, false: <span>SUBMIT</p> }}</If>```
-    let if_component = gen_if_component(expr, is_alt_null_undef, is_cons_null_undef);
+    let if_component = gen_if_component(
+      &expr.test,
+      if is_alt_null_undef {
+        None
+      } else {
+        Some(&expr.alt)
+      },
+      if is_cons_null_undef {
+        None
+      } else {
+        Some(&expr.cons)
+      },
+    );
+    self.parse_component_element(&JINGE_IMPORT_IF.local(), &if_component);
+  }
+
+  pub fn parse_logic_and_expr(&mut self, expr: &BinExpr) {
+    if is_null_undef(&expr.right) {
+      return;
+    }
+    let if_component = gen_if_component(&expr.left, None, Some(&expr.right));
     self.parse_component_element(&JINGE_IMPORT_IF.local(), &if_component);
   }
 }
