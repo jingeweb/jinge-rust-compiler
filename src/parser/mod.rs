@@ -17,6 +17,7 @@ use tpl::{
 mod attrs;
 mod cond;
 mod expr;
+mod map;
 mod slot;
 mod tpl;
 
@@ -442,8 +443,12 @@ impl Visit for TemplateParser {
       }
       Expr::JSXMember(_) | Expr::JSXNamespacedName(_) => emit_error(n.span(), "不支持的 jsx 格式"),
       Expr::Call(expr) => {
-        // 如果是 this.slots() 或 this.slots.xx() 的调用，则转换为 Slot
-        if !self.parse_slot_call_expr(expr) {
+        if self.parse_map_fn(expr) {
+          // 如果是 [xx].map() 函数调用，则转换为 <For> 组件。
+        } else if self.parse_slot_call_expr(expr) {
+          // 如果是 this.slots() 或 this.slots.xx() 的调用，则转换为 Slot
+        } else {
+          // 其它情况当成通用表达式进行转换。
           self.parse_expr(n);
         }
       }
@@ -457,6 +462,7 @@ impl Visit for TemplateParser {
           self.parse_expr(n);
         }
       }
+
       Expr::Fn(f) => {
         emit_error(f.span(), "tsx 中不支持函数，如果是定义 Slot 请使用箭头函数");
       }

@@ -44,6 +44,7 @@ lazy_static::lazy_static! {
   pub static ref JINGE_IMPORT_SET_ATTRIBUTE: JingeImport = x!("setAttribute");
   pub static ref JINGE_IMPORT_SET_TEXT_CONTENT: JingeImport = x!("setTextContent");
   pub static ref JINGE_IMPORT_IF: JingeImport = x!("If");
+  pub static ref JINGE_IMPORT_FOR: JingeImport = x!("For");
   pub static ref JINGE_IMPORT_PATH_WATCHER: JingeImport = x!("PathWatcher");
   pub static ref JINGE_IMPORT_DYM_PATH_WATCHER: JingeImport = x!("DymPathWatcher");
   pub static ref JINGE_IMPORT_EXPR_WATCHER: JingeImport = x!("ExprWatcher");
@@ -73,6 +74,9 @@ lazy_static::lazy_static! {
   pub static ref JINGE_SVG: Atom = "svg".into();
   pub static ref JINGE_SLOTS: Atom = "slots".into();
   pub static ref JINGE_UNDEFINED: Atom = "undefined".into();
+  pub static ref JINGE_MAP: Atom = "map".into();
+  pub static ref JINGE_LOOP: Atom = "loop".into();
+  pub static ref JINGE_KEY: Atom = "key".into();
   pub static ref JINGE_EMPTY_STR: Atom = "".into();
 
   pub static ref IDL_ATTRIBUTE_SET: Vec<Atom> = {
@@ -85,7 +89,7 @@ lazy_static::lazy_static! {
 }
 
 fn gen_import_jinge() -> ModuleItem {
-  let imports: [&'static JingeImport; 25] = [
+  let imports: [&'static JingeImport; 26] = [
     &JINGE_IMPORT_TEXT_RENDER_FN,
     &JINGE_IMPORT_CREATE_ELE,
     &JINGE_IMPORT_CREATE_ELE_A,
@@ -111,6 +115,7 @@ fn gen_import_jinge() -> ModuleItem {
     &JINGE_IMPORT_WATCH_PATH_FOR_RENDER,
     &JINGE_IMPORT_WATCH_PATH_FOR_RENDER_2,
     &JINGE_IMPORT_IF,
+    &JINGE_IMPORT_FOR,
   ];
   let specs: Vec<_> = imports
     .map(|e| {
