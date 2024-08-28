@@ -66,8 +66,11 @@ lazy_static::lazy_static! {
   pub static ref JINGE_IMPORT_NON_ROOT_COMPONENT_NODES: JingeImport = x!("NON_ROOT_COMPONENT_NODES");
   pub static ref JINGE_EL_IDENT: Ident = "$jg$".into();
   pub static ref JINGE_ATTR_IDENT: Ident = "attrs$jg$".into();
-  pub static ref JINGE_V_IDENT: Ident = "v".into();
+  pub static ref JINGE_LOOP_EACH_IDENTS: Vec<Atom> = vec!["each$jg$0".into(), "each$jg$1".into(), "each$jg$2".into()];
+  pub static ref JINGE_LOOP_EACH_DATA: Atom = "data".into();
+  pub static ref JINGE_LOOP_EACH_INDEX: Atom = "index".into();
   pub static ref JINGE_HOST_IDENT: Ident = "host$jg$".into();
+  pub static ref JINGE_V_IDENT: Ident = "v".into();
   pub static ref TEXT_CONTENT: Ident = "textContent".into();
   pub static ref JINGE: Atom = "jinge".into();
   pub static ref JINGE_RENDER: Atom = "render".into();

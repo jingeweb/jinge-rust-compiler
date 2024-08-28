@@ -69,6 +69,7 @@ impl Context {
 pub struct TemplateParser {
   context: Context,
   stack: Vec<Context>,
+  map_loop_level: u8,
 }
 
 fn has_jsx(expr: &Expr) -> bool {
@@ -90,6 +91,7 @@ impl TemplateParser {
     Self {
       context: Context::new(Parent::Component, true),
       stack: vec![],
+      map_loop_level: 0,
     }
   }
   fn push_context(&mut self, parent: Parent, root_container: bool) {
