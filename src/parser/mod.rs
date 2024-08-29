@@ -18,6 +18,7 @@ mod attrs;
 mod cond;
 mod expr;
 mod map;
+mod map_key;
 mod slot;
 mod tpl;
 

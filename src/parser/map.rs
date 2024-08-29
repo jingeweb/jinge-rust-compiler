@@ -8,8 +8,8 @@ use crate::{
 };
 
 use super::{
-  emit_error, TemplateParser, JINGE_IMPORT_FOR, JINGE_LOOP, JINGE_LOOP_EACH_IDENTS,
-  JINGE_LOOP_EACH_INDEX, JINGE_MAP,
+  emit_error, map_key::KeyFnFindVisitor, TemplateParser, JINGE_IMPORT_FOR, JINGE_LOOP,
+  JINGE_LOOP_EACH_IDENTS, JINGE_LOOP_EACH_INDEX, JINGE_LOOP_KEY_FN, JINGE_MAP,
 };
 
 /// map 循环转换成 <For> 组件时，需要把 map 函数的参数，转成 <For> 组件的 Slot 函数的参数。
@@ -69,6 +69,7 @@ where
     true
   }
 }
+
 impl ReplaceVisitor {
   /// 检查参数是否已经全部被覆盖。如果根参数 v0, v1 在嵌套函数的参数中被覆盖，则这个函数内部的同名参数都不再需要被替换成 slot 参数。
   fn check_params_override(&mut self, params: &Vec<Param>) -> bool {
@@ -122,7 +123,7 @@ impl VisitMut for ReplaceVisitor {
     if let JSXExpr::Expr(e) = node {
       if let Expr::Ident(id) = e.as_ref() {
         if matches!(self.arg_data, Some(ref a) if a.eq(&id.sym)) {
-          println!("replace ident expr");
+          // println!("replace ident expr");
           *e = ast_create_expr_member(
             ast_create_expr_ident(Ident::from(self.slot_vm_name.clone())),
             MemberProp::Ident(IdentName::from(JINGE_LOOP_EACH_DATA.clone())),
@@ -147,20 +148,31 @@ impl VisitMut for ReplaceVisitor {
   // }
 }
 
-fn gen_for_component(looop: &Box<Expr>, key: Option<&Expr>, func: ArrowExpr) -> JSXElement {
+fn gen_for_component(looop: &Box<Expr>, key: Option<Box<Expr>>, func: ArrowExpr) -> JSXElement {
+  let mut attrs = vec![JSXAttrOrSpread::JSXAttr(JSXAttr {
+    span: looop.span(),
+    name: JSXAttrName::Ident(IdentName::from(JINGE_LOOP.clone())),
+    value: Some(JSXAttrValue::JSXExprContainer(JSXExprContainer {
+      span: looop.span(),
+      expr: JSXExpr::Expr(looop.clone()),
+    })),
+  })];
+  if let Some(key) = key {
+    attrs.push(JSXAttrOrSpread::JSXAttr(JSXAttr {
+      span: DUMMY_SP,
+      name: JSXAttrName::Ident(IdentName::from(JINGE_LOOP_KEY_FN.clone())),
+      value: Some(JSXAttrValue::JSXExprContainer(JSXExprContainer {
+        span: key.span(),
+        expr: JSXExpr::Expr(key),
+      })),
+    }))
+  };
   JSXElement {
     span: DUMMY_SP,
     opening: JSXOpeningElement {
       name: JSXElementName::Ident(JINGE_IMPORT_FOR.local()),
       span: DUMMY_SP,
-      attrs: vec![JSXAttrOrSpread::JSXAttr(JSXAttr {
-        span: looop.span(),
-        name: JSXAttrName::Ident(IdentName::from(JINGE_LOOP.clone())),
-        value: Some(JSXAttrValue::JSXExprContainer(JSXExprContainer {
-          span: looop.span(),
-          expr: JSXExpr::Expr(looop.clone()),
-        })),
-      })],
+      attrs,
       self_closing: false,
       type_args: None,
     },
@@ -219,18 +231,27 @@ impl TemplateParser {
       0 | 1 | 2 => JINGE_LOOP_EACH_IDENTS[self.map_loop_level as usize].clone(),
       _ => Atom::from(format!("each$jg${}", self.map_loop_level)),
     };
+    let arg_data = pat_to_atom(func.params.get(0));
+    let arg_index = pat_to_atom(func.params.get(1));
     let mut replace_visitor = ReplaceVisitor {
-      arg_data: pat_to_atom(func.params.get(0)),
-      arg_index: pat_to_atom(func.params.get(1)),
+      arg_data: arg_data.clone(),
+      arg_index: arg_index.clone(),
       slot_vm_name: slot_vm_name.clone(),
       // map_loop_level: self.map_loop_level,
     };
-    func.params = vec![Pat::Ident(BindingIdent::from(slot_vm_name))];
-    if replace_visitor.arg_data.is_some() || replace_visitor.arg_index.is_some() {
-      func.body.visit_mut_children_with(&mut replace_visitor);
-    }
+    func.params = vec![Pat::Ident(BindingIdent::from(slot_vm_name.clone()))];
+    // if replace_visitor.arg_data.is_some() || replace_visitor.arg_index.is_some() {
+    //   func.body.visit_mut_children_with(&mut replace_visitor);
+    // }
 
-    let for_component = gen_for_component(looop, None, func);
+    let find_key_visitor = KeyFnFindVisitor {
+      arg_data,
+      arg_index,
+      slot_vm_name,
+    };
+
+    let key_fn = find_key_visitor.get_key_fn(&func);
+    let for_component = gen_for_component(looop, key_fn, func);
     let tn = Ident::from(JINGE_IMPORT_FOR.local());
 
     self.map_loop_level += 1;

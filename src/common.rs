@@ -79,7 +79,8 @@ lazy_static::lazy_static! {
   pub static ref JINGE_UNDEFINED: Atom = "undefined".into();
   pub static ref JINGE_MAP: Atom = "map".into();
   pub static ref JINGE_LOOP: Atom = "loop".into();
-  pub static ref JINGE_KEY: Atom = "key".into();
+  pub static ref JINGE_LOOP_KEY: Atom = "key".into();
+  pub static ref JINGE_LOOP_KEY_FN: Atom = "keyFn".into();
   pub static ref JINGE_EMPTY_STR: Atom = "".into();
 
   pub static ref IDL_ATTRIBUTE_SET: Vec<Atom> = {

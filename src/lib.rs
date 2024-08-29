@@ -198,7 +198,7 @@ fn test_transform() {
     "test.tsx".into(),
     "export class C extends Component {
   render() {
-    return  this.a && <span>oo</span>;
+    return <>{this.arr.map((v) => <span key={v.n}>{v}</span>)}</>
   }
 }"
     .into(),
