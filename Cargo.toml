@@ -11,12 +11,12 @@ sha2 = "0.10"
 base64ct = "1.6"
 swc_core = { version = "0.100", features = ["ecma_plugin_transform"] }
 swc_ecma_parser = "0.149"
-swc_common = "0.37.5"
-swc_ecma_codegen = "0.155.0"
-swc_ecma_transforms_base = "0.144.0"
-swc_ecma_transforms_typescript = "0.195.1"
-swc_ecma_visit = "0.104.8"
-lazy_static = "1.5.0"
+swc_common = "0.37"
+swc_ecma_codegen = "0.155"
+swc_ecma_transforms_base = "0.144"
+swc_ecma_transforms_typescript = "0.195"
+swc_ecma_visit = "0.104"
+lazy_static = "1.5"
 hashbrown = "0.14"
 neon = { version = "1", features = ["napi-6" ] }
 
