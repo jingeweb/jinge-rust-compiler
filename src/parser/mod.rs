@@ -70,7 +70,7 @@ impl Context {
 pub struct TemplateParser {
   context: Context,
   stack: Vec<Context>,
-  map_loop_level: u8,
+  map_loop_level: usize,
 }
 
 fn has_jsx(expr: &Expr) -> bool {
@@ -483,6 +483,17 @@ impl Visit for TemplateParser {
           }
           BlockStmtOrExpr::Expr(e) => {
             if !expr.params.is_empty() {
+              expr.params.iter().any(|par| {
+                if !matches!(par, Pat::Ident(_)) {
+                  emit_error(
+                    par.span(),
+                    "警告：slot 函数的参数不要使用解构的写法，会导致数据的绑定失效。",
+                  );
+                  true
+                } else {
+                  false
+                }
+              });
               self
                 .context
                 .slots

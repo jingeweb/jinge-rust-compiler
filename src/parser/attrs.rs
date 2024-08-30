@@ -7,6 +7,7 @@ use swc_core::{atoms::Atom, common::Spanned};
 use swc_core::ecma::ast::*;
 
 use super::expr::{ExprParseResult, ExprVisitor};
+use super::{JINGE_LOOP_KEY, JINGE_REF};
 
 pub struct AttrEvt {
   pub event_name: Atom,
@@ -40,8 +41,11 @@ impl TemplateParser {
         let JSXAttrName::Ident(an) = &attr.name else {
           return;
         };
-        let name = &an.sym;
-        if name == "ref" {
+        if JINGE_LOOP_KEY.eq(&an.sym) {
+          // 当前版本 key 属性暂时仅用于在语法层面兼容 react/vue，实际没有作用，直接忽略。
+          // 列表循环使用的 <For> 组件，等价的属性为 `keyFn` 属性。
+          // 此外，map 函数会被编译器自动转换为 <For> 组件，转换时会找到元素上的 key 属性也同时转换为 keyFn 属性。参看 ./map.rs 和 ./map_key.rs
+        } else if JINGE_REF.eq(&an.sym) {
           if attrs.ref_prop.is_some() {
             emit_error(attr.span(), "不能重复指定 ref");
             return;
@@ -58,8 +62,8 @@ impl TemplateParser {
           };
           attrs.ref_prop.replace(val.clone());
         } else if !is_component // html 元素的事件处理要单独处理，把 onClick 等转换成 click 事件。Component 元素的事件处理也是标准的属性传递。
-          && name.starts_with("on")
-          && matches!(name.chars().nth(2), Some(c) if c >= 'A' && c <= 'Z')
+          && an.sym.starts_with("on")
+          && matches!(an.sym.chars().nth(2), Some(c) if c >= 'A' && c <= 'Z')
         {
           let Some(JSXAttrValue::JSXExprContainer(val)) = &attr.value else {
             emit_error(attr.span(), "事件属性的属性值必须是箭头函数");
@@ -73,7 +77,7 @@ impl TemplateParser {
             emit_error(attr.span(), "事件属性的属性值必须是箭头函数");
             return;
           };
-          let mut event_name = &name[2..];
+          let mut event_name = &an.sym[2..];
           let mut capture = false;
           if event_name.ends_with("Capture") {
             event_name = &event_name[..event_name.len() - 7];
@@ -132,7 +136,7 @@ impl TemplateParser {
                         },
                         _ => ()
                       }
-                      println!("{:?}", set);
+                      // println!("{:?}", set);
                       let r = ExprVisitor::new_with_exclude_roots(if set.is_empty() {
                         None
                       } else {

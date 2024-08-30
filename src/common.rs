@@ -75,6 +75,7 @@ lazy_static::lazy_static! {
   pub static ref JINGE: Atom = "jinge".into();
   pub static ref JINGE_RENDER: Atom = "render".into();
   pub static ref JINGE_SVG: Atom = "svg".into();
+  pub static ref JINGE_REF: Atom = "ref".into();
   pub static ref JINGE_SLOTS: Atom = "slots".into();
   pub static ref JINGE_UNDEFINED: Atom = "undefined".into();
   pub static ref JINGE_MAP: Atom = "map".into();

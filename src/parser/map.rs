@@ -40,7 +40,7 @@ struct ReplaceVisitor {
   arg_data: Option<Atom>,
   arg_index: Option<Atom>,
   slot_vm_name: Atom,
-  // map_loop_level: u8,
+  stack: Vec<(bool, bool)>,
 }
 #[inline]
 fn pat_to_atom(p: Option<&Pat>) -> Option<Atom> {
@@ -52,64 +52,92 @@ fn pat_to_atom(p: Option<&Pat>) -> Option<Atom> {
     }
   })
 }
-#[inline]
-fn check_p<'a, K>(arg: &mut Option<Atom>, mut pats: K) -> bool
-where
-  K: Iterator<Item = &'a Pat>,
-{
-  if let Some(ref v) = arg {
-    let same = pats.any(|p| matches!(&p, Pat::Ident(id) if id.sym.eq(v)));
-    if same {
-      arg.take();
-      true
-    } else {
-      false
-    }
-  } else {
-    true
-  }
-}
 
 impl ReplaceVisitor {
+  #[inline]
+  fn new(arg_data: Option<Atom>, arg_index: Option<Atom>, slot_vm_name: Atom) -> Self {
+    let overrided = (arg_data.is_none(), arg_index.is_none());
+    Self {
+      arg_data,
+      arg_index,
+      slot_vm_name,
+      stack: vec![overrided],
+    }
+  }
+  #[inline]
+  fn all_params_overrided(&self) -> bool {
+    let overrided = self.stack.last().unwrap();
+    overrided.0 && overrided.1
+  }
+  #[inline]
+  fn check_p(&mut self, par: &Pat) -> bool {
+    let Pat::Ident(par) = par else {
+      return false;
+    };
+    let overrided = self.stack.last_mut().unwrap();
+    if !overrided.0 && matches!(&self.arg_data, Some(arg_data) if arg_data.eq(&par.sym)) {
+      overrided.0 = true;
+    }
+    if !overrided.1 && matches!(&self.arg_index, Some(arg_index) if arg_index.eq(&par.sym)) {
+      overrided.1 = true;
+    }
+    overrided.0 && overrided.1
+  }
   /// 检查参数是否已经全部被覆盖。如果根参数 v0, v1 在嵌套函数的参数中被覆盖，则这个函数内部的同名参数都不再需要被替换成 slot 参数。
   fn check_params_override(&mut self, params: &Vec<Param>) -> bool {
-    check_p(&mut self.arg_data, params.iter().map(|p| &p.pat))
-      && check_p(&mut self.arg_index, params.iter().map(|p| &p.pat))
+    for par in params.iter() {
+      if self.check_p(&par.pat) {
+        return true;
+      }
+    }
+    false
   }
   fn check_params_override_2(&mut self, params: &Vec<Pat>) -> bool {
-    check_p(&mut self.arg_data, params.iter()) && check_p(&mut self.arg_index, params.iter())
+    for par in params.iter() {
+      if self.check_p(par) {
+        return true;
+      }
+    }
+    false
   }
 }
 impl VisitMut for ReplaceVisitor {
   fn visit_mut_fn_decl(&mut self, node: &mut FnDecl) {
+    self.stack.push(self.stack.last().unwrap().clone());
     if !self.check_params_override(&node.function.params) {
       if let Some(body) = &mut node.function.body {
         body.visit_mut_children_with(self);
       }
     }
+    self.stack.pop();
   }
   fn visit_mut_fn_expr(&mut self, node: &mut FnExpr) {
+    self.stack.push(self.stack.last().unwrap().clone());
     if !self.check_params_override(&node.function.params) {
       if let Some(body) = &mut node.function.body {
         body.visit_mut_children_with(self);
       }
     }
+    self.stack.pop();
   }
   fn visit_mut_arrow_expr(&mut self, node: &mut ArrowExpr) {
+    self.stack.push(self.stack.last().unwrap().clone());
     if !self.check_params_override_2(&node.params) {
       node.body.as_mut().visit_mut_children_with(self);
     }
+    self.stack.pop();
   }
   fn visit_mut_member_expr(&mut self, node: &mut MemberExpr) {
     match node.obj.as_ref() {
       Expr::Ident(id) => {
-        if matches!(self.arg_data, Some(ref a) if a.eq(&id.sym)) {
-          println!("replace mem expr");
+        let overrided: &(bool, bool) = self.stack.last().unwrap();
+        if !overrided.0 && matches!(self.arg_data, Some(ref a) if a.eq(&id.sym)) {
+          // println!("replace mem expr");
           node.obj = ast_create_expr_member(
             ast_create_expr_ident(Ident::from(self.slot_vm_name.clone())),
             MemberProp::Ident(IdentName::from(JINGE_LOOP_EACH_DATA.clone())),
           )
-        } else if matches!(self.arg_index, Some(ref a) if a.eq(&id.sym)) {
+        } else if !overrided.1 && matches!(self.arg_index, Some(ref a) if a.eq(&id.sym)) {
           node.obj = ast_create_expr_member(
             ast_create_expr_ident(Ident::from(self.slot_vm_name.clone())),
             MemberProp::Ident(IdentName::from(JINGE_LOOP_EACH_INDEX.clone())),
@@ -122,13 +150,14 @@ impl VisitMut for ReplaceVisitor {
   fn visit_mut_jsx_expr(&mut self, node: &mut JSXExpr) {
     if let JSXExpr::Expr(e) = node {
       if let Expr::Ident(id) = e.as_ref() {
-        if matches!(self.arg_data, Some(ref a) if a.eq(&id.sym)) {
+        let overrided: &(bool, bool) = self.stack.last().unwrap();
+        if !overrided.0 && matches!(self.arg_data, Some(ref a) if a.eq(&id.sym)) {
           // println!("replace ident expr");
           *e = ast_create_expr_member(
             ast_create_expr_ident(Ident::from(self.slot_vm_name.clone())),
             MemberProp::Ident(IdentName::from(JINGE_LOOP_EACH_DATA.clone())),
           );
-        } else if matches!(self.arg_index, Some(ref a) if a.eq(&id.sym)) {
+        } else if !overrided.1 && matches!(self.arg_index, Some(ref a) if a.eq(&id.sym)) {
           *e = ast_create_expr_member(
             ast_create_expr_ident(Ident::from(self.slot_vm_name.clone())),
             MemberProp::Ident(IdentName::from(JINGE_LOOP_EACH_INDEX.clone())),
@@ -139,13 +168,6 @@ impl VisitMut for ReplaceVisitor {
     }
     node.visit_mut_children_with(self);
   }
-  // fn visit_mut_ident(&mut self, node: &mut Ident) {
-  //   if matches!(self.arg_data, Some(ref a) if a.eq(&node.sym)) {
-  //     node.sym = Atom::from(format!("vm$jg${}.data", self.map_loop_level));
-  //   } else if matches!(self.arg_index, Some(ref a) if a.eq(&node.sym)) {
-  //     node.sym = Atom::from(format!("vm$jg${}.index", self.map_loop_level));
-  //   }
-  // }
 }
 
 fn gen_for_component(looop: &Box<Expr>, key: Option<Box<Expr>>, func: ArrowExpr) -> JSXElement {
@@ -226,31 +248,29 @@ impl TemplateParser {
       }
     };
 
-    // 一般情况下，map 嵌套不会太多。小于 4 层直接用预置好的 Atom，否则才用 format! 动态拼接。
-    let slot_vm_name = match self.map_loop_level {
-      0 | 1 | 2 => JINGE_LOOP_EACH_IDENTS[self.map_loop_level as usize].clone(),
-      _ => Atom::from(format!("each$jg${}", self.map_loop_level)),
-    };
+    // 一般情况下，map 嵌套不会太多。小于 JINGE_LOOP_EACH_IDENTS.len() 层直接用预置好的 Atom，否则才用 format! 动态拼接。
+    let slot_vm_name = JINGE_LOOP_EACH_IDENTS
+      .get(self.map_loop_level)
+      .map(|v| v.clone())
+      .unwrap_or_else(|| Atom::from(format!("each$jg${}", self.map_loop_level)));
     let arg_data = pat_to_atom(func.params.get(0));
     let arg_index = pat_to_atom(func.params.get(1));
-    let mut replace_visitor = ReplaceVisitor {
-      arg_data: arg_data.clone(),
-      arg_index: arg_index.clone(),
-      slot_vm_name: slot_vm_name.clone(),
-      // map_loop_level: self.map_loop_level,
-    };
+    let mut replace_visitor =
+      ReplaceVisitor::new(arg_data.clone(), arg_index.clone(), slot_vm_name.clone());
     func.params = vec![Pat::Ident(BindingIdent::from(slot_vm_name.clone()))];
-    // if replace_visitor.arg_data.is_some() || replace_visitor.arg_index.is_some() {
-    //   func.body.visit_mut_children_with(&mut replace_visitor);
-    // }
 
     let find_key_visitor = KeyFnFindVisitor {
       arg_data,
       arg_index,
-      slot_vm_name,
+      // slot_vm_name,
     };
-
     let key_fn = find_key_visitor.get_key_fn(&func);
+
+    // replace_visitor 必须在 find_key_visitor 之后执行，因为 replace_visitor 也会把 key 属性值里的表达式替换。
+    if !replace_visitor.all_params_overrided() {
+      func.body.visit_mut_children_with(&mut replace_visitor);
+    }
+
     let for_component = gen_for_component(looop, key_fn, func);
     let tn = Ident::from(JINGE_IMPORT_FOR.local());
 

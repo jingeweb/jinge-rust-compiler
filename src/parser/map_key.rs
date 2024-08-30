@@ -1,9 +1,9 @@
-use swc_common::{Spanned, DUMMY_SP};
+use swc_common::Spanned;
 use swc_core::{atoms::Atom, ecma::ast::*};
 
-use crate::ast::ast_create_expr_ident;
+use crate::ast::ast_create_expr_arrow_fn;
 
-use super::{emit_error, JINGE_LOOP_EACH_DATA, JINGE_LOOP_EACH_INDEX, JINGE_LOOP_KEY};
+use super::{emit_error, JINGE_LOOP_KEY};
 
 const BAD_KEY_WARNING: &'static str = "警告：key 的表达式必须是 map 函数的参数或参数的属性表达式";
 
@@ -13,10 +13,19 @@ const BAD_KEY_WARNING: &'static str = "警告：key 的表达式必须是 map �
 pub struct KeyFnFindVisitor {
   pub arg_data: Option<Atom>,
   pub arg_index: Option<Atom>,
-  pub slot_vm_name: Atom,
 }
 impl KeyFnFindVisitor {
-
+  #[inline]
+  fn get_key_fn_params(&self) -> Vec<Pat> {
+    let mut params = vec![];
+    if let Some(v) = &self.arg_data {
+      params.push(Pat::Ident(BindingIdent::from(v.clone())));
+    }
+    if let Some(v) = &self.arg_index {
+      params.push(Pat::Ident(BindingIdent::from(v.clone())));
+    }
+    params
+  }
   fn get_key_from_jsx_element(&self, expr: &JSXElement) -> Option<Box<Expr>> {
     expr.opening.attrs.iter().find_map(|attr| {
       let JSXAttrOrSpread::JSXAttr(attr) = attr else {
@@ -25,7 +34,14 @@ impl KeyFnFindVisitor {
       if !matches!(&attr.name, JSXAttrName::Ident(id) if JINGE_LOOP_KEY.eq(&id.sym)) {
         return None;
       }
-      println!("{:?}", attr.value);
+      if self.arg_data.is_none() && self.arg_index.is_none() {
+        emit_error(
+          attr.span(),
+          "map 函数没有指定参数，因此 key 属性无法转换为 <For> 组件的 keyFn 参数。",
+        );
+        return None;
+      }
+      // println!("{:?}", attr.value);
       let Some(JSXAttrValue::JSXExprContainer(expr)) = &attr.value else {
         emit_error(attr.span(), BAD_KEY_WARNING);
         return None;
@@ -35,9 +51,38 @@ impl KeyFnFindVisitor {
         return None;
       };
       match expr.as_ref() {
-
         Expr::Member(e) => {
-          //
+          let mut root = e.obj.as_ref();
+          while let Expr::Member(me) = root {
+            root = me.obj.as_ref()
+          }
+          if let Expr::Ident(id) = root {
+            if self.arg_data.as_ref().map(|v| id.sym.eq(v)).is_none()
+              && self.arg_index.as_ref().map(|v| id.sym.eq(v)).is_none()
+            {
+              emit_error(e.span(), BAD_KEY_WARNING);
+              return None;
+            }
+            Some(ast_create_expr_arrow_fn(
+              self.get_key_fn_params(),
+              Box::new(BlockStmtOrExpr::Expr(expr.clone())),
+            ))
+          } else {
+            emit_error(e.span(), BAD_KEY_WARNING);
+            return None;
+          }
+        }
+        Expr::Ident(id) => {
+          if self.arg_data.as_ref().map(|v| id.sym.eq(v)).is_none()
+            && self.arg_index.as_ref().map(|v| id.sym.eq(v)).is_none()
+          {
+            emit_error(expr.span(), BAD_KEY_WARNING);
+            return None;
+          }
+          Some(ast_create_expr_arrow_fn(
+            self.get_key_fn_params(),
+            Box::new(BlockStmtOrExpr::Expr(expr.clone())),
+          ))
         }
         _ => {
           emit_error(expr.span(), BAD_KEY_WARNING);
