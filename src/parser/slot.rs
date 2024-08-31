@@ -24,8 +24,8 @@ use crate::{
 
 use super::{
   emit_error, expr::ExprParseResult, tpl::tpl_push_el_code, TemplateParser, JINGE_EL_IDENT,
-  JINGE_IMPORT_CONTEXT, JINGE_IMPORT_DEFAULT_SLOT, JINGE_IMPORT_NEW_SLOT_RENDER_COM,
-  JINGE_IMPORT_SLOTS, JINGE_RENDER, JINGE_SLOTS,
+  JINGE_IMPORT_CONTEXT, JINGE_IMPORT_DEFAULT_SLOT, JINGE_IMPORT_NEW_COM_DEFAULT_SLOT,
+  JINGE_IMPORT_RENDER_FC, JINGE_IMPORT_SLOTS, JINGE_SLOTS,
 };
 
 #[derive(Debug)]
@@ -170,30 +170,13 @@ impl TemplateParser {
 
     let root_container = self.context.root_container;
     let args = vec![
-      ast_create_arg_expr(ast_create_expr_ident(JINGE_ATTR_IDENT.clone())),
+      // ast_create_arg_expr(ast_create_expr_ident(JINGE_ATTR_IDENT.clone())),
       ast_create_arg_expr(ast_create_expr_member(
         ast_create_id_of_container(root_container),
         MemberProp::Computed(ComputedPropName {
           span: DUMMY_SP,
           expr: ast_create_expr_ident(JINGE_IMPORT_CONTEXT.local()),
         }),
-      )),
-      ast_create_arg_expr(ast_create_expr_member(
-        ast_create_expr_member(
-          ast_create_expr_this(),
-          MemberProp::Computed(ComputedPropName {
-            span: DUMMY_SP,
-            expr: ast_create_expr_ident(JINGE_IMPORT_SLOTS.local()),
-          }),
-        ),
-        if let Some(slot_name) = slot_name {
-          MemberProp::Ident(IdentName::from(slot_name))
-        } else {
-          MemberProp::Computed(ComputedPropName {
-            span: DUMMY_SP,
-            expr: ast_create_expr_ident(JINGE_IMPORT_DEFAULT_SLOT.local()),
-          })
-        },
       )),
     ];
     let mut stmts: Vec<Stmt> = vec![ast_create_stmt_decl_const(
@@ -252,7 +235,7 @@ impl TemplateParser {
     stmts.push(ast_create_stmt_decl_const(
       JINGE_EL_IDENT.clone(),
       ast_create_expr_call(
-        ast_create_expr_ident(JINGE_IMPORT_NEW_SLOT_RENDER_COM.local()),
+        ast_create_expr_ident(JINGE_IMPORT_NEW_COM_DEFAULT_SLOT.local()),
         args,
       ),
     ));
@@ -264,11 +247,28 @@ impl TemplateParser {
     stmts.push(Stmt::Return(ReturnStmt {
       span: DUMMY_SP,
       arg: Some(ast_create_expr_call(
-        ast_create_expr_member(
-          ast_create_expr_ident(JINGE_EL_IDENT.clone()),
-          MemberProp::Ident(IdentName::from(JINGE_RENDER.clone())),
-        ),
-        vec![],
+        ast_create_expr_ident(JINGE_IMPORT_RENDER_FC.local()),
+        vec![
+          ast_create_arg_expr(ast_create_expr_ident(JINGE_EL_IDENT.clone())),
+          ast_create_arg_expr(ast_create_expr_member(
+            ast_create_expr_member(
+              ast_create_expr_this(),
+              MemberProp::Computed(ComputedPropName {
+                span: DUMMY_SP,
+                expr: ast_create_expr_ident(JINGE_IMPORT_SLOTS.local()),
+              }),
+            ),
+            if let Some(slot_name) = slot_name {
+              MemberProp::Ident(IdentName::from(slot_name))
+            } else {
+              MemberProp::Computed(ComputedPropName {
+                span: DUMMY_SP,
+                expr: ast_create_expr_ident(JINGE_IMPORT_DEFAULT_SLOT.local()),
+              })
+            },
+          )),
+          ast_create_arg_expr(ast_create_expr_ident(JINGE_ATTR_IDENT.clone())),
+        ],
       )),
     }));
 

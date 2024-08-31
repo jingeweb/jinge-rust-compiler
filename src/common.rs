@@ -60,9 +60,8 @@ lazy_static::lazy_static! {
   pub static ref JINGE_IMPORT_DEFAULT_SLOT: JingeImport = x!("DEFAULT_SLOT");
   pub static ref JINGE_IMPORT_NEW_COM_SLOTS: JingeImport = x!("newComponentWithSlots");
   pub static ref JINGE_IMPORT_NEW_COM_DEFAULT_SLOT: JingeImport = x!("newComponentWithDefaultSlot");
-  pub static ref JINGE_IMPORT_NEW_SLOT_RENDER_COM: JingeImport = x!("newSlotRenderComponent");
-  pub static ref JINGE_IMPORT_BIND_VM_PARENT: JingeImport = x!("bindInitedClassMemberVmParent");
-
+  // pub static ref JINGE_IMPORT_NEW_SLOT_RENDER_COM: JingeImport = x!("newSlotRenderComponent");
+  pub static ref JINGE_IMPORT_RENDER_FC: JingeImport = x!("renderFunctionComponent");
   pub static ref JINGE_IMPORT_NON_ROOT_COMPONENT_NODES: JingeImport = x!("NON_ROOT_COMPONENT_NODES");
   pub static ref JINGE_EL_IDENT: Ident = "$jg$".into();
   pub static ref JINGE_ATTR_IDENT: Ident = "attrs$jg$".into();
@@ -73,9 +72,9 @@ lazy_static::lazy_static! {
   pub static ref JINGE_V_IDENT: Ident = "v".into();
   pub static ref TEXT_CONTENT: Ident = "textContent".into();
   pub static ref JINGE: Atom = "jinge".into();
-  pub static ref JINGE_RENDER: Atom = "render".into();
   pub static ref JINGE_SVG: Atom = "svg".into();
   pub static ref JINGE_REF: Atom = "ref".into();
+  pub static ref JINGE_CALL: Atom = "call".into();
   pub static ref JINGE_SLOTS: Atom = "slots".into();
   pub static ref JINGE_UNDEFINED: Atom = "undefined".into();
   pub static ref JINGE_MAP: Atom = "map".into();
@@ -94,7 +93,7 @@ lazy_static::lazy_static! {
 }
 
 fn gen_import_jinge() -> ModuleItem {
-  let imports: [&'static JingeImport; 26] = [
+  let imports: [&'static JingeImport; 24] = [
     &JINGE_IMPORT_TEXT_RENDER_FN,
     &JINGE_IMPORT_CREATE_ELE,
     &JINGE_IMPORT_CREATE_ELE_A,
@@ -109,10 +108,10 @@ fn gen_import_jinge() -> ModuleItem {
     &JINGE_IMPORT_SLOTS,
     &JINGE_IMPORT_DEFAULT_SLOT,
     &JINGE_IMPORT_NON_ROOT_COMPONENT_NODES,
-    &JINGE_IMPORT_BIND_VM_PARENT,
     &JINGE_IMPORT_NEW_COM_SLOTS,
     &JINGE_IMPORT_NEW_COM_DEFAULT_SLOT,
-    &JINGE_IMPORT_NEW_SLOT_RENDER_COM,
+    // &JINGE_IMPORT_NEW_SLOT_RENDER_COM,
+    &JINGE_IMPORT_RENDER_FC,
     &JINGE_IMPORT_PATH_WATCHER,
     &JINGE_IMPORT_DYM_PATH_WATCHER,
     &JINGE_IMPORT_EXPR_WATCHER,
@@ -120,7 +119,7 @@ fn gen_import_jinge() -> ModuleItem {
     &JINGE_IMPORT_WATCH_PATH_FOR_RENDER,
     &JINGE_IMPORT_WATCH_PATH_FOR_RENDER_2,
     &JINGE_IMPORT_IF,
-    &JINGE_IMPORT_FOR,
+    // &JINGE_IMPORT_FOR,
   ];
   let specs: Vec<_> = imports
     .map(|e| {

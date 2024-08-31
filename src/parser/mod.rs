@@ -308,8 +308,8 @@ impl TemplateParser {
     let set_ref_code = attrs.ref_prop.take().map(|r| tpl_set_ref_code(r));
     let mut slots = children_context.slots;
     let mut args = vec![
-      ast_create_arg_expr(Box::new(Expr::Ident(Ident::from(tn.sym.clone())))),
-      ast_create_arg_expr(ast_create_expr_ident(JINGE_ATTR_IDENT.clone())),
+      // ast_create_arg_expr(Box::new(Expr::Ident(Ident::from(tn.sym.clone())))),
+      // ast_create_arg_expr(ast_create_expr_ident(JINGE_ATTR_IDENT.clone())),
       ast_create_arg_expr(ast_create_expr_member(
         ast_create_id_of_container(root_container),
         MemberProp::Computed(ComputedPropName {
@@ -385,11 +385,12 @@ impl TemplateParser {
     stmts.push(Stmt::Return(ReturnStmt {
       span: DUMMY_SP,
       arg: Some(ast_create_expr_call(
-        ast_create_expr_member(
-          ast_create_expr_ident(JINGE_EL_IDENT.clone()),
-          MemberProp::Ident(IdentName::from(JINGE_RENDER.clone())),
-        ),
-        vec![],
+        ast_create_expr_ident(JINGE_IMPORT_RENDER_FC.local()),
+        vec![
+          ast_create_arg_expr(ast_create_expr_ident(JINGE_EL_IDENT.clone())),
+          ast_create_arg_expr(ast_create_expr_ident(Ident::from(tn.sym.clone()))),
+          ast_create_arg_expr(ast_create_expr_ident(JINGE_ATTR_IDENT.clone())),
+        ],
       )),
     }));
     self
