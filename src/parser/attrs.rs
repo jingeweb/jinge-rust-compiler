@@ -7,7 +7,7 @@ use swc_core::{atoms::Atom, common::Spanned};
 use swc_core::ecma::ast::*;
 
 use super::expr::{ExprParseResult, ExprVisitor};
-use super::{JINGE_LOOP_KEY, JINGE_REF};
+use super::{JINGE_CHILDREN, JINGE_LOOP_KEY, JINGE_REF, JINGE_SLOTS};
 
 pub struct AttrEvt {
   pub event_name: Atom,
@@ -41,7 +41,9 @@ impl TemplateParser {
         let JSXAttrName::Ident(an) = &attr.name else {
           return;
         };
-        if JINGE_LOOP_KEY.eq(&an.sym) {
+        if JINGE_CHILDREN.eq(&an.sym) || JINGE_SLOTS.eq(&an.sym) {
+          emit_error(an.span(), "警告：不能使用 children 和 slots 属性名，如果是定义  Slot，请使用 jsx 子元素的方式定义！");
+        } else if JINGE_LOOP_KEY.eq(&an.sym) {
           // 当前版本 key 属性暂时仅用于在语法层面兼容 react/vue，实际没有作用，直接忽略。
           // 列表循环使用的 <For> 组件，等价的属性为 `keyFn` 属性。
           // 此外，map 函数会被编译器自动转换为 <For> 组件，转换时会找到元素上的 key 属性也同时转换为 keyFn 属性。参看 ./map.rs 和 ./map_key.rs

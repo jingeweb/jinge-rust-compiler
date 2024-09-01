@@ -1,7 +1,8 @@
+use swc_common::Spanned;
 use swc_core::ecma::ast::*;
 use swc_core::ecma::visit::VisitMut;
 
-use crate::common::JINGE_IMPORT_MODULE_ITEM;
+use crate::common::{emit_error, JINGE_IMPORT_MODULE_ITEM};
 use crate::parser;
 
 pub struct TransformVisitor {
@@ -76,10 +77,10 @@ fn is_jsx(expr: &Expr) -> bool {
 impl TransformVisitor {
   fn v_func(&mut self, expr: &mut Function) {
     if let Some(body) = &mut expr.body {
-      self.v_func_body(body);
+      self.v_func_body(body, expr.params.get(0).map(|p| &p.pat));
     };
   }
-  fn v_func_body(&mut self, body: &mut BlockStmt) {
+  fn v_func_body(&mut self, body: &mut BlockStmt, prop_arg: Option<&Pat>) {
     let Some(Stmt::Return(stmt)) = body.stmts.last_mut() else {
       return;
     };
@@ -87,22 +88,32 @@ impl TransformVisitor {
       return;
     };
     if is_jsx(expr.as_ref()) {
-      self.v_return(expr);
+      self.v_return(expr, prop_arg);
     }
   }
   fn v_arrow(&mut self, expr: &mut ArrowExpr) {
     match expr.body.as_mut() {
-      BlockStmtOrExpr::Expr(expr) => {
-        if is_jsx(expr.as_ref()) {
-          self.v_return(expr);
+      BlockStmtOrExpr::Expr(e) => {
+        if is_jsx(e.as_ref()) {
+          self.v_return(e, expr.params.get(0));
         }
       }
-      BlockStmtOrExpr::BlockStmt(body) => self.v_func_body(body),
+      BlockStmtOrExpr::BlockStmt(body) => self.v_func_body(body, expr.params.get(0)),
     }
   }
 
-  fn v_return(&mut self, expr: &mut Box<Expr>) {
-    let mut visitor = parser::TemplateParser::new();
+  fn v_return(&mut self, expr: &mut Box<Expr>, props_arg: Option<&Pat>) {
+    let mut visitor = parser::TemplateParser::new(props_arg.and_then(|p| {
+      if let Pat::Ident(id) = p {
+        Some(id.sym.clone())
+      } else {
+        emit_error(
+          props_arg.span(),
+          "警告：函数组件的 props 参数建议不要使用解构写法",
+        );
+        None
+      }
+    }));
     if let Some(replaced_expr) = visitor.parse(expr.as_mut()) {
       *expr = replaced_expr;
       self.changed = true;
