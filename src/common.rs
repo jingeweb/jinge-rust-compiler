@@ -94,7 +94,7 @@ lazy_static::lazy_static! {
 }
 
 fn gen_import_jinge() -> ModuleItem {
-  let imports: [&'static JingeImport; 25] = [
+  let imports: [&'static JingeImport; 26] = [
     &JINGE_IMPORT_TEXT_RENDER_FN,
     &JINGE_IMPORT_CREATE_ELE,
     &JINGE_IMPORT_CREATE_ELE_A,
@@ -120,7 +120,7 @@ fn gen_import_jinge() -> ModuleItem {
     &JINGE_IMPORT_WATCH_PATH_FOR_RENDER,
     &JINGE_IMPORT_WATCH_PATH_FOR_RENDER_2,
     &JINGE_IMPORT_IF,
-    // &JINGE_IMPORT_FOR,
+    &JINGE_IMPORT_FOR,
   ];
   let specs: Vec<_> = imports
     .map(|e| {
