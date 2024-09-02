@@ -196,10 +196,8 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
 fn test_transform() {
   let (code, _) = inner_transform(
     "test.tsx".into(),
-    "export class C extends Component {
-  render() {
-    return <>{this.arr.map((v) => <span key={v.n}>{v}</span>)}</>
-  }
+    "export function App() {
+      return <div className='x'></div>
 }"
     .into(),
   );

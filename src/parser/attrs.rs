@@ -41,7 +41,6 @@ impl TemplateParser {
         let JSXAttrName::Ident(an) = &attr.name else {
           return;
         };
-        println!("xxx{:?}", an.sym);
         if JINGE_CHILDREN.eq(&an.sym) || JINGE_SLOTS.eq(&an.sym) {
           emit_error(an.span(), "警告：不能使用 children 和 slots 属性名，如果是定义  Slot，请使用 jsx 子元素的方式定义！");
         } else if JINGE_LOOP_KEY.eq(&an.sym) {
@@ -93,7 +92,6 @@ impl TemplateParser {
           })
         } else {
           let attr_name = if !is_component && JINGE_CLASSNAME.eq(&an.sym) {
-          println!("ttt{:?}", an.sym);
             IdentName::from(JINGE_CLASS.clone())
           } else {
             an.clone()
@@ -103,7 +101,7 @@ impl TemplateParser {
               JSXAttrValue::Lit(val) => {
                 attrs
                   .const_props
-                  .push((an.clone(), Box::new(Expr::Lit(val.clone()))));
+                  .push((attr_name, Box::new(Expr::Lit(val.clone()))));
               }
               JSXAttrValue::JSXExprContainer(val) => match &val.expr {
                 JSXExpr::JSXEmptyExpr(_) => (),
