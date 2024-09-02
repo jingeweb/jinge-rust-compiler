@@ -7,7 +7,7 @@ use swc_core::{atoms::Atom, common::Spanned};
 use swc_core::ecma::ast::*;
 
 use super::expr::{ExprParseResult, ExprVisitor};
-use super::{JINGE_CHILDREN, JINGE_LOOP_KEY, JINGE_REF, JINGE_SLOTS};
+use super::{JINGE_CHILDREN, JINGE_CLASS, JINGE_CLASSNAME, JINGE_LOOP_KEY, JINGE_REF, JINGE_SLOTS};
 
 pub struct AttrEvt {
   pub event_name: Atom,
@@ -41,6 +41,7 @@ impl TemplateParser {
         let JSXAttrName::Ident(an) = &attr.name else {
           return;
         };
+        println!("xxx{:?}", an.sym);
         if JINGE_CHILDREN.eq(&an.sym) || JINGE_SLOTS.eq(&an.sym) {
           emit_error(an.span(), "警告：不能使用 children 和 slots 属性名，如果是定义  Slot，请使用 jsx 子元素的方式定义！");
         } else if JINGE_LOOP_KEY.eq(&an.sym) {
@@ -91,6 +92,12 @@ impl TemplateParser {
             capture,
           })
         } else {
+          let attr_name = if !is_component && JINGE_CLASSNAME.eq(&an.sym) {
+          println!("ttt{:?}", an.sym);
+            IdentName::from(JINGE_CLASS.clone())
+          } else {
+            an.clone()
+          };
           if let Some(val) = &attr.value {
             match val {
               JSXAttrValue::Lit(val) => {
@@ -111,7 +118,7 @@ impl TemplateParser {
                   Expr::Lit(val) => {
                     attrs
                       .const_props
-                      .push((an.clone(), Box::new(Expr::Lit(val.clone()))));
+                      .push((attr_name, Box::new(Expr::Lit(val.clone()))));
                   }
                   Expr::Fn(_) | Expr::Arrow(_) => {
                     if !is_component {
@@ -146,10 +153,10 @@ impl TemplateParser {
                       }).parse(expr.as_ref());
                       match r {
                         ExprParseResult::None => {
-                          attrs.const_props.push((an.clone(), expr.clone()));
+                          attrs.const_props.push((attr_name, expr.clone()));
                         }
                         _ => {
-                          attrs.watch_props.push((an.clone(), r))
+                          attrs.watch_props.push((attr_name, r))
                         }
                       }
                     }
@@ -158,10 +165,10 @@ impl TemplateParser {
                     let r = ExprVisitor::new().parse(expr.as_ref());
                     match r {
                       ExprParseResult::None => {
-                        attrs.const_props.push((an.clone(), expr.clone()));
+                        attrs.const_props.push((attr_name, expr.clone()));
                       }
                       _ => {
-                        attrs.watch_props.push((an.clone(), r))
+                        attrs.watch_props.push((attr_name, r))
                       }
                     }
                   }
@@ -173,7 +180,7 @@ impl TemplateParser {
             // bool attribute
             attrs
               .const_props
-              .push((an.clone(), Box::new(Expr::Lit(Lit::Bool(Bool::from(true))))));
+              .push((attr_name, Box::new(Expr::Lit(Lit::Bool(Bool::from(true))))));
           }
         }
       }
