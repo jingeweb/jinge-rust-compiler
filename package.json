@@ -17,7 +17,7 @@
     "build-cargo-debug": "cargo build && cp target/debug/libjinge_compiler.so index.node 2>/dev/null || : && cp target/debug/libjinge_compiler.dylib index.node 2>/dev/null || :",
     "watch-cargo": "cargo watch -i lib -i ts -- pnpm build-cargo-debug",
     "dev": "concurrently \"pnpm build-ts --watch\" \"pnpm watch-cargo\"",
-    "build": "tsc && pnpm build-ts --silent && echo 'Build ts done. Use github actions to build and release rust core!!'",
+    "build": "pnpm lint && pnpm build-ts --silent && echo 'Build ts done. Use github actions to build and release rust core!!'",
     "lint-fix": "eslint '**/*.{js,mjs,ts}' --fix && prettier . --write --log-level=warn",
     "lint": "tsc --noEmit && eslint '**/*.{js,mjs,ts}' && prettier --check .",
     "prepare": "husky"

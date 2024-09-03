@@ -12,7 +12,7 @@ export interface JingeVitePluginOptions {
   sourcemap?: boolean;
 }
 
-export function jingeVitePlugin(options?: JingeVitePluginOptions): PluginOption[] {
+export function jingeVitePlugin(options?: JingeVitePluginOptions): PluginOption {
   return [
     {
       name: 'vite:jinge:build',
