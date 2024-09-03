@@ -1,8 +1,9 @@
 import type { PluginOption } from 'vite';
 import { loadBinding } from './binding.js';
 import { readFile } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
+import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { readFileSync } from 'node:fs';
 
 const DIRNAME =
   typeof __dirname !== 'undefined' ? __dirname : dirname(fileURLToPath(import.meta.url));
@@ -12,10 +13,7 @@ export interface JingeVitePluginOptions {
 }
 
 const HMR_RUNTIME_PATH = '/@jinge-hmr-runtime';
-const SCRIPT_CODE = `import {  } from "__PATH__";
-// injectIntoGlobalHook(window);
-window.$RefreshReg$ = () => {};
-window.$RefreshSig$ = () => (type) => type;`;
+const SCRIPT_CODE = `import {  } from "__PATH__";`;
 
 export function jingeVitePlugin(options?: JingeVitePluginOptions): PluginOption {
   let hmrEnabled = false;
@@ -24,7 +22,7 @@ export function jingeVitePlugin(options?: JingeVitePluginOptions): PluginOption 
   function transform(code: string, id: string) {
     if (!id.endsWith('.tsx') && !id.endsWith('.ts')) return;
     const binding = loadBinding(options?.debug);
-    const output = binding.transform(id, code, sourcemapEnabled, hmrEnabled);
+    const output = binding.transform(id, code, sourcemapEnabled);
     return { code: output.code, map: output.map };
   }
 
@@ -32,6 +30,11 @@ export function jingeVitePlugin(options?: JingeVitePluginOptions): PluginOption 
     {
       name: 'vite:jinge:build',
       apply: 'build',
+      config() {
+        return {
+          esbuild: false,
+        };
+      },
       configResolved(config) {
         if (config.build?.sourcemap) sourcemapEnabled = true;
       },
@@ -45,7 +48,9 @@ export function jingeVitePlugin(options?: JingeVitePluginOptions): PluginOption 
       enforce: 'pre',
       resolveId: (id) => (id === HMR_RUNTIME_PATH ? id : undefined),
       load: (id) =>
-        id === HMR_RUNTIME_PATH ? readFile(join(DIRNAME, 'hmr-runtime.js'), 'utf-8') : undefined,
+        id === HMR_RUNTIME_PATH
+          ? readFile(resolve(DIRNAME, '../hmr-runtime.js'), 'utf-8')
+          : undefined,
     },
     {
       name: 'vite:jinge:sereve',
@@ -70,11 +75,15 @@ export function jingeVitePlugin(options?: JingeVitePluginOptions): PluginOption 
         },
       ],
       transform(code: string, id: string) {
-        return transform(code, id);
+        const result = transform(code, id);
+        if (result && hmrEnabled && id.endsWith('.tsx')) {
+          result.code += readFileSync(resolve(DIRNAME, '../hmr-inject.js'));
+        }
+        return result;
       },
       // handleHotUpdate({ server, file, timestamp, modules }) {
       //   console.log(file, timestamp, modules);
-      //   server.ws.send({ type: 'full-reload' });
+      //   // server.ws.send({ type: 'full-reload' });
       //   return [];
       // },
     },

@@ -9,7 +9,6 @@ export interface JingeCompiler {
     filename: string,
     code: string,
     sourcemap: boolean,
-    hmr: boolean,
   ): {
     code: string;
     map?: string;

@@ -7,14 +7,10 @@ use crate::parser;
 
 pub struct TransformVisitor {
   changed: bool,
-  hmr_enabled: bool,
 }
 impl TransformVisitor {
-  pub fn new(hmr_enabled: bool) -> Self {
-    Self {
-      changed: false,
-      hmr_enabled,
-    }
+  pub fn new() -> Self {
+    Self { changed: false }
   }
 }
 impl VisitMut for TransformVisitor {

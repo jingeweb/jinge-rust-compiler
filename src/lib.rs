@@ -1,6 +1,5 @@
 mod ast;
 mod common;
-mod hmr;
 mod parser;
 mod visitor;
 
@@ -104,6 +103,7 @@ fn print(
   } else {
     None
   };
+  // println!("{}", src);
   (src, map)
 }
 
@@ -111,7 +111,6 @@ fn inner_transform(
   filename: String,
   code: String,
   sourcemap_enabled: bool,
-  hmr_enabled: bool,
 ) -> (String, Option<String>) {
   // let code = Lrc::new(code);
   let cm: Lrc<SourceMap> = Lrc::<SourceMap>::default();
@@ -139,7 +138,7 @@ fn inner_transform(
     .map_err(|e| e.into_diagnostic(&handler).emit())
     .expect("failed to parse module.");
 
-  let output = GLOBALS.set(&Globals::default(), || {
+  GLOBALS.set(&Globals::default(), || {
     let unresolved_mark = Mark::new();
     let top_level_mark = Mark::new();
 
@@ -147,7 +146,7 @@ fn inner_transform(
     let module = module.fold_with(&mut strip(unresolved_mark, top_level_mark));
 
     HANDLER.set(&handler, move || {
-      let t = TransformVisitor::new(hmr_enabled);
+      let t = TransformVisitor::new();
       let module = module.fold_with(&mut as_folder(t));
       // Fix up any identifiers with the same name, but different contexts
       // let module = module.fold_with(&mut hygiene());
@@ -168,16 +167,15 @@ fn inner_transform(
       };
       print(&filename, cm, &module, sourcemap_enabled, &source_map_names)
     })
-  });
-  output
+  })
 }
 
 fn transform(mut cx: FunctionContext) -> JsResult<JsObject> {
   let file_name = cx.argument::<JsString>(0)?.value(&mut cx);
   let origin_code = cx.argument::<JsString>(1)?.value(&mut cx);
   let sourcemap_enabled = cx.argument::<JsBoolean>(2)?.value(&mut cx);
-  let hmr_enabled = cx.argument::<JsBoolean>(3)?.value(&mut cx);
-  let (code, map) = inner_transform(file_name, origin_code, sourcemap_enabled, hmr_enabled);
+  // let hmr_enabled = cx.argument::<JsBoolean>(3)?.value(&mut cx);
+  let (code, map) = inner_transform(file_name, origin_code, sourcemap_enabled);
   let obj = cx.empty_object();
   let obj_code = cx.string(code);
   let obj_map = cx.string(map.unwrap_or("".into()));
@@ -201,7 +199,6 @@ fn test_transform() {
       return <div className='x'></div>
 }"
     .into(),
-    true,
     true,
   );
   println!("{}", code);
