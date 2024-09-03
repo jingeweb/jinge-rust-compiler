@@ -1,5 +1,6 @@
 mod ast;
 mod common;
+mod hmr;
 mod parser;
 mod visitor;
 
@@ -58,7 +59,7 @@ fn print(
   filename: &str,
   cm: Lrc<SourceMap>,
   node: &impl Node,
-  enable_source_map: bool,
+  sourcemap_enabled: bool,
   names: &AHashMap<BytePos, swc_core::atoms::JsWord>,
 ) -> (String, Option<String>) {
   let mut src_map_buf = Vec::new();
@@ -73,7 +74,7 @@ fn print(
           cm.clone(),
           "\n",
           &mut buf,
-          if enable_source_map {
+          if sourcemap_enabled {
             Some(&mut src_map_buf)
           } else {
             None
@@ -85,7 +86,7 @@ fn print(
 
     String::from_utf8(buf).expect("codegen generated non-utf8 output")
   };
-  let map = if enable_source_map {
+  let map = if sourcemap_enabled {
     let map = cm.build_source_map_with_config(
       &src_map_buf,
       None,
@@ -106,7 +107,12 @@ fn print(
   (src, map)
 }
 
-fn inner_transform(filename: String, code: String) -> (String, Option<String>) {
+fn inner_transform(
+  filename: String,
+  code: String,
+  sourcemap_enabled: bool,
+  hmr_enabled: bool,
+) -> (String, Option<String>) {
   // let code = Lrc::new(code);
   let cm: Lrc<SourceMap> = Lrc::<SourceMap>::default();
   let fm = cm.new_source_file(Lrc::new(FileName::from(PathBuf::from(&filename))), code);
@@ -137,17 +143,11 @@ fn inner_transform(filename: String, code: String) -> (String, Option<String>) {
     let unresolved_mark = Mark::new();
     let top_level_mark = Mark::new();
 
-    // Optionally transforms decorators here before the resolver pass
-    // as it might produce runtime declarations.
-
-    // Conduct identifier scope analysis
-    // let module = module.fold_with(&mut resolver(unresolved_mark, top_level_mark, true));
-
     // Remove typescript types
     let module = module.fold_with(&mut strip(unresolved_mark, top_level_mark));
 
     HANDLER.set(&handler, move || {
-      let t = TransformVisitor::new();
+      let t = TransformVisitor::new(hmr_enabled);
       let module = module.fold_with(&mut as_folder(t));
       // Fix up any identifiers with the same name, but different contexts
       // let module = module.fold_with(&mut hygiene());
@@ -155,7 +155,7 @@ fn inner_transform(filename: String, code: String) -> (String, Option<String>) {
       // Ensure that we have enough parenthesis.
       let module = module.fold_with(&mut fixer(None));
 
-      let source_map_names = if true {
+      let source_map_names = if sourcemap_enabled {
         let mut v = IdentCollector {
           names: Default::default(),
         };
@@ -166,7 +166,7 @@ fn inner_transform(filename: String, code: String) -> (String, Option<String>) {
       } else {
         Default::default()
       };
-      print(&filename, cm, &module, true, &source_map_names)
+      print(&filename, cm, &module, sourcemap_enabled, &source_map_names)
     })
   });
   output
@@ -174,9 +174,10 @@ fn inner_transform(filename: String, code: String) -> (String, Option<String>) {
 
 fn transform(mut cx: FunctionContext) -> JsResult<JsObject> {
   let file_name = cx.argument::<JsString>(0)?.value(&mut cx);
-  let origin_code = cx.argument::<JsString>(1)?;
-  let origin_code = origin_code.value(&mut cx);
-  let (code, map) = inner_transform(file_name, origin_code);
+  let origin_code = cx.argument::<JsString>(1)?.value(&mut cx);
+  let sourcemap_enabled = cx.argument::<JsBoolean>(2)?.value(&mut cx);
+  let hmr_enabled = cx.argument::<JsBoolean>(3)?.value(&mut cx);
+  let (code, map) = inner_transform(file_name, origin_code, sourcemap_enabled, hmr_enabled);
   let obj = cx.empty_object();
   let obj_code = cx.string(code);
   let obj_map = cx.string(map.unwrap_or("".into()));
@@ -200,6 +201,8 @@ fn test_transform() {
       return <div className='x'></div>
 }"
     .into(),
+    true,
+    true,
   );
   println!("{}", code);
   assert_eq!(code, "x");
