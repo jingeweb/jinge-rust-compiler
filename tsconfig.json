@@ -11,8 +11,7 @@
     "alwaysStrict": true,
     "moduleResolution": "Bundler",
     "noEmit": true,
-    "paths": {},
     "baseUrl": "."
   },
-  "include": ["ts/**/*"]
+  "include": ["ts/**/*", "*.js", "*.mjs"]
 }
