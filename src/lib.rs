@@ -109,9 +109,10 @@ fn print(
 
 fn inner_transform(
   filename: String,
+  code_type: usize,
   code: String,
   sourcemap_enabled: bool,
-) -> (String, Option<String>) {
+) -> (String, String, Option<String>) {
   // let code = Lrc::new(code);
   let cm: Lrc<SourceMap> = Lrc::<SourceMap>::default();
   let fm = cm.new_source_file(Lrc::new(FileName::from(PathBuf::from(&filename))), code);
@@ -146,13 +147,20 @@ fn inner_transform(
     let module = module.fold_with(&mut strip(unresolved_mark, top_level_mark));
 
     HANDLER.set(&handler, move || {
-      let t = TransformVisitor::new();
-      let module = module.fold_with(&mut as_folder(t));
+      let mut parsed_components: Vec<String> = vec![];
+
+      let module = if code_type == 2 {
+        // 只有 tsx 类型才需要转换
+        let t = TransformVisitor::new(&mut parsed_components);
+        let module = module.fold_with(&mut as_folder(t));
+        module.fold_with(&mut fixer(None))
+      } else {
+        // Ensure that we have enough parenthesis.
+        module.fold_with(&mut fixer(None))
+      };
+
       // Fix up any identifiers with the same name, but different contexts
       // let module = module.fold_with(&mut hygiene());
-
-      // Ensure that we have enough parenthesis.
-      let module = module.fold_with(&mut fixer(None));
 
       let source_map_names = if sourcemap_enabled {
         let mut v = IdentCollector {
@@ -165,22 +173,36 @@ fn inner_transform(
       } else {
         Default::default()
       };
-      print(&filename, cm, &module, sourcemap_enabled, &source_map_names)
+      let (code, map) = print(&filename, cm, &module, sourcemap_enabled, &source_map_names);
+
+      (
+        code,
+        if parsed_components.is_empty() {
+          "".to_owned()
+        } else {
+          parsed_components.join(",")
+        },
+        map,
+      )
     })
   })
 }
 
 fn transform(mut cx: FunctionContext) -> JsResult<JsObject> {
   let file_name = cx.argument::<JsString>(0)?.value(&mut cx);
-  let origin_code = cx.argument::<JsString>(1)?.value(&mut cx);
-  let sourcemap_enabled = cx.argument::<JsBoolean>(2)?.value(&mut cx);
+  let code_type = cx.argument::<JsNumber>(1)?.value(&mut cx) as usize;
+  let origin_code = cx.argument::<JsString>(2)?.value(&mut cx);
+  let sourcemap_enabled = cx.argument::<JsBoolean>(3)?.value(&mut cx);
   // let hmr_enabled = cx.argument::<JsBoolean>(3)?.value(&mut cx);
-  let (code, map) = inner_transform(file_name, origin_code, sourcemap_enabled);
+  let (code, parsed_components, map) =
+    inner_transform(file_name, code_type, origin_code, sourcemap_enabled);
   let obj = cx.empty_object();
   let obj_code = cx.string(code);
   let obj_map = cx.string(map.unwrap_or("".into()));
+  let parsed_components = cx.string(parsed_components);
   obj.set(&mut cx, "code", obj_code)?;
   obj.set(&mut cx, "map", obj_map)?;
+  obj.set(&mut cx, "parsedComponents", parsed_components)?;
   Ok(obj)
 }
 
@@ -193,14 +215,39 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
 
 #[test]
 fn test_transform() {
-  let (code, _) = inner_transform(
+  let (code, parsed_components, _) = inner_transform(
     "test.tsx".into(),
-    "export function App() {
-      return <div className='x'></div>
-}"
+    2,
+    "import { vm } from 'jinge';
+
+export function App() {
+  const state = vm({
+    n: 0,
+    arr: [1, 2, 3, 4, 5].map((n) => ({
+      n,
+    })),
+  });
+  return (
+    <div className='bg-blue-100 w-52'>
+      <p>{state.n}</p>
+
+      <button
+        onClick={() => {
+          state.n++;
+        }}
+      >
+        TEST
+      </button>
+
+    </div>
+  );
+}
+
+"
     .into(),
     true,
   );
+  println!("{}", parsed_components);
   println!("{}", code);
   assert_eq!(code, "x");
 }

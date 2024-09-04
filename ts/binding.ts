@@ -7,11 +7,13 @@ export interface TransformOptions {
 export interface JingeCompiler {
   transform(
     filename: string,
+    type: number,
     code: string,
     sourcemap: boolean,
   ): {
     code: string;
-    map?: string;
+    parsedComponents: string;
+    map?: string | null;
   };
 }
 

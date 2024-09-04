@@ -1,40 +1,48 @@
 import type { PluginOption } from 'vite';
 import { loadBinding } from './binding.js';
-import { readFile } from 'node:fs/promises';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { readFileSync } from 'node:fs';
-
-const DIRNAME =
-  typeof __dirname !== 'undefined' ? __dirname : dirname(fileURLToPath(import.meta.url));
 
 export interface JingeVitePluginOptions {
   debug?: boolean;
 }
 
 const HMR_RUNTIME_PATH = '/@jinge-hmr-runtime';
-const SCRIPT_CODE = `import {  } from "__PATH__";`;
+const HMR_RUNTIME_CODE = `import { initHmr } from 'jinge';initHmr();`;
+function HMR_INJECT_CODE(initHmrId: string, replaceHmr: string) {
+  return `
 
+export function __hmrUpdate__() {
+  ${replaceHmr}
+}
+if (import.meta.hot) {
+  ${initHmrId}
+  import.meta.hot.accept((newModule) => {
+    newModule.__hmrUpdate__();
+  });
+}`;
+}
 export function jingeVitePlugin(options?: JingeVitePluginOptions): PluginOption {
   let hmrEnabled = false;
   let sourcemapEnabled = false;
 
   function transform(code: string, id: string) {
-    if (!id.endsWith('.tsx') && !id.endsWith('.ts')) return;
+    const type = id.endsWith('.tsx') ? 2 : id.endsWith('.ts') ? 1 : 0;
+    if (type === 0) return;
     const binding = loadBinding(options?.debug);
-    const output = binding.transform(id, code, sourcemapEnabled);
-    return { code: output.code, map: output.map };
+    const result = binding.transform(id, type, code, sourcemapEnabled);
+    if (!result.map) result.map = null; // 空字符串转成 null
+    return result;
   }
 
   return [
     {
       name: 'vite:jinge:build',
       apply: 'build',
-      config() {
-        return {
-          esbuild: false,
-        };
-      },
+      enforce: 'pre',
+      // config() {
+      //   return {
+      //     esbuild: false,
+      //   };
+      // },
       configResolved(config) {
         if (config.build?.sourcemap) sourcemapEnabled = true;
       },
@@ -47,10 +55,7 @@ export function jingeVitePlugin(options?: JingeVitePluginOptions): PluginOption 
       apply: 'serve',
       enforce: 'pre',
       resolveId: (id) => (id === HMR_RUNTIME_PATH ? id : undefined),
-      load: (id) =>
-        id === HMR_RUNTIME_PATH
-          ? readFile(resolve(DIRNAME, '../hmr-runtime.js'), 'utf-8')
-          : undefined,
+      load: (id) => (id === HMR_RUNTIME_PATH ? HMR_RUNTIME_CODE : undefined),
     },
     {
       name: 'vite:jinge:sereve',
@@ -64,28 +69,29 @@ export function jingeVitePlugin(options?: JingeVitePluginOptions): PluginOption 
           esbuild: false,
         };
       },
-      transformIndexHtml: (_, config) => [
+      transformIndexHtml: () => [
         {
           tag: 'script',
           attrs: { type: 'module' },
-          children: SCRIPT_CODE.replace(
-            '__PATH__',
-            config.server!.config.base + HMR_RUNTIME_PATH.slice(1),
-          ),
+          children: `import '/@jinge-hmr-runtime';`,
         },
       ],
       transform(code: string, id: string) {
         const result = transform(code, id);
-        if (result && hmrEnabled && id.endsWith('.tsx')) {
-          result.code += readFileSync(resolve(DIRNAME, '../hmr-inject.js'));
-        }
+        if (!result || !hmrEnabled || !result.parsedComponents) return result;
+        const parsedComponents = result.parsedComponents.split(',');
+        // console.log(parsedComponents);
+        if (!parsedComponents.length) return result;
+        const injectCode: string[] = [];
+        const injectCode2: string[] = [];
+        parsedComponents.forEach((pc) => {
+          const hmrId = JSON.stringify(`${id}::${pc}`);
+          injectCode.push(`window.__JINGE_HMR__?.registerFunctionComponent(${pc}, ${hmrId})`);
+          injectCode2.push(`  window.__JINGE_HMR__?.replaceComponentInstance(${pc});`);
+        });
+        result.code += HMR_INJECT_CODE(injectCode.join('\n'), injectCode2.join('\n'));
         return result;
       },
-      // handleHotUpdate({ server, file, timestamp, modules }) {
-      //   console.log(file, timestamp, modules);
-      //   // server.ws.send({ type: 'full-reload' });
-      //   return [];
-      // },
     },
   ];
 }
