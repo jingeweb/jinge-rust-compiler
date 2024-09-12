@@ -6,8 +6,9 @@ use swc_core::{
   atoms::Atom,
   ecma::ast::{
     AssignExpr, AssignOp, AssignTarget, BlockStmt, BlockStmtOrExpr, CallExpr, Callee,
-    ComputedPropName, Expr, ExprOrSpread, ExprStmt, IdentName, KeyValueProp, Lit, MemberExpr,
-    MemberProp, ObjectLit, Pat, Prop, PropName, PropOrSpread, ReturnStmt, SimpleAssignTarget, Stmt,
+    ComputedPropName, Expr, ExprOrSpread, ExprStmt, Ident, IdentName, KeyValueProp, Lit,
+    MemberExpr, MemberProp, ObjectLit, Pat, Prop, PropName, PropOrSpread, ReturnStmt,
+    SimpleAssignTarget, Stmt,
   },
 };
 
@@ -69,92 +70,121 @@ fn get_slot(expr: &MemberExpr, props_arg: &Atom) -> Slot {
 struct SlotVm {
   pub const_props: Vec<(PropName, Box<Expr>)>,
   pub watch_props: Vec<(PropName, ExprParseResult)>,
+  pub spread_prop: Option<Ident>,
 }
 fn parse_slot_arg(args: &Vec<ExprOrSpread>) -> SlotVm {
   let mut vm = SlotVm {
     const_props: vec![],
     watch_props: vec![],
+    spread_prop: None,
   };
 
   if args.len() > 1 {
     emit_error(
       args[1].span(),
-      "警告：slot 渲染函数的第2个及之后的参数将被忽略。",
+      "警告：slot 渲染函数的只允许一个参数，该参数应该是具备双向绑定属性的 ViewModel。是否忘了使用 object 包裹这几个参数？",
     );
+    return vm;
   }
   let Some(arg) = args.first() else {
     return vm;
   };
+
   if arg.spread.is_some() {
-    emit_error(arg.span(), "Slot 渲染函数的参数不支持 ... 解构写法。");
+    emit_error(arg.span(), "Slot 渲染函数的参数不支持 ... 解构数组的写法。");
     return vm;
   }
-  let Expr::Object(arg) = arg.expr.as_ref() else {
-    emit_error(arg.span(), "Slot 渲染参数必须是 key-value 类型的 Object。");
-    return vm;
+  let arg = match arg.expr.as_ref() {
+    Expr::Ident(id) => {
+      let msg = format!("Slot 渲染参数应该是具备双向绑定属性的 ViewModel。是否忘了使用 object 包裹 {0}？如果就是想透传该 ViewModel 作为 Slot 参数，可使用 {{...{0}}} 的写法。", id.sym);
+      emit_error(arg.span(), &msg);
+      return vm;
+    }
+    Expr::Object(arg) => arg,
+    _ => {
+      emit_error(arg.span(), "Slot 渲染参数必须是 key-value 类型的 Object。");
+      return vm;
+    }
   };
 
   for prop in arg.props.iter() {
-    let PropOrSpread::Prop(prop) = prop else {
-      emit_error(prop.span(), "Slot 渲染参数不支持 ... 解构写法。");
-      return vm;
-    };
-    let Prop::KeyValue(kv) = prop.as_ref() else {
-      emit_error(prop.span(), "Slot 渲染参数必须是 key-value 类型的 Object。");
-      return vm;
-    };
-
-    match kv.value.as_ref() {
-      Expr::JSXElement(_)
-      | Expr::JSXEmpty(_)
-      | Expr::JSXFragment(_)
-      | Expr::JSXMember(_)
-      | Expr::JSXNamespacedName(_) => {
-        emit_error(kv.value.span(), "不支持 JSX 元素作为属性值");
-      }
-      Expr::Lit(val) => {
-        vm.const_props
-          .push((kv.key.clone(), Box::new(Expr::Lit(val.clone()))));
-      }
-      Expr::Fn(_) | Expr::Arrow(_) => {
-        let mut set: HashSet<Atom> = HashSet::new();
-        match kv.value.as_ref() {
-          Expr::Fn(e) => e.function.params.iter().for_each(|p| {
-            if let Pat::Ident(id) = &p.pat {
-              set.insert(id.sym.clone());
-            }
-          }),
-          Expr::Arrow(e) => e.params.iter().for_each(|p| {
-            if let Pat::Ident(id) = p {
-              set.insert(id.sym.clone());
-            }
-          }),
-          _ => (),
-        }
-        let r = ExprVisitor::new_with_exclude_roots(if set.is_empty() {
-          None
+    match prop {
+      PropOrSpread::Spread(s) => {
+        let Expr::Ident(id) = s.expr.as_ref() else {
+          emit_error(s.span(), "解构写法...后必须是 Ident");
+          return vm;
+        };
+        if vm.spread_prop.is_some() {
+          emit_error(s.span(), "解构写法透传属性只能出现一次");
         } else {
-          Some(Rc::new(set))
-        })
-        .parse(kv.value.as_ref());
-        match r {
-          ExprParseResult::None => {
-            vm.const_props.push((kv.key.clone(), kv.value.clone()));
-          }
-          _ => vm.watch_props.push((kv.key.clone(), r)),
+          vm.spread_prop.replace(id.clone());
         }
       }
-      _ => {
-        let r = ExprVisitor::new().parse(kv.value.as_ref());
-        match r {
-          ExprParseResult::None => {
-            vm.const_props.push((kv.key.clone(), kv.value.clone()));
+      PropOrSpread::Prop(prop) => {
+        let Prop::KeyValue(kv) = prop.as_ref() else {
+          emit_error(prop.span(), "Slot 渲染参数必须是 key-value 类型的 Object。");
+          return vm;
+        };
+
+        match kv.value.as_ref() {
+          Expr::JSXElement(_)
+          | Expr::JSXEmpty(_)
+          | Expr::JSXFragment(_)
+          | Expr::JSXMember(_)
+          | Expr::JSXNamespacedName(_) => {
+            emit_error(kv.value.span(), "不支持 JSX 元素作为属性值");
           }
-          _ => vm.watch_props.push((kv.key.clone(), r)),
+          Expr::Lit(val) => {
+            vm.const_props
+              .push((kv.key.clone(), Box::new(Expr::Lit(val.clone()))));
+          }
+          Expr::Fn(_) | Expr::Arrow(_) => {
+            let mut set: HashSet<Atom> = HashSet::new();
+            match kv.value.as_ref() {
+              Expr::Fn(e) => e.function.params.iter().for_each(|p| {
+                if let Pat::Ident(id) = &p.pat {
+                  set.insert(id.sym.clone());
+                }
+              }),
+              Expr::Arrow(e) => e.params.iter().for_each(|p| {
+                if let Pat::Ident(id) = p {
+                  set.insert(id.sym.clone());
+                }
+              }),
+              _ => (),
+            }
+            let r = ExprVisitor::new_with_exclude_roots(if set.is_empty() {
+              None
+            } else {
+              Some(Rc::new(set))
+            })
+            .parse(kv.value.as_ref());
+            match r {
+              ExprParseResult::None => {
+                vm.const_props.push((kv.key.clone(), kv.value.clone()));
+              }
+              _ => vm.watch_props.push((kv.key.clone(), r)),
+            }
+          }
+          _ => {
+            let r = ExprVisitor::new().parse(kv.value.as_ref());
+            match r {
+              ExprParseResult::None => {
+                vm.const_props.push((kv.key.clone(), kv.value.clone()));
+              }
+              _ => vm.watch_props.push((kv.key.clone(), r)),
+            }
+          }
         }
       }
     }
   }
+
+  if vm.spread_prop.is_some() && (!vm.const_props.is_empty() || !vm.watch_props.is_empty()) {
+    let id = vm.spread_prop.take();
+    emit_error(id.span(), "解构写法透传属性只能出现一次");
+  }
+
   vm
 }
 
@@ -162,9 +192,8 @@ impl TemplateParser {
   fn transform_slot(&mut self, slot_name: Option<Atom>, slot_args: Option<&Vec<ExprOrSpread>>) {
     let mut stmts = vec![];
 
-    let has_slot_vm = slot_args
-      .map(|slot_args| self.transform_slot_args(slot_args, &mut stmts))
-      .unwrap_or(false);
+    let slot_vm_id =
+      slot_args.and_then(|slot_args| self.transform_slot_args(slot_args, &mut stmts));
 
     let root_container = self.context.root_container;
 
@@ -206,10 +235,8 @@ impl TemplateParser {
         },
       )),
     ];
-    if has_slot_vm {
-      args.push(ast_create_arg_expr(ast_create_expr_ident(
-        JINGE_ATTR_IDENT.clone(),
-      )));
+    if let Some(id) = slot_vm_id {
+      args.push(ast_create_arg_expr(ast_create_expr_ident(id)));
     }
     stmts.push(Stmt::Return(ReturnStmt {
       span: DUMMY_SP,
@@ -240,8 +267,12 @@ impl TemplateParser {
         ),
       });
   }
-  fn transform_slot_args(&mut self, args: &Vec<ExprOrSpread>, stmts: &mut Vec<Stmt>) -> bool {
-    let slot_arg_vm = parse_slot_arg(args);
+  fn transform_slot_args(
+    &mut self,
+    args: &Vec<ExprOrSpread>,
+    stmts: &mut Vec<Stmt>,
+  ) -> Option<Ident> {
+    let mut slot_arg_vm = parse_slot_arg(args);
 
     let has_slot_vm = !slot_arg_vm.const_props.is_empty() || !slot_arg_vm.watch_props.is_empty();
     if has_slot_vm {
@@ -303,7 +334,11 @@ impl TemplateParser {
         }));
       });
 
-    has_slot_vm
+    if has_slot_vm {
+      return Some(JINGE_ATTR_IDENT.clone());
+    }
+
+    slot_arg_vm.spread_prop.take()
   }
   pub fn parse_slot_mem_expr(
     &mut self,

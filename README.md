@@ -27,4 +27,3 @@ TODO: 使用 Github Actions 跨平台构建并自动发布 npm 包。
 ## TODO
 
 - Optional Chain 表达式处理
-- 组件的属性支持 `{...props}` 的书写。但仅支持属性只有这一个 spread 属性，本质上就是透传父组件的 props 或 state。例如：`<C {...state} />` 合法，`<C {...state} a={10} />` 不合法。后者用复杂的方案也能支持，比如再引入一个中间 ViewModel，但目前看没必要。

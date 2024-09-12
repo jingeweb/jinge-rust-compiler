@@ -22,6 +22,9 @@ pub struct AttrStore {
   /// 不需要 watch 监听的表达式属性，例如 `<div a={45 + "hello"} b={_someVar.o} c="hello" d={true} disabled ></div>`
   pub const_props: Vec<(IdentName, Box<Expr>)>,
   pub watch_props: Vec<(IdentName, ExprParseResult)>,
+  /// ... 解构写法透传的属性，例如 `<A {...state} />` 本质上就是把 state 作为 A 组件的 props 参数直接传递。
+  /// 这种写法的情况下，不能再有其它 const 或 watch 属性，并且只能出现一次。
+  pub spread_prop: Option<Ident>,
 }
 
 impl TemplateParser {
@@ -31,11 +34,20 @@ impl TemplateParser {
       evt_props: vec![],
       const_props: vec![],
       watch_props: vec![],
+      spread_prop: None,
     };
 
     n.opening.attrs.iter().for_each(|attr| match attr {
       JSXAttrOrSpread::SpreadElement(s) => {
-        emit_error(s.span(), "暂不支持 ... 属性");
+        let Expr::Ident(id) = s.expr.as_ref() else {
+          emit_error(s.span(), "解构写法...后必须是 Ident");
+          return;
+        };
+        if attrs.spread_prop.is_some() {
+          emit_error(s.span(), "解构写法透传属性只能出现一次");
+        } else {
+          attrs.spread_prop.replace(id.clone());
+        }
       }
       JSXAttrOrSpread::JSXAttr(attr) => {
         let JSXAttrName::Ident(an) = &attr.name else {
@@ -184,6 +196,10 @@ impl TemplateParser {
       }
     });
 
+    if attrs.spread_prop.is_some() && (!attrs.const_props.is_empty() || !attrs.watch_props.is_empty()) {
+      let id = attrs.spread_prop.take();
+      emit_error(id.span(), "解构写法透传属性只能出现一次");
+    }
     attrs
   }
 }

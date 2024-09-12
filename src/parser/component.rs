@@ -134,7 +134,10 @@ impl TemplateParser {
       render_fc_args.push(ast_create_arg_expr(ast_create_expr_ident(
         JINGE_ATTR_IDENT.clone(),
       )));
+    } else if let Some(id) = attrs.spread_prop.take() {
+      render_fc_args.push(ast_create_arg_expr(ast_create_expr_ident(id)));
     }
+
     stmts.push(Stmt::Return(ReturnStmt {
       span: DUMMY_SP,
       arg: Some(ast_create_expr_call(
