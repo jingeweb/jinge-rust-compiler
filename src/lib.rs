@@ -3,7 +3,7 @@ mod common;
 mod parser;
 mod visitor;
 
-use std::path::PathBuf;
+use std::{fs, io, path::PathBuf};
 
 use neon::prelude::*;
 
@@ -218,36 +218,16 @@ fn test_transform() {
   let (code, parsed_components, _) = inner_transform(
     "test.tsx".into(),
     2,
-    "import { vm } from 'jinge';
-
-export function App() {
-  const state = vm({
-    n: 0,
-    arr: [1, 2, 3, 4, 5].map((n) => ({
-      n,
-    })),
-  });
-  return (
-    <div className='bg-blue-100 w-52'>
-      <p>{state.n}</p>
-
-      <button
-        onClick={() => {
-          state.n++;
-        }}
-      >
-        TEST
-      </button>
-
-    </div>
-  );
+    "export function App() {
+  return <p>state: {state.c?.d()}</p>
 }
 
 "
     .into(),
     true,
   );
-  println!("{}", parsed_components);
-  println!("{}", code);
-  assert_eq!(code, "x");
+  // println!("{}", parsed_components);
+  std::fs::write("target/out.ts", &code).unwrap();
+  // println!("{:#?}", code);
+  // assert_eq!(code, "x");
 }

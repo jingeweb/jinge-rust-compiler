@@ -1,6 +1,7 @@
 use std::rc::Rc;
 
 use hashbrown::HashSet;
+use swc_common::SyntaxContext;
 use swc_core::{
   atoms::Atom,
   common::{Spanned, DUMMY_SP},
@@ -26,13 +27,15 @@ enum Root {
   This,
   Id(Atom),
 }
-
+#[derive(Debug)]
 pub struct SimpleExprParseResult {
   pub vm: Box<Expr>,
   pub is_this: bool,
   pub path: Box<Expr>,
   pub not_op: i8,
 }
+
+#[derive(Debug)]
 pub enum ExprParseResult {
   None,
   Simple(SimpleExprParseResult),
@@ -103,15 +106,25 @@ impl ExprVisitor {
       }
     } else {
       // 如果 simple_result 为 None，则说明第一个 member expr 有 computed 属性
-      ExprParseResult::Complex(self.covert(expr))
+      let x = self.covert(expr);
+      ExprParseResult::Complex(x)
     }
   }
   fn covert(&mut self, expr: &Expr) -> Box<Expr> {
     let mut expr = expr.clone();
-    let mut x = vec![];
-    x.append(&mut self.expressions);
+
     let mut rep = MemberExprReplaceVisitor::new();
     rep.visit_mut_expr(&mut expr);
+    // println!("{:?}", expr);
+    if matches!(&expr, Expr::Ident(_)) && self.expressions.len() == 1 {
+      // 如果转换后的表达式是一个简单的 Ident，并且 expressions 只有一个，说明不需要使用 ExprWatcher 包裹。
+      // 比如 state.arr[state.b] 最后会被替换为 ExprWatcher(DymPathWatcher(state, ['arr', PathWatcher(state, 'b')]), (v) => v)
+      // 外层的 ExprWatcher 是不需要的，可以直接返回 DymPathWatcher
+      return self.expressions.pop().unwrap();
+    };
+
+    let mut x = vec![];
+    x.append(&mut self.expressions);
     let args = vec![
       ast_create_arg_expr(Box::new(Expr::Array(ArrayLit {
         span: DUMMY_SP,
@@ -264,27 +277,38 @@ impl MemberExprVisitor {
 }
 impl Visit for MemberExprVisitor {
   fn visit_member_expr(&mut self, node: &MemberExpr) {
+    println!("{:?}", node.obj);
     match node.obj.as_ref() {
       Expr::This(_) => {
         self.root = Root::This;
       }
       Expr::Ident(id) => {
-        if !id.sym.starts_with('_') {
-          if let Some(exclude_roots) = &self.exclude_roots {
-            if exclude_roots.contains(&id.sym) {
-              self.meet_private = true;
-            } else {
-              self.root = Root::Id(id.sym.clone());
-            }
+        if let Some(exclude_roots) = &self.exclude_roots {
+          if exclude_roots.contains(&id.sym) {
+            self.meet_private = true;
           } else {
             self.root = Root::Id(id.sym.clone());
           }
         } else {
-          self.meet_private = true;
+          self.root = Root::Id(id.sym.clone());
         }
       }
       Expr::Member(expr) => {
         self.visit_member_expr(expr);
+      }
+      Expr::OptChain(expr) => {
+        emit_error(node.obj.span(), "不支持 OptChain 表达式");
+        self.meet_error = true;
+      }
+      Expr::Call(call) => {
+        // TODO: 支持形如 `state.a().b.c` 这样的，函数调用的结果作为 ViewModel 进一步取其上的属性。
+        // 这种情况会比较复杂，因为 watch 的目标是动态的，需要用 PathWatcher/DymPathWatcher/ExprWatcher 之外更复杂的 watcher 机制来支持。
+        // 后续如果这种情况是刚需再考虑支持。
+        emit_error(
+          call.span(),
+          "暂不支持该 Call 表达式作为 Member Expr 的 object",
+        );
+        self.meet_error = true;
       }
       _ => {
         emit_error(node.obj.span(), "不支持该类型的表达式");
@@ -296,13 +320,9 @@ impl Visit for MemberExprVisitor {
     }
     match &node.prop {
       MemberProp::Ident(id) => {
-        if id.sym.starts_with('_') {
-          self.meet_private = true;
-        } else {
-          self
-            .path
-            .push(Box::new(Expr::Lit(Lit::Str(Str::from(id.sym.clone())))));
-        }
+        self
+          .path
+          .push(Box::new(Expr::Lit(Lit::Str(Str::from(id.sym.clone())))));
       }
       MemberProp::PrivateName(_) => {
         self.meet_private = true;
@@ -311,14 +331,7 @@ impl Visit for MemberExprVisitor {
         let expr = c.expr.as_ref();
         match expr {
           Expr::Lit(v) => match v {
-            Lit::Str(s) => {
-              if s.value.starts_with('_') {
-                self.meet_private = true;
-              } else {
-                self.path.push(Box::new(Expr::Lit(v.clone())))
-              }
-            }
-            Lit::Num(_) => self.path.push(Box::new(Expr::Lit(v.clone()))),
+            Lit::Str(_) | Lit::Num(_) => self.path.push(Box::new(Expr::Lit(v.clone()))),
             _ => {
               self.meet_error = true;
               emit_error(v.span(), "不支持该常量作为属性");

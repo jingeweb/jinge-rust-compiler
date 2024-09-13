@@ -203,7 +203,7 @@ impl Visit for TemplateParser {
         if self.parse_map_fn(expr) {
           // 如果是 [xx].map() 函数调用，则转换为 <For> 组件。
         } else if self.parse_slot_call_expr(expr) {
-          // 如果是 this.slots() 或 this.slots.xx() 的调用，则转换为 Slot
+          // 如果是 props.children() 或 props.children.xx() 的调用，则转换为 Slot
         } else {
           // 其它情况当成通用表达式进行转换。
           self.parse_expr(expr_node);
@@ -291,7 +291,9 @@ impl Visit for TemplateParser {
       Expr::Paren(e) => self.visit_expr(&e.expr),
       Expr::Lit(e) => self.visit_lit(e),
       Expr::Member(e) => self.parse_mem(e, expr_node, None),
-      Expr::OptChain(opt) => self.parse_opt_chain(opt, expr_node, None),
+      Expr::OptChain(opt) => {
+        // self.parse_opt_chain(opt, expr_node, None)
+      }
       _ => self.parse_expr(expr_node),
     }
   }
