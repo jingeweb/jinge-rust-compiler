@@ -27,3 +27,15 @@ TODO: 使用 Github Actions 跨平台构建并自动发布 npm 包。
 ## TODO
 
 - Optional Chain 表达式处理
+- Slot 渲染支持默认渲染内容，比如：
+  ```tsx
+  function A(props: PropsWithOptionalSlots<{}, JNode>) {
+    return <div>{props.children ?? <div>Default slot</div>}</div>;
+  }
+  function B(props: PropsWithOptionalSlots<{}, (vm: any) => JNode>) {
+    return <div>{props.children ? props.children() : <div>Default slot</div>}</div>;
+  }
+  function C(props: PropsWithSlots<{}, { a?: (vm: any) => JNode }>) {
+    return <div>{props.children.a ? props.children.a() : <div>Default slot</div>}</div>;
+  }
+  ```
