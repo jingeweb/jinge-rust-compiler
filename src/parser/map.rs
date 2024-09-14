@@ -210,28 +210,34 @@ fn gen_for_component(looop: &Box<Expr>, key: Option<Box<Expr>>, func: ArrowExpr)
 }
 impl TemplateParser {
   /// 如果表达式是 xx.map() 调用，且参数只有一个，参数是箭头函数，则转换为 <For> 组件。
-  pub fn parse_map_fn(&mut self, expr: &CallExpr) -> bool {
-    if expr.args.len() != 1 {
+  pub fn parse_map_fn(&mut self, callee: &Expr, args: &Vec<ExprOrSpread>) -> bool {
+    if args.len() != 1 {
       return false;
     }
-    let arg0 = &expr.args[0];
+    let arg0 = &args[0];
     if arg0.spread.is_some() {
       return false;
     };
 
-    let looop = match &expr.callee {
-      Callee::Expr(c) => match c.as_ref() {
-        Expr::Member(m) => {
+    let looop = match callee {
+      Expr::Member(m) => {
+        if matches!(&m.prop, MemberProp::Ident(fname) if JINGE_MAP.eq(&fname.sym)) {
+          &m.obj
+        } else {
+          return false;
+        }
+      }
+      Expr::OptChain(oc) => {
+        if let OptChainBase::Member(m) = oc.base.as_ref() {
           if matches!(&m.prop, MemberProp::Ident(fname) if JINGE_MAP.eq(&fname.sym)) {
             &m.obj
           } else {
             return false;
           }
-        }
-        _ => {
+        } else {
           return false;
         }
-      },
+      }
       _ => {
         return false;
       }

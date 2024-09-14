@@ -10,8 +10,7 @@
     "stripInternal": true,
     "alwaysStrict": true,
     "moduleResolution": "Bundler",
-    "noEmit": true,
-    "baseUrl": "."
+    "noEmit": true
   },
   "include": ["ts/**/*", "*.js", "*.mjs"]
 }

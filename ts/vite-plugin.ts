@@ -22,7 +22,7 @@ if (import.meta.hot) {
 }
 export function jingeVitePlugin(options?: JingeVitePluginOptions): PluginOption {
   let hmrEnabled = false;
-  let sourcemapEnabled = false;
+  let sourcemapEnabled = true;
 
   function transform(code: string, id: string) {
     const type = id.endsWith('.tsx') ? 2 : id.endsWith('.ts') ? 1 : 0;
@@ -62,7 +62,6 @@ export function jingeVitePlugin(options?: JingeVitePluginOptions): PluginOption 
       apply: 'serve',
       configResolved(config) {
         if (config.server.hmr !== false) hmrEnabled = true;
-        if (config.build?.sourcemap) sourcemapEnabled = true;
       },
       config() {
         return {

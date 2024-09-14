@@ -1,7 +1,6 @@
 use std::rc::Rc;
 
 use hashbrown::HashSet;
-use swc_common::SyntaxContext;
 use swc_core::{
   atoms::Atom,
   common::{Spanned, DUMMY_SP},
@@ -82,11 +81,11 @@ impl ExprVisitor {
       // 如果表达式只包含一个 member expr，且整个表达式是：一个 member expr 或 ! + member expr 或 !! + member expr
       // 则作为 Simple Result 返回。也就是对于 {this.submitting} 或 {!this.submitting} 一类的写法简化生成的代码。
       let not_op: i8 = match expr {
-        Expr::Member(_) => 0,
+        Expr::Member(_) | Expr::OptChain(_) => 0, // 如果是 OptChain，则 opt.base 一定是 MemberExpr，因为如果是 Call 则会报错并不会被放在监听 path 里。
         Expr::Unary(e) => match e.op {
           UnaryOp::Bang => match &*e.arg {
             Expr::Unary(e) => match &*e.arg {
-              Expr::Member(_) => 2,
+              Expr::Member(_) | Expr::OptChain(_) => 2,
               _ => -1,
             },
             Expr::Member(_) => 1,
@@ -234,20 +233,28 @@ impl MemberExprReplaceVisitor {
       params: vec![],
     }
   }
+  fn get_alias_ident(&mut self) -> Expr {
+    let id = Ident::from(format!("a{}", self.count));
+    let p = Pat::Ident(BindingIdent {
+      id: id.clone(),
+      type_ann: None,
+    });
+    self.params.push(p);
+    self.count += 1;
+    Expr::Ident(id)
+  }
 }
 impl VisitMut for MemberExprReplaceVisitor {
   fn visit_mut_expr(&mut self, node: &mut Expr) {
     match node {
-      Expr::Member(_) => {
-        let id = Ident::from(format!("a{}", self.count));
-        let p = Pat::Ident(BindingIdent {
-          id: id.clone(),
-          type_ann: None,
-        });
-        self.params.push(p);
-        self.count += 1;
-        *node = Expr::Ident(id);
+      Expr::OptChain(oc) => {
+        if let OptChainBase::Member(_) = oc.base.as_ref() {
+          *node = self.get_alias_ident()
+        } else {
+          // ignore
+        }
       }
+      Expr::Member(_) => *node = self.get_alias_ident(),
       _ => node.visit_mut_children_with(self),
     }
   }
@@ -277,7 +284,6 @@ impl MemberExprVisitor {
 }
 impl Visit for MemberExprVisitor {
   fn visit_member_expr(&mut self, node: &MemberExpr) {
-    println!("{:?}", node.obj);
     match node.obj.as_ref() {
       Expr::This(_) => {
         self.root = Root::This;
@@ -296,10 +302,18 @@ impl Visit for MemberExprVisitor {
       Expr::Member(expr) => {
         self.visit_member_expr(expr);
       }
-      Expr::OptChain(expr) => {
-        emit_error(node.obj.span(), "不支持 OptChain 表达式");
-        self.meet_error = true;
-      }
+      Expr::OptChain(expr) => match expr.base.as_ref() {
+        OptChainBase::Call(call) => {
+          emit_error(
+            call.span(),
+            "暂不支持该 Call 表达式作为 Member Expr 的 object",
+          );
+          self.meet_error = true;
+        }
+        OptChainBase::Member(mem) => {
+          self.visit_member_expr(mem);
+        }
+      },
       Expr::Call(call) => {
         // TODO: 支持形如 `state.a().b.c` 这样的，函数调用的结果作为 ViewModel 进一步取其上的属性。
         // 这种情况会比较复杂，因为 watch 的目标是动态的，需要用 PathWatcher/DymPathWatcher/ExprWatcher 之外更复杂的 watcher 机制来支持。

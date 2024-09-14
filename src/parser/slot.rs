@@ -5,10 +5,9 @@ use swc_common::{Spanned, SyntaxContext, DUMMY_SP};
 use swc_core::{
   atoms::Atom,
   ecma::ast::{
-    AssignExpr, AssignOp, AssignTarget, BlockStmt, BlockStmtOrExpr, CallExpr, Callee,
-    ComputedPropName, Expr, ExprOrSpread, ExprStmt, Ident, IdentName, KeyValueProp, Lit,
-    MemberExpr, MemberProp, ObjectLit, Pat, Prop, PropName, PropOrSpread, ReturnStmt,
-    SimpleAssignTarget, Stmt,
+    AssignExpr, AssignOp, AssignTarget, BlockStmt, BlockStmtOrExpr, ComputedPropName, Expr,
+    ExprOrSpread, ExprStmt, Ident, IdentName, KeyValueProp, Lit, MemberExpr, MemberProp, ObjectLit,
+    OptChainBase, Pat, Prop, PropName, PropOrSpread, ReturnStmt, SimpleAssignTarget, Stmt,
   },
 };
 
@@ -26,7 +25,7 @@ use crate::{
 use super::{
   emit_error, expr::ExprParseResult, tpl::tpl_push_el_code, TemplateParser, JINGE_CHILDREN,
   JINGE_EL_IDENT, JINGE_IMPORT_CONTEXT, JINGE_IMPORT_DEFAULT_SLOT,
-  JINGE_IMPORT_NEW_COM_DEFAULT_SLOT, JINGE_IMPORT_RENDER_SLOT, JINGE_IMPORT_SLOTS, JINGE_SLOTS,
+  JINGE_IMPORT_NEW_COM_DEFAULT_SLOT, JINGE_IMPORT_RENDER_SLOT, JINGE_IMPORT_SLOTS,
 };
 
 #[derive(Debug)]
@@ -34,36 +33,51 @@ enum Slot {
   None,
   Default,
   Named(Atom),
+  Err,
 }
+
 fn get_slot(expr: &MemberExpr, props_arg: &Atom) -> Slot {
-  // println!("{:#?}", expr);
-  match expr.obj.as_ref() {
-    Expr::Ident(id) if props_arg.eq(&id.sym) => {
-      let MemberProp::Ident(prop) = &expr.prop else {
-        return Slot::None;
-      };
-      if JINGE_CHILDREN.eq(&prop.sym) || JINGE_SLOTS.eq(&prop.sym) {
-        Slot::Default
-      } else {
-        Slot::None
+  let mut obj_mem = expr;
+  let mut pa;
+  let mut pb = None;
+  let mut lv = 1;
+  loop {
+    let MemberProp::Ident(prop) = &obj_mem.prop else {
+      return Slot::None;
+    };
+    pa = prop;
+    lv += 1;
+    match obj_mem.obj.as_ref() {
+      Expr::Member(m) => {
+        pb = Some(pa);
+        obj_mem = m;
       }
-    }
-    Expr::Member(expr2) => match expr2.obj.as_ref() {
-      Expr::Ident(id) if props_arg.eq(&id.sym) => {
-        let MemberProp::Ident(prop) = &expr2.prop else {
+      Expr::OptChain(oc) => {
+        let OptChainBase::Member(m2) = oc.base.as_ref() else {
           return Slot::None;
         };
-        if !(JINGE_CHILDREN.eq(&prop.sym)) && !(JINGE_SLOTS.eq(&prop.sym)) {
+        pb = Some(pa);
+        obj_mem = m2;
+      }
+      Expr::Ident(id) => {
+        if props_arg.eq(&id.sym) && JINGE_CHILDREN.eq(&pa.sym) {
+          if lv > 3 {
+            emit_error(
+              id.span(),
+              "Slot 渲染最多支持 2 层，比如 props.children 或 props.children.x",
+            );
+            return Slot::Err;
+          } else if let Some(name) = pb {
+            return Slot::Named(name.sym.clone());
+          } else {
+            return Slot::Default;
+          }
+        } else {
           return Slot::None;
         }
-        let MemberProp::Ident(prop) = &expr.prop else {
-          return Slot::None;
-        };
-        Slot::Named(prop.sym.clone())
       }
-      _ => Slot::None,
-    },
-    _ => Slot::None,
+      _ => return Slot::None,
+    }
   }
 }
 
@@ -358,28 +372,36 @@ impl TemplateParser {
         self.transform_slot(Some(n), slot_args);
         true
       }
+      Slot::Err => true,
     }
   }
-  pub fn parse_slot_call_expr(&mut self, expr: &CallExpr) -> bool {
+  pub fn parse_slot_call_expr(&mut self, callee: &Expr, args: &Vec<ExprOrSpread>) -> bool {
     let Some(props_arg) = &self.props_arg else {
       return false;
     };
-    let Callee::Expr(e) = &expr.callee else {
-      return false;
+
+    let maybe_slot_expr = match callee {
+      Expr::Member(e) => e,
+      Expr::OptChain(oc) => {
+        if let OptChainBase::Member(m) = oc.base.as_ref() {
+          m
+        } else {
+          return false;
+        }
+      }
+      _ => return false,
     };
-    let Expr::Member(e) = e.as_ref() else {
-      return false;
-    };
-    match get_slot(e, props_arg) {
+    match get_slot(maybe_slot_expr, props_arg) {
       Slot::None => false,
       Slot::Default => {
-        self.transform_slot(None, Some(&expr.args));
+        self.transform_slot(None, Some(args));
         true
       }
       Slot::Named(n) => {
-        self.transform_slot(Some(n), Some(&expr.args));
+        self.transform_slot(Some(n), Some(args));
         true
       }
+      Slot::Err => true,
     }
   }
 }

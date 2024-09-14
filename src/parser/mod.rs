@@ -155,30 +155,19 @@ impl TemplateParser {
       }
     }
   }
-  #[inline]
-  fn parse_mem(
-    &mut self,
-    expr: &MemberExpr,
-    parent_expr: &Expr,
-    opt_chain_call_args: Option<&Vec<ExprOrSpread>>,
-  ) {
-    if !self.parse_slot_mem_expr(expr, opt_chain_call_args) {
+  fn parse_mem(&mut self, parent_expr: &Expr, expr: &MemberExpr) {
+    if !self.parse_slot_mem_expr(expr, None) {
       self.parse_expr(parent_expr);
     }
   }
-  fn parse_opt_chain(
-    &mut self,
-    expr: &OptChainExpr,
-    parent_expr: &Expr,
-    opt_chain_call_args: Option<&Vec<ExprOrSpread>>,
-  ) {
-    match &expr.base.as_ref() {
-      OptChainBase::Member(e) => self.parse_mem(e, parent_expr, opt_chain_call_args),
-      OptChainBase::Call(call) => match call.callee.as_ref() {
-        Expr::Member(x) => self.parse_mem(x, parent_expr, Some(&call.args)),
-        Expr::OptChain(sub) => self.parse_opt_chain(sub, parent_expr, Some(&call.args)),
-        _ => self.parse_expr(parent_expr),
-      },
+  fn parse_call(&mut self, parent_expr: &Expr, callee: &Expr, args: &Vec<ExprOrSpread>) {
+    if self.parse_map_fn(callee, args) {
+      // 如果是 [xx].map() 函数调用，则转换为 <For> 组件。
+    } else if self.parse_slot_call_expr(callee, args) {
+      // 如果是 props.children() 或 props.children.xx() 的调用，则转换为 Slot
+    } else {
+      // 其它情况当成通用表达式进行转换。
+      self.parse_expr(parent_expr);
     }
   }
 }
@@ -199,16 +188,7 @@ impl Visit for TemplateParser {
       Expr::JSXMember(_) | Expr::JSXNamespacedName(_) => {
         emit_error(expr_node.span(), "不支持的 jsx 格式")
       }
-      Expr::Call(expr) => {
-        if self.parse_map_fn(expr) {
-          // 如果是 [xx].map() 函数调用，则转换为 <For> 组件。
-        } else if self.parse_slot_call_expr(expr) {
-          // 如果是 props.children() 或 props.children.xx() 的调用，则转换为 Slot
-        } else {
-          // 其它情况当成通用表达式进行转换。
-          self.parse_expr(expr_node);
-        }
-      }
+
       Expr::Cond(e) => {
         self.parse_cond_expr(e);
       }
@@ -290,10 +270,18 @@ impl Visit for TemplateParser {
       Expr::Array(e) => emit_error(e.span(), "tsx 中不能直接使用数组表达式"),
       Expr::Paren(e) => self.visit_expr(&e.expr),
       Expr::Lit(e) => self.visit_lit(e),
-      Expr::Member(e) => self.parse_mem(e, expr_node, None),
-      Expr::OptChain(opt) => {
-        // self.parse_opt_chain(opt, expr_node, None)
+      Expr::Call(expr) => {
+        if let Callee::Expr(callee) = &expr.callee {
+          self.parse_call(expr_node, callee.as_ref(), &expr.args);
+        }
       }
+      Expr::Member(e) => self.parse_mem(expr_node, e),
+      Expr::OptChain(opt) => match opt.base.as_ref() {
+        OptChainBase::Member(e) => self.parse_mem(expr_node, e),
+        OptChainBase::Call(c) => {
+          self.parse_call(expr_node, c.callee.as_ref(), &c.args);
+        }
+      },
       _ => self.parse_expr(expr_node),
     }
   }

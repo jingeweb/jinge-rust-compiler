@@ -3,7 +3,7 @@ mod common;
 mod parser;
 mod visitor;
 
-use std::{fs, io, path::PathBuf};
+use std::path::PathBuf;
 
 use neon::prelude::*;
 
@@ -218,16 +218,18 @@ fn test_transform() {
   let (code, parsed_components, _) = inner_transform(
     "test.tsx".into(),
     2,
-    "export function App() {
-  return <p>state: {state.c?.d()}</p>
+    "export function App(props) {
+    const state = {};
+  return <p>state: {state.a?.c}</p>
 }
 
 "
     .into(),
     true,
   );
-  // println!("{}", parsed_components);
+  println!("PARSED COMPONENTS: {}", parsed_components);
   std::fs::write("target/out.ts", &code).unwrap();
   // println!("{:#?}", code);
   // assert_eq!(code, "x");
+  assert!(false)
 }

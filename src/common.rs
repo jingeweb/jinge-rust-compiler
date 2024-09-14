@@ -76,7 +76,6 @@ lazy_static::lazy_static! {
   pub static ref JINGE_REF: Atom = "ref".into();
   pub static ref JINGE_CALL: Atom = "call".into();
   pub static ref JINGE_CHILDREN: Atom = "children".into();
-  pub static ref JINGE_SLOTS: Atom = "slots".into();
   pub static ref JINGE_CLASSNAME: Atom = "className".into();
   pub static ref JINGE_CLASS: Atom = "class".into();
   pub static ref JINGE_UNDEFINED: Atom = "undefined".into();
