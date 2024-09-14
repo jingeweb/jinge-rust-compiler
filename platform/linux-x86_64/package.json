@@ -1,6 +1,6 @@
 {
   "name": "jinge-compiler-core-linux-x86_64",
-  "version": "1.0.0",
+  "version": "4.0.0-alpha.2",
   "description": "rust core for jinge-compiler on linux-x86_64",
   "main": "index.node",
   "author": "Yuhang Ge<abeyuhang@gmail.com>"

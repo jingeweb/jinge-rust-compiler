@@ -1,7 +1,7 @@
 {
   "name": "jinge-compiler",
-  "version": "4.0.0",
-  "description": "template compiler for jinge mvvm framework",
+  "version": "4.0.0-alpha.2",
+  "description": "compiler for jinge framework",
   "author": "Yuhang Ge<abeyuhang@gmail.com>",
   "license": "ISC",
   "type": "module",
@@ -54,10 +54,10 @@
     "vite": "^5.4.5"
   },
   "dependencies": {
-    "jinge-compiler-core-linux-aarch64": "^1.0.0",
-    "jinge-compiler-core-linux-x86_64": "^1.0.0",
-    "jinge-compiler-core-macos-aarch64": "^1.0.0",
-    "jinge-compiler-core-macos-x86_64": "^1.0.0",
-    "jinge-compiler-core-windows-x86_64": "^1.0.0"
+    "jinge-compiler-core-linux-aarch64": "^4.0.0-alpha.2",
+    "jinge-compiler-core-linux-x86_64": "^4.0.0-alpha.2",
+    "jinge-compiler-core-macos-aarch64": "^4.0.0-alpha.2",
+    "jinge-compiler-core-macos-x86_64": "^4.0.0-alpha.2",
+    "jinge-compiler-core-windows-x86_64": "^4.0.0-alpha.2"
   }
 }
