@@ -4,9 +4,12 @@ import { loadBinding } from './binding.js';
 export * from './vite-plugin.js';
 
 export interface JingeCompilerOptions {
-  debug?: boolean;
+  /**
+   * 加载 debug 版本的 rust binding，该参数仅用于本地开发测试 jinge-compiler 时使用。
+   */
+  loadDebugNativeBinding?: boolean;
 }
 
 export function loadCompiler(options: JingeCompilerOptions): JingeCompiler {
-  return loadBinding(options.debug);
+  return loadBinding(options.loadDebugNativeBinding);
 }

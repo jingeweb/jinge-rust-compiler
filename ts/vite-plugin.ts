@@ -2,7 +2,10 @@ import type { PluginOption } from 'vite';
 import { loadBinding } from './binding.js';
 
 export interface JingeVitePluginOptions {
-  debug?: boolean;
+  /**
+   * 加载 debug 版本的 rust binding，该参数仅用于本地开发测试 jinge-compiler 时使用。
+   */
+  loadDebugNativeBinding?: boolean;
 }
 
 const HMR_RUNTIME_PATH = '/@jinge-hmr-runtime';
@@ -27,7 +30,7 @@ export function jingeVitePlugin(options?: JingeVitePluginOptions): PluginOption 
   function transform(code: string, id: string) {
     const type = id.endsWith('.tsx') ? 2 : id.endsWith('.ts') ? 1 : 0;
     if (type === 0) return;
-    const binding = loadBinding(options?.debug);
+    const binding = loadBinding(options?.loadDebugNativeBinding);
     const result = binding.transform(id, type, code, sourcemapEnabled);
     if (!result.map) result.map = null; // 空字符串转成 null
     return result;
