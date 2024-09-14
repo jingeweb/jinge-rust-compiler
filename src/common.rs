@@ -77,16 +77,20 @@ lazy_static::lazy_static! {
   pub static ref JINGE_CALL: Atom = "call".into();
   pub static ref JINGE_CHILDREN: Atom = "children".into();
   pub static ref JINGE_CLASSNAME: Atom = "className".into();
+  pub static ref JINGE_HTML_FOR: Atom = "htmlFor".into();
   pub static ref JINGE_CLASS: Atom = "class".into();
+  pub static ref JINGE_FOR: Atom = "for".into();
   pub static ref JINGE_UNDEFINED: Atom = "undefined".into();
   pub static ref JINGE_MAP: Atom = "map".into();
   pub static ref JINGE_LOOP: Atom = "loop".into();
   pub static ref JINGE_LOOP_KEY: Atom = "key".into();
   pub static ref JINGE_LOOP_KEY_FN: Atom = "keyFn".into();
   pub static ref JINGE_EMPTY_STR: Atom = "".into();
+  pub static ref JINGE_DOUBLECLICK: Atom = "doubleclick".into();
+  pub static ref JINGE_DBLCLICK: Atom = "dblclick".into();
 
   pub static ref IDL_ATTRIBUTE_SET: Vec<Atom> = {
-    let mut attrs = vec!["disabled", "readOnly", "autoFocus", "autoComplete", "autoPlay", "controls", "required", "checked", "selected", "multiple", "muted", "draggable"];
+    let mut attrs = vec!["disabled", "readOnly", "value", "autoFocus", "autoComplete", "autoPlay", "controls", "required", "checked", "selected", "multiple", "muted", "draggable"];
     attrs.sort_unstable();
     attrs.into_iter().map(|s| Atom::from(s)).collect()
   };

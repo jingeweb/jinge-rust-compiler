@@ -7,7 +7,7 @@ use swc_core::{atoms::Atom, common::Spanned};
 use swc_core::ecma::ast::*;
 
 use super::expr::{ExprParseResult, ExprVisitor};
-use super::{JINGE_CHILDREN, JINGE_CLASS, JINGE_CLASSNAME, JINGE_LOOP_KEY, JINGE_REF};
+use super::{JINGE_CHILDREN, JINGE_CLASS, JINGE_CLASSNAME, JINGE_DBLCLICK, JINGE_FOR, JINGE_HTML_FOR, JINGE_LOOP_KEY, JINGE_DOUBLECLICK, JINGE_REF};
 
 pub struct AttrEvt {
   pub event_name: Atom,
@@ -97,14 +97,24 @@ impl TemplateParser {
             event_name = &event_name[..event_name.len() - 7];
             capture = true;
           }
+          let mut event_name = Atom::from(event_name.to_lowercase());
+          if JINGE_DOUBLECLICK.eq(&event_name) {
+            event_name = JINGE_DBLCLICK.clone();
+          }
           attrs.evt_props.push(AttrEvt {
-            event_name: event_name.to_lowercase().into(),
+            event_name,
             event_handler: val.clone(),
             capture,
           })
         } else {
-          let attr_name = if !is_component && JINGE_CLASSNAME.eq(&an.sym) {
-            IdentName::from(JINGE_CLASS.clone())
+          let attr_name = if !is_component {
+            if JINGE_CLASSNAME.eq(&an.sym) {
+              IdentName::from(JINGE_CLASS.clone())
+            } else if JINGE_HTML_FOR.eq(&an.sym) {
+              IdentName::from(JINGE_FOR.clone())
+            } else {
+              an.clone()
+            }
           } else {
             an.clone()
           };
