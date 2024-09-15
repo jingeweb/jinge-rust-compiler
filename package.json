@@ -1,6 +1,6 @@
 {
   "name": "jinge-compiler",
-  "version": "4.0.0-alpha.4",
+  "version": "4.0.0-alpha.5",
   "description": "compiler for jinge framework",
   "author": "Yuhang Ge<abeyuhang@gmail.com>",
   "license": "ISC",

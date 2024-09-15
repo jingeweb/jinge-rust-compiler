@@ -6,6 +6,10 @@ export interface JingeVitePluginOptions {
    * 加载 debug 版本的 rust binding，该参数仅用于本地开发测试 jinge-compiler 时使用。
    */
   loadDebugNativeBinding?: boolean;
+  /**
+   * 将 jinge 和 jinge-router 的 import 转换成从源码 import。
+   */
+  importSource?: boolean;
 }
 
 const HMR_RUNTIME_PATH = '/@jinge-hmr-runtime';
@@ -41,11 +45,6 @@ export function jingeVitePlugin(options?: JingeVitePluginOptions): PluginOption 
       name: 'vite:jinge:build',
       apply: 'build',
       enforce: 'pre',
-      // config() {
-      //   return {
-      //     esbuild: false,
-      //   };
-      // },
       configResolved(config) {
         if (config.build?.sourcemap) sourcemapEnabled = true;
       },
@@ -67,7 +66,17 @@ export function jingeVitePlugin(options?: JingeVitePluginOptions): PluginOption 
         if (config.server.hmr !== false) hmrEnabled = true;
       },
       config() {
+        const importSource = !!options?.importSource;
         return {
+          resolve: {
+            alias: [
+              { find: /^jinge$/, replacement: importSource ? 'jinge/source' : 'jinge/dev' },
+              {
+                find: /^jinge-router$/,
+                replacement: importSource ? 'jinge-router/source' : 'jinge-router/dev',
+              },
+            ],
+          },
           esbuild: false,
         };
       },
