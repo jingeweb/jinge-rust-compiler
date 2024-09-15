@@ -9,20 +9,20 @@ importers:
   .:
     dependencies:
       jinge-compiler-core-linux-aarch64:
-        specifier: 4.0.0-alpha.2
-        version: 4.0.0-alpha.2
+        specifier: 4.0.0-alpha.4
+        version: 4.0.0-alpha.4
       jinge-compiler-core-linux-x86_64:
-        specifier: 4.0.0-alpha.2
-        version: 4.0.0-alpha.2
+        specifier: 4.0.0-alpha.4
+        version: 4.0.0-alpha.4
       jinge-compiler-core-macos-aarch64:
-        specifier: 4.0.0-alpha.2
-        version: 4.0.0-alpha.2
+        specifier: 4.0.0-alpha.4
+        version: 4.0.0-alpha.4
       jinge-compiler-core-macos-x86_64:
-        specifier: 4.0.0-alpha.2
-        version: 4.0.0-alpha.2
+        specifier: 4.0.0-alpha.4
+        version: 4.0.0-alpha.4
       jinge-compiler-core-windows-x86_64:
-        specifier: 4.0.0-alpha.2
-        version: 4.0.0-alpha.2
+        specifier: 4.0.0-alpha.4
+        version: 4.0.0-alpha.4
     devDependencies:
       '@eslint/js':
         specifier: ^9.10.0
@@ -59,7 +59,7 @@ importers:
         version: 3.3.3
       tsup:
         specifier: ^8.2.4
-        version: 8.2.4(postcss@8.4.45)(typescript@5.6.2)(yaml@2.5.1)
+        version: 8.2.4(postcss@8.4.47)(typescript@5.6.2)(yaml@2.5.1)
       typescript:
         specifier: ^5.6.2
         version: 5.6.2
@@ -360,8 +360,8 @@ packages:
     peerDependencies:
       eslint: ^6.0.0 || ^7.0.0 || >=8.0.0
 
-  '@eslint-community/regexpp@4.11.0':
-    resolution: {integrity: sha512-G/M/tIiMrTAxEWRfLfQJMmGNX28IxBg4PBz8XqQhqUHLFI6TL2htpIB1iQCj144V5ee/JaKyT9/WZ0MGZWfA7A==}
+  '@eslint-community/regexpp@4.11.1':
+    resolution: {integrity: sha512-m4DVN9ZqskZoLU5GlWZadwDnYo3vAEydiUayB9widCl9ffWx2IvPnp6n3on5rJmziJSw9Bv+Z3ChDVdMwXCY8Q==}
     engines: {node: ^12.0.0 || ^14.0.0 || >=16.0.0}
 
   '@eslint/config-array@0.18.0':
@@ -1029,20 +1029,20 @@ packages:
   jackspeak@3.4.3:
     resolution: {integrity: sha512-OGlZQpz2yfahA/Rd1Y8Cd9SIEsqvXkLVoSw/cgwhnhFMDbsQFeZYoJJ7bIZBS9BcamUW96asq/npPWugM+RQBw==}
 
-  jinge-compiler-core-linux-aarch64@4.0.0-alpha.2:
-    resolution: {integrity: sha512-ZJdEXUcVNgSoFuhEIib+sgMky/g6cRrWTdJyY40pcTQltJTzTh8s36SqqwSD+KBB3diRP3envdY+vzgZhsQ9sg==}
+  jinge-compiler-core-linux-aarch64@4.0.0-alpha.4:
+    resolution: {integrity: sha512-6xwepxerTSDLLwhVM9FKDTh2FYyPpati/GcYYc6GOU3v9zbNuFz0hK+C4D46vk6sQaq4t/vcYAqb56HzYvzwwQ==}
 
-  jinge-compiler-core-linux-x86_64@4.0.0-alpha.2:
-    resolution: {integrity: sha512-svoRUprT0bn6yOlW+2WZ2zk+gWYXNDvW2bbDU5rPurCZ4q190GGmumWreViYug0fQKRzuWpq8kmf00wqmeBBJg==}
+  jinge-compiler-core-linux-x86_64@4.0.0-alpha.4:
+    resolution: {integrity: sha512-gDTPLIFRQdmuCesFAe4PKniGEajIRSAi6gNZAqA5ZCLGJYZBtC9a2sds8Z/Zkit8wIWNCoL6Ih8Zfp64TOiPQA==}
 
-  jinge-compiler-core-macos-aarch64@4.0.0-alpha.2:
-    resolution: {integrity: sha512-xcMH23RjQSVwP9a2eSQxn+22kU2Hcq6xQgN47MNNlaSf3ZOwAA/uLFjsrZtoeRInS1iI316t421ty5rF1xcu4g==}
+  jinge-compiler-core-macos-aarch64@4.0.0-alpha.4:
+    resolution: {integrity: sha512-sLBK0X7ERRG8+vRv0BJ6UPUJXvm3tJmg/18YirSFB1Sbijtn+vf0r+UdIMZ6suBN/Y86uxTlwhiK9+RSjpaE+A==}
 
-  jinge-compiler-core-macos-x86_64@4.0.0-alpha.2:
-    resolution: {integrity: sha512-RKQ5ySq3Raoo0KZsoDTJiGxdJ70Fs/5YNj8Wq+0BKJbDba0hcB+S63+5lH+TQaF9YJgqMRxXVqosjzp1SOKHPw==}
+  jinge-compiler-core-macos-x86_64@4.0.0-alpha.4:
+    resolution: {integrity: sha512-aGEpoRYtNkdJzxxV38HJBh+hFzy+Nxbr26T89fE4ziJgfjkdG9FD8a8aafcpoptUKTae1jXHzfe/Ud/j0BsNWg==}
 
-  jinge-compiler-core-windows-x86_64@4.0.0-alpha.2:
-    resolution: {integrity: sha512-Y0invQUFR3U2r9VDtbRYJIPFFRra6fPJlQtPs8EfSDU/XU3z8jdAowlbHd0xF7wW5PIPtLanXG9RiFW6jAlj3g==}
+  jinge-compiler-core-windows-x86_64@4.0.0-alpha.4:
+    resolution: {integrity: sha512-/cq0hdcNqbIpQYj4RSv6ClyNmJxQbHCYnx9lZE5qhIz3VpZURyoVMmx5/COBjpwnPnDuPeNIwq7kpwT1Jmv9UA==}
 
   joycon@3.1.1:
     resolution: {integrity: sha512-34wB/Y7MW7bzjKRjUKTa46I2Z7eV62Rkhva+KkopW7Qvv/OSWBqvkSY7vusOPrNuZcUG3tApvdVgNB8POj3SPw==}
@@ -1260,8 +1260,8 @@ packages:
       yaml:
         optional: true
 
-  postcss@8.4.45:
-    resolution: {integrity: sha512-7KTLTdzdZZYscUc65XmjFiB73vBhBfbPztCYdUNvlaso9PrzjzcmjqBPR0lNGkcVlcO4BjiO5rK/qNz+XAen1Q==}
+  postcss@8.4.47:
+    resolution: {integrity: sha512-56rxCq7G/XfB4EkXq9Egn5GCqugWvDFjafDOThIdMBsI15iqPqR5r15TfSr1YPYeEI19YeaXMCbY6u88Y76GLQ==}
     engines: {node: ^10 || ^12 || >=14}
 
   prelude-ls@1.2.1:
@@ -1727,7 +1727,7 @@ snapshots:
       eslint: 9.10.0
       eslint-visitor-keys: 3.4.3
 
-  '@eslint-community/regexpp@4.11.0': {}
+  '@eslint-community/regexpp@4.11.1': {}
 
   '@eslint/config-array@0.18.0':
     dependencies:
@@ -1871,7 +1871,7 @@ snapshots:
 
   '@typescript-eslint/eslint-plugin@8.5.0(@typescript-eslint/parser@8.5.0(eslint@9.10.0)(typescript@5.6.2))(eslint@9.10.0)(typescript@5.6.2)':
     dependencies:
-      '@eslint-community/regexpp': 4.11.0
+      '@eslint-community/regexpp': 4.11.1
       '@typescript-eslint/parser': 8.5.0(eslint@9.10.0)(typescript@5.6.2)
       '@typescript-eslint/scope-manager': 8.5.0
       '@typescript-eslint/type-utils': 8.5.0(eslint@9.10.0)(typescript@5.6.2)
@@ -2206,7 +2206,7 @@ snapshots:
   eslint@9.10.0:
     dependencies:
       '@eslint-community/eslint-utils': 4.4.0(eslint@9.10.0)
-      '@eslint-community/regexpp': 4.11.0
+      '@eslint-community/regexpp': 4.11.1
       '@eslint/config-array': 0.18.0
       '@eslint/eslintrc': 3.1.0
       '@eslint/js': 9.10.0
@@ -2435,15 +2435,15 @@ snapshots:
     optionalDependencies:
       '@pkgjs/parseargs': 0.11.0
 
-  jinge-compiler-core-linux-aarch64@4.0.0-alpha.2: {}
+  jinge-compiler-core-linux-aarch64@4.0.0-alpha.4: {}
 
-  jinge-compiler-core-linux-x86_64@4.0.0-alpha.2: {}
+  jinge-compiler-core-linux-x86_64@4.0.0-alpha.4: {}
 
-  jinge-compiler-core-macos-aarch64@4.0.0-alpha.2: {}
+  jinge-compiler-core-macos-aarch64@4.0.0-alpha.4: {}
 
-  jinge-compiler-core-macos-x86_64@4.0.0-alpha.2: {}
+  jinge-compiler-core-macos-x86_64@4.0.0-alpha.4: {}
 
-  jinge-compiler-core-windows-x86_64@4.0.0-alpha.2: {}
+  jinge-compiler-core-windows-x86_64@4.0.0-alpha.4: {}
 
   joycon@3.1.1: {}
 
@@ -2623,14 +2623,14 @@ snapshots:
 
   pirates@4.0.6: {}
 
-  postcss-load-config@6.0.1(postcss@8.4.45)(yaml@2.5.1):
+  postcss-load-config@6.0.1(postcss@8.4.47)(yaml@2.5.1):
     dependencies:
       lilconfig: 3.1.2
     optionalDependencies:
-      postcss: 8.4.45
+      postcss: 8.4.47
       yaml: 2.5.1
 
-  postcss@8.4.45:
+  postcss@8.4.47:
     dependencies:
       nanoid: 3.3.7
       picocolors: 1.1.0
@@ -2817,7 +2817,7 @@ snapshots:
 
   tslib@2.7.0: {}
 
-  tsup@8.2.4(postcss@8.4.45)(typescript@5.6.2)(yaml@2.5.1):
+  tsup@8.2.4(postcss@8.4.47)(typescript@5.6.2)(yaml@2.5.1):
     dependencies:
       bundle-require: 5.0.0(esbuild@0.23.1)
       cac: 6.7.14
@@ -2829,14 +2829,14 @@ snapshots:
       globby: 11.1.0
       joycon: 3.1.1
       picocolors: 1.1.0
-      postcss-load-config: 6.0.1(postcss@8.4.45)(yaml@2.5.1)
+      postcss-load-config: 6.0.1(postcss@8.4.47)(yaml@2.5.1)
       resolve-from: 5.0.0
       rollup: 4.21.3
       source-map: 0.8.0-beta.0
       sucrase: 3.35.0
       tree-kill: 1.2.2
     optionalDependencies:
-      postcss: 8.4.45
+      postcss: 8.4.47
       typescript: 5.6.2
     transitivePeerDependencies:
       - jiti
@@ -2870,7 +2870,7 @@ snapshots:
   vite@5.4.5(@types/node@22.5.5):
     dependencies:
       esbuild: 0.21.5
-      postcss: 8.4.45
+      postcss: 8.4.47
       rollup: 4.21.3
     optionalDependencies:
       '@types/node': 22.5.5

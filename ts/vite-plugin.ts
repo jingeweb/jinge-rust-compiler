@@ -30,8 +30,10 @@ if (import.meta.hot) {
 export function jingeVitePlugin(options?: JingeVitePluginOptions): PluginOption {
   let hmrEnabled = false;
   let sourcemapEnabled = true;
-
+  let base = '';
   function transform(code: string, id: string) {
+    const qi = id.lastIndexOf('?');
+    if (qi > 0) id = id.slice(0, qi);
     const type = id.endsWith('.tsx') ? 2 : id.endsWith('.ts') ? 1 : 0;
     if (type === 0) return;
     const binding = loadBinding(options?.loadDebugNativeBinding);
@@ -64,10 +66,18 @@ export function jingeVitePlugin(options?: JingeVitePluginOptions): PluginOption 
       apply: 'serve',
       configResolved(config) {
         if (config.server.hmr !== false) hmrEnabled = true;
+        base = config.base ?? '';
+        if (base === '/') base = '';
+        else if (base.endsWith('/')) base = base.slice(0, base.length - 1);
       },
       config() {
         const importSource = !!options?.importSource;
         return {
+          optimizeDeps: importSource
+            ? {
+                exclude: ['jinge', 'jinge-router'],
+              }
+            : undefined,
           resolve: {
             alias: [
               { find: /^jinge$/, replacement: importSource ? 'jinge/source' : 'jinge/dev' },
@@ -84,7 +94,7 @@ export function jingeVitePlugin(options?: JingeVitePluginOptions): PluginOption 
         {
           tag: 'script',
           attrs: { type: 'module' },
-          children: `import '/@jinge-hmr-runtime';`,
+          children: `import '${base}/@jinge-hmr-runtime';`,
         },
       ],
       transform(code: string, id: string) {
