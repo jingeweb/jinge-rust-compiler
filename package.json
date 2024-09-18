@@ -1,6 +1,6 @@
 {
   "name": "jinge-compiler",
-  "version": "4.0.0-alpha.6",
+  "version": "4.0.0-alpha.7",
   "description": "compiler for jinge framework",
   "author": "Yuhang Ge<abeyuhang@gmail.com>",
   "license": "ISC",
@@ -48,16 +48,16 @@
     "husky": "^9.1.6",
     "lint-staged": "^15.2.10",
     "prettier": "^3.3.3",
-    "tsup": "^8.2.4",
+    "tsup": "^8.3.0",
     "typescript": "^5.6.2",
-    "typescript-eslint": "^8.5.0",
-    "vite": "^5.4.5"
+    "typescript-eslint": "^8.6.0",
+    "vite": "^5.4.6"
   },
   "dependencies": {
-    "jinge-compiler-core-linux-aarch64": "4.0.0-alpha.4",
-    "jinge-compiler-core-linux-x86_64": "4.0.0-alpha.4",
-    "jinge-compiler-core-macos-aarch64": "4.0.0-alpha.4",
-    "jinge-compiler-core-macos-x86_64": "4.0.0-alpha.4",
-    "jinge-compiler-core-windows-x86_64": "4.0.0-alpha.4"
+    "jinge-compiler-core-linux-aarch64": "4.0.0-alpha.7",
+    "jinge-compiler-core-linux-x86_64": "4.0.0-alpha.7",
+    "jinge-compiler-core-macos-aarch64": "4.0.0-alpha.7",
+    "jinge-compiler-core-macos-x86_64": "4.0.0-alpha.7",
+    "jinge-compiler-core-windows-x86_64": "4.0.0-alpha.7"
   }
 }

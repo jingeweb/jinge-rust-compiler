@@ -290,13 +290,16 @@ impl Visit for TemplateParser {
       self.visit_expr(expr.as_ref());
     }
   }
-  fn visit_jsx_text(&mut self, t: &JSXText) {
-    let t = t.value.trim();
-    if t.is_empty() {
+  fn visit_jsx_text(&mut self, text_node: &JSXText) {
+    let text = &text_node.value;
+    if text.is_empty() {
       return;
     }
+    let Some(text) = trim_html_text(text) else {
+      return;
+    };
     self.push_expression(tpl_render_const_text(
-      ast_create_expr_lit_str(Atom::from(t)),
+      ast_create_expr_lit_str(text),
       self.context.is_parent_component(),
       self.context.root_container,
     ))
@@ -312,4 +315,73 @@ impl Visit for TemplateParser {
       ))
     };
   }
+}
+
+/**
+ * 处理 jsx text 中的空白（\n,\t 和空格），和 react 保持一致。
+ * 首尾的空白，如果包含了 \n，则全部 trim 去除；否则全部保留；
+ * 中间的空白，如果包含了 \n，替换为单个空格；否则全部保留。
+ */
+fn trim_html_text(text: &Atom) -> Option<Atom> {
+  let mut result = String::new();
+
+  let mut start_i = 0i32;
+  let mut not_whitespace_i = -1;
+  let mut meet_break_line = false;
+  let mut break_line_i = -1i32;
+  let mut meet_not_whitespace = false;
+
+  let bytes = text.as_bytes();
+  for i in 0..bytes.len() {
+    let chr = bytes[i];
+    if chr == b'\n' {
+      meet_break_line = true;
+      break_line_i = i as i32;
+      if not_whitespace_i >= 0 {
+        result.push_str(&text[(start_i as usize)..=(not_whitespace_i as usize)]);
+      }
+      not_whitespace_i = -1;
+      start_i = -1;
+    } else if chr != b' ' && chr != b'\t' {
+      if break_line_i >= 0 {
+        if meet_not_whitespace {
+          // 位于中间的带 \n 的空白才需要被替换为单个空格。首尾的带 \n 空白直接 trim 去除。
+          result.push_str(" ");
+        }
+        break_line_i = -1;
+      }
+      meet_not_whitespace = true;
+      not_whitespace_i = i as i32;
+      if start_i < 0 {
+        start_i = i as i32;
+      }
+    }
+  }
+  if meet_break_line && not_whitespace_i >= 0 {
+    result.push_str(&text[(start_i as usize)..]);
+  }
+
+  if !meet_break_line {
+    Some(text.clone())
+  } else if result.is_empty() {
+    None
+  } else {
+    Some(Atom::from(result))
+  }
+}
+
+#[test]
+fn test_trim_html_text() {
+  let mut t = Atom::from("  hello  ");
+  assert_eq!(trim_html_text(&t), Some(t));
+  t = Atom::from("   \n   hello  ");
+  assert_eq!(trim_html_text(&t), Some(Atom::from("hello  ")));
+  t = Atom::from("   \n   he  llo  \n   ");
+  assert_eq!(trim_html_text(&t), Some(Atom::from("he  llo")));
+  t = Atom::from(" he llo \n w \n  orld");
+  assert_eq!(trim_html_text(&t), Some(Atom::from(" he llo w orld")));
+  t = Atom::from("  \n  \n\n  ");
+  assert_eq!(trim_html_text(&t), None);
+  t = Atom::from("  a \n\n\n b c \n d ");
+  assert_eq!(trim_html_text(&t), Some(Atom::from("  a b c d ")));
 }
