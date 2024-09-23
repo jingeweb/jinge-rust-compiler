@@ -1,7 +1,8 @@
-import { readFileSync } from 'node:fs';
+import { promises as fs } from 'node:fs';
 import ts from 'typescript';
 import { loopReadDir, parseCsv, writeCsv } from './helper';
-import { calcKey } from './helper';
+import { calcIntlTextKey } from './helper';
+import path from 'node:path';
 
 type Dict = Record<
   string,
@@ -10,10 +11,10 @@ type Dict = Record<
     defaultMessage: string;
   }
 >;
-function parseFile({ file, filename, dict }: { file: string; filename: string; dict: Dict }) {
+async function parseFile({ file, filename, dict }: { file: string; filename: string; dict: Dict }) {
   const src = ts.createSourceFile(
     file,
-    readFileSync(file, 'utf-8'),
+    await fs.readFile(file, 'utf-8'),
     ts.ScriptTarget.ES2022,
     /*setParentNodes */ true,
   );
@@ -53,7 +54,7 @@ function parseFile({ file, filename, dict }: { file: string; filename: string; d
 
     const defaultMessage = defaultText.text;
     if (!key) {
-      key = isolated ? calcKey(defaultMessage, filename) : calcKey(defaultMessage);
+      key = isolated ? calcIntlTextKey(defaultMessage, filename) : calcIntlTextKey(defaultMessage);
     }
     hasMessage = true;
     dict[key] = {
@@ -68,39 +69,48 @@ function parseFile({ file, filename, dict }: { file: string; filename: string; d
 
 export async function intlExtract({
   languages,
-  srcDir,
+  srcDirs,
   translateFilePath,
 }: {
   languages: string[];
-  srcDir: string;
+  srcDirs: string[];
   translateFilePath: string;
 }) {
   console.info('Start Extract...\n');
-  const files = loopReadDir(srcDir);
-  const cwd = process.cwd();
   const dict: Dict = {};
-  files.forEach((file) => {
-    if (!file.startsWith(cwd)) {
-      return;
+  const cwd = process.cwd();
+  for await (const srcDir of srcDirs) {
+    try {
+      const st = await fs.stat(srcDir);
+      if (!st.isDirectory()) {
+        console.warn(`Warining: ${srcDir} is not directory, ignored.`);
+        continue;
+      }
+    } catch (ex) {
+      if ((ex as { code: string }).code === 'ENOENT') {
+        console.error(`Warining: ${srcDir} not exits, ignored.`);
+        continue;
+      } else {
+        throw ex;
+      }
     }
-    if (!/\.ts(x)?$/.test(file)) {
-      return;
+    const files = await loopReadDir(srcDir);
+    for await (const file of files) {
+      /** 注意此处 filename 的获取方式需要和 `/src/intl.rs` 中的算法一致(见该文件注释），如果修改两处都要变更。 */
+      const filename = path.relative(cwd, file);
+      if (
+        await parseFile({
+          file,
+          filename,
+          dict,
+        })
+      ) {
+        console.info(filename, '  ...Extracted');
+      }
     }
+  }
 
-    /** 注意此处 filename 的获取方式需要和 `/src/intl.rs` 中的算法一致(见该文件注释），如果修改两处都要变更。 */
-    const filename = file.slice(cwd.length);
-    if (
-      parseFile({
-        file,
-        filename,
-        dict,
-      })
-    ) {
-      console.info(filename, '  ...Extracted');
-    }
-  });
-
-  const trans = parseCsv(translateFilePath) as Record<string, string>[];
+  const trans = (await parseCsv(translateFilePath)) as Record<string, string>[];
   const transDict = Object.fromEntries(trans.map((t) => [t.id, t]));
   const rows: Record<string, string>[] = [];
 
@@ -120,6 +130,6 @@ export async function intlExtract({
   rows.sort((ra, rb) => {
     return ra.file > rb.file ? -1 : ra.file < rb.file ? 1 : 0;
   });
-  writeCsv(['id', 'orig', ...languages], rows, translateFilePath);
+  await writeCsv(['id', 'orig', ...languages], rows, translateFilePath);
   console.info('\nAll Done.');
 }

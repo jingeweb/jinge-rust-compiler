@@ -1,23 +1,33 @@
 import path from 'node:path';
-import { statSync } from 'node:fs';
+import { promises as fs } from 'node:fs';
 import { intlExtract } from '../intl/extract';
-
-const langs = ['en', 'zhCn', 'zhTr'];
+import { loopMkdir, parseExtractArgvs } from '../intl/helper';
 
 (async function () {
-  const cwd = process.cwd();
-
-  const srcDir = path.join(cwd, 'src');
-  if (!statSync(srcDir).isDirectory()) {
-    return;
+  const argv = parseExtractArgvs();
+  {
+    const csvDir = path.dirname(argv.translateCsv);
+    await loopMkdir(csvDir);
+    try {
+      const st = await fs.stat(argv.translateCsv);
+      if (!st.isFile()) {
+        console.error(`${argv.translateCsv} is not file`);
+        process.exit(-1);
+      }
+    } catch (ex) {
+      if ((ex as { code: string }).code === 'ENOENT') {
+        await fs.writeFile(argv.translateCsv, ''); // touch file
+      } else {
+        throw ex;
+      }
+    }
   }
-  const translateFilePath = path.resolve(cwd, './intl/translate.csv');
-  const options = {
-    srcDir,
-    translateFilePath,
-    languages: langs,
-  };
-  await intlExtract(options);
+
+  await intlExtract({
+    srcDirs: argv.inputDirs,
+    translateFilePath: argv.translateCsv,
+    languages: argv.languages,
+  });
 })().catch((ex) => {
   console.error(ex);
 });

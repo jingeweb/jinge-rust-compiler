@@ -1,4 +1,4 @@
-import { writeFileSync } from 'node:fs';
+import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import ts from 'typescript';
 import { parseCsv } from './helper';
@@ -82,16 +82,20 @@ ${[...tags.values()]
   }
 }
 export async function intlCompile({
-  languages,
   outputDir,
-  translateFilePath,
+  translateCsvFile,
 }: {
-  languages: string[];
-  srcDir: string;
   outputDir: string;
-  translateFilePath: string;
+  translateCsvFile: string;
 }) {
-  const trans = parseCsv(translateFilePath) as Record<string, string>[];
+  const trans = (await parseCsv(translateCsvFile)) as Record<string, string>[];
+  if (!trans.length) {
+    console.warn('Nothing to compile.');
+    return;
+  }
+  const languages = Object.keys(trans[0]).filter((v) => v !== 'id' && v !== 'orig');
+  console.info('Will compile languages:', languages, '...');
+
   const outputs = Object.fromEntries(
     languages.map((l) => [
       l,
@@ -114,14 +118,14 @@ export async function intlCompile({
     });
   });
 
-  languages.forEach((lang) => {
+  for await (const lang of languages) {
     const loc = outputs[lang];
     let cnt = `export default {\n${loc.rows.join(',\n')}\n}`;
     if (loc.hasTags || loc.hasVars) {
       cnt = `import { ReactNode } from 'react';
-type CtxFn = (c?: ReactNode) => ReactNode;
-type Ctx = Record<string, ReactNode | CtxFn>;${cnt}`;
+  type CtxFn = (c?: ReactNode) => ReactNode;
+  type Ctx = Record<string, ReactNode | CtxFn>;${cnt}`;
     }
-    writeFileSync(path.join(outputDir, `${lang}.tsx`), cnt);
-  });
+    await fs.writeFile(path.join(outputDir, `${lang}.tsx`), cnt);
+  }
 }

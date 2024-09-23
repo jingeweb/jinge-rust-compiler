@@ -1,23 +1,13 @@
-import path from 'node:path';
-import { statSync } from 'node:fs';
 import { intlCompile } from '../intl/compile';
+import { loopMkdir, parseCompileArgvs } from '../intl/helper';
 
 (async function () {
-  const cwd = process.cwd();
-
-  const srcDir = path.join(cwd, 'src');
-  if (!statSync(srcDir).isDirectory()) {
-    return;
-  }
-  const translateFilePath = path.resolve(cwd, './intl/translate.csv');
-  const outputDir = path.resolve(srcDir, './intl');
-  const options = {
-    srcDir,
-    outputDir,
-    translateFilePath,
-    languages: ['zh-cn', 'zh-tr', 'en'],
-  };
-  await intlCompile(options);
+  const argv = parseCompileArgvs();
+  await loopMkdir(argv.outputDir);
+  await intlCompile({
+    outputDir: argv.outputDir,
+    translateCsvFile: argv.translateCsv,
+  });
   console.info('Intl Compile Done.');
 })().catch((ex) => {
   console.error(ex);
