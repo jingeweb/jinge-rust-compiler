@@ -11,6 +11,7 @@ mod attrs;
 mod component;
 mod cond;
 mod expr;
+mod intl;
 mod jsx;
 mod map;
 mod map_key;
@@ -161,7 +162,9 @@ impl TemplateParser {
     }
   }
   fn parse_call(&mut self, parent_expr: &Expr, callee: &Expr, args: &Vec<ExprOrSpread>) {
-    if self.parse_map_fn(callee, args) {
+    if self.parse_intl_t(callee, args) {
+      // 如果是 t 函数，则转换为国际化组件。
+    } else if self.parse_map_fn(callee, args) {
       // 如果是 [xx].map() 函数调用，则转换为 <For> 组件。
     } else if self.parse_slot_call_expr(callee, args) {
       // 如果是 props.children() 或 props.children.xx() 的调用，则转换为 Slot
