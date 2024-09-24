@@ -3,9 +3,6 @@ import path from 'node:path';
 import ts from 'typescript';
 import { parseCsv } from './helper';
 
-function uf(s: string) {
-  return s.replace(/^./, (m) => m.toUpperCase());
-}
 function compileText(
   lang: string,
   key: string,
@@ -36,8 +33,11 @@ function compileText(
 
   const vars = new Set<string>();
   const tags = new Set<string>();
+  let stack = [] as string[];
   function walk(node: ts.Node) {
-    if (ts.isJsxExpression(node)) {
+    if (ts.isJsxText(node)) {
+      stack.push(node.text);
+    } else if (ts.isJsxExpression(node)) {
       const e = node.expression?.getFullText().trim();
       if (!e) err();
       const vn = e.split('.')[0];
@@ -45,6 +45,7 @@ function compileText(
       if (tags.has(vn)) err(`conflict var name "${vn}"`);
       vars.add(vn);
       flag.hasVars = true;
+      stack.push(`$\{${e}}`);
     } else if (ts.isJsxElement(node)) {
       const tagNode = node.openingElement.tagName;
       if (!ts.isIdentifier(tagNode)) err('not tag???');
@@ -52,7 +53,13 @@ function compileText(
       if (vars.has(tag)) err(`conflict tag name "${tag}"`);
       tags.add(tag);
       flag.hasTags = true;
+      const parentStack = stack;
+      stack = [];
       ts.forEachChild(node, walk);
+      if (stack.length > 0) {
+        parentStack.push(`$\{$jg$(${tag}, \`${stack.join('')}\`)}`);
+      }
+      stack = parentStack;
     }
   }
   ts.forEachChild(expr, walk);
@@ -60,25 +67,7 @@ function compileText(
   if (!vars.size && !tags.size) {
     return `() => ${JSON.stringify(text)}`;
   } else {
-    if (tags.size) {
-      tags.forEach((tag) => {
-        text = text
-          .replace(new RegExp(`\\<${tag}\\>`, 'g'), `<${uf(tag)}>`)
-          .replace(new RegExp(`\\</${tag}\\>`, 'g'), `</${uf(tag)}>`);
-      });
-    }
-    return `(ctx?: Ctx) => {
-  const { ${[...vars.values()].join(',')} } = (ctx as Record<string, ReactNode>) ?? {};
-${[...tags.values()]
-  .map(
-    (tag) =>
-      `const ${uf(
-        tag,
-      )} = ({ children }: { children?: ReactNode }) => (ctx?.${tag} as CtxFn)?.(children);`,
-  )
-  .join('\n')}
-  return <>${text}</>;
-}`;
+    return `({ ${[...vars.values(), ...tags.values()].join(',')} }: Record<string, string>) => \`${stack.join('')}\``;
   }
 }
 export async function intlCompile({
@@ -121,11 +110,10 @@ export async function intlCompile({
   for await (const lang of languages) {
     const loc = outputs[lang];
     let cnt = `export default {\n${loc.rows.join(',\n')}\n}`;
-    if (loc.hasTags || loc.hasVars) {
-      cnt = `import { ReactNode } from 'react';
-  type CtxFn = (c?: ReactNode) => ReactNode;
-  type Ctx = Record<string, ReactNode | CtxFn>;${cnt}`;
+    if (loc.hasTags) {
+      cnt = `const $jg$ = (src: string, content: string) => src.replace('{:?}', content);
+${cnt}`;
     }
-    await fs.writeFile(path.join(outputDir, `${lang}.tsx`), cnt);
+    await fs.writeFile(path.join(outputDir, `${lang}.ts`), cnt);
   }
 }
