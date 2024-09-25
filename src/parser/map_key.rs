@@ -3,7 +3,7 @@ use swc_core::{atoms::Atom, ecma::ast::*};
 
 use crate::ast::ast_create_expr_arrow_fn;
 
-use super::{emit_error, JINGE_LOOP_KEY};
+use super::{emit_error, JINGE_KEY};
 
 const BAD_KEY_WARNING: &'static str = "警告：key 的表达式必须是 map 函数的参数或参数的属性表达式";
 
@@ -31,7 +31,7 @@ impl KeyFnFindVisitor {
       let JSXAttrOrSpread::JSXAttr(attr) = attr else {
         return None;
       };
-      if !matches!(&attr.name, JSXAttrName::Ident(id) if JINGE_LOOP_KEY.eq(&id.sym)) {
+      if !matches!(&attr.name, JSXAttrName::Ident(id) if JINGE_KEY.eq(&id.sym)) {
         return None;
       }
       if self.arg_data.is_none() && self.arg_index.is_none() {

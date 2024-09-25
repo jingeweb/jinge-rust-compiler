@@ -215,18 +215,8 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
 
 #[test]
 fn test_transform() {
-  let (code, parsed_components, _) = inner_transform(
-    "test.tsx".into(),
-    2,
-    "export function App(props) {
-    const state = {};
-  return <p>state: {state.a?.c}</p>
-}
-
-"
-    .into(),
-    true,
-  );
+  let (code, parsed_components, _) =
+    inner_transform("test.tsx".into(), 2, "`hello, ${a}我`;".into(), true);
   println!("PARSED COMPONENTS: {}", parsed_components);
   std::fs::write("target/out.ts", &code).unwrap();
   // println!("{:#?}", code);

@@ -36,6 +36,8 @@ macro_rules! x {
 // TODO: should use macro to generate
 lazy_static::lazy_static! {
   pub static ref JINGE_IMPORT_TEXT_RENDER_FN: JingeImport = x!("textRenderFn");
+  pub static ref JINGE_IMPORT_RENDER_INTL_TEXT: JingeImport = x!("renderIntlText");
+  pub static ref JINGE_IMPORT_RENDER_INTL_RICH_TEXT: JingeImport = x!("renderIntlRichText");
   pub static ref JINGE_IMPORT_CREATE_ELE: JingeImport = x!("createEle");
   pub static ref JINGE_IMPORT_CREATE_TEXT_NODE: JingeImport = x!("createTextNode");
 
@@ -63,6 +65,7 @@ lazy_static::lazy_static! {
   pub static ref JINGE_IMPORT_RENDER_SLOT: JingeImport = x!("renderSlotFunction");
   pub static ref JINGE_IMPORT_RENDER_FC: JingeImport = x!("renderFunctionComponent");
   pub static ref JINGE_IMPORT_NON_ROOT_COMPONENT_NODES: JingeImport = x!("NON_ROOT_COMPONENT_NODES");
+
   pub static ref JINGE_EL_IDENT: Ident = "$jg$".into();
   pub static ref JINGE_ATTR_IDENT: Ident = "attrs$jg$".into();
   pub static ref JINGE_LOOP_EACH_IDENTS: Vec<Atom> = vec!["each$jg$0".into(), "each$jg$1".into(), "each$jg$2".into()];
@@ -84,8 +87,8 @@ lazy_static::lazy_static! {
   pub static ref JINGE_UNDEFINED: Atom = "undefined".into();
   pub static ref JINGE_MAP: Atom = "map".into();
   pub static ref JINGE_LOOP: Atom = "loop".into();
-  pub static ref JINGE_LOOP_KEY: Atom = "key".into();
-  pub static ref JINGE_LOOP_KEY_FN: Atom = "keyFn".into();
+  pub static ref JINGE_KEY: Atom = "key".into();
+  pub static ref JINGE_KEY_FN: Atom = "keyFn".into();
   pub static ref JINGE_EMPTY_STR: Atom = "".into();
   pub static ref JINGE_DOUBLECLICK: Atom = "doubleclick".into();
   pub static ref JINGE_DBLCLICK: Atom = "dblclick".into();
@@ -100,8 +103,10 @@ lazy_static::lazy_static! {
 }
 
 fn gen_import_jinge() -> ModuleItem {
-  let imports: [&'static JingeImport; 26] = [
+  let imports: [&'static JingeImport; 28] = [
     &JINGE_IMPORT_TEXT_RENDER_FN,
+    &JINGE_IMPORT_RENDER_INTL_TEXT,
+    &JINGE_IMPORT_RENDER_INTL_RICH_TEXT,
     &JINGE_IMPORT_CREATE_ELE,
     &JINGE_IMPORT_CREATE_ELE_A,
     &JINGE_IMPORT_CONTEXT,

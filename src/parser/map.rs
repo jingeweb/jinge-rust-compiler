@@ -8,8 +8,8 @@ use crate::{
 };
 
 use super::{
-  emit_error, map_key::KeyFnFindVisitor, TemplateParser, JINGE_IMPORT_FOR, JINGE_LOOP,
-  JINGE_LOOP_EACH_IDENTS, JINGE_LOOP_EACH_INDEX, JINGE_LOOP_KEY_FN, JINGE_MAP,
+  emit_error, map_key::KeyFnFindVisitor, TemplateParser, JINGE_IMPORT_FOR, JINGE_KEY_FN,
+  JINGE_LOOP, JINGE_LOOP_EACH_IDENTS, JINGE_LOOP_EACH_INDEX, JINGE_MAP,
 };
 
 /// map 循环转换成 <For> 组件时，需要把 map 函数的参数，转成 <For> 组件的 Slot 函数的参数。
@@ -182,7 +182,7 @@ fn gen_for_component(looop: &Box<Expr>, key: Option<Box<Expr>>, func: ArrowExpr)
   if let Some(key) = key {
     attrs.push(JSXAttrOrSpread::JSXAttr(JSXAttr {
       span: DUMMY_SP,
-      name: JSXAttrName::Ident(IdentName::from(JINGE_LOOP_KEY_FN.clone())),
+      name: JSXAttrName::Ident(IdentName::from(JINGE_KEY_FN.clone())),
       value: Some(JSXAttrValue::JSXExprContainer(JSXExprContainer {
         span: key.span(),
         expr: JSXExpr::Expr(key),

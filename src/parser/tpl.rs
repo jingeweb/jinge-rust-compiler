@@ -88,7 +88,39 @@ pub fn tpl_render_const_text(
   }
 }
 
-// pub fn tpl_render_intl()
+pub fn tpl_render_intl_text(
+  key: &Atom,
+  params: Option<&ExprOrSpread>,
+  default_text: Option<&Atom>,
+  is_parent_component: bool,
+  is_root_container: bool,
+) -> Box<Expr> {
+  println!("{}, {}", is_parent_component, is_root_container);
+  let mut args = vec![
+    ast_create_arg_expr(ast_create_id_of_container(is_root_container)),
+    ast_create_arg_expr(ast_create_expr_lit_bool(is_parent_component)),
+    ast_create_arg_expr(ast_create_expr_lit_str(key.clone())),
+  ];
+  if let Some(params) = params {
+    args.push(params.clone());
+    println!("{:?}", params);
+  }
+  if let Some(default_text) = default_text {
+    if params.is_none() {
+      args.push(ast_create_arg_expr(Box::new(Expr::Object(ObjectLit {
+        span: DUMMY_SP,
+        props: vec![],
+      }))));
+    }
+    args.push(ast_create_arg_expr(ast_create_expr_lit_str(
+      default_text.clone(),
+    )));
+  }
+  ast_create_expr_call(
+    ast_create_expr_ident(JINGE_IMPORT_RENDER_INTL_TEXT.local()),
+    args,
+  )
+}
 
 pub fn tpl_render_expr_text(
   expr_result: ExprParseResult,

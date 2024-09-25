@@ -7,9 +7,15 @@ export interface JingeVitePluginOptions {
    */
   loadDebugNativeBinding?: boolean;
   /**
-   * 将 jinge 和 jinge-router 的 import 转换成从源码 import。
+   * 默认情况下，`jinge` 库通过 `package.json` 导出的是 `dist/jinge.prod.js`，即生产发布版；但 `jinge` 库还提供了 `jinge/dev` 和 `jinge/source` 的导出，依次是导出 `dist/jinge.dev.js` 以及 `src/index.ts` 源码。
+   *
+   * 配置 importAlias 为 'source' 则会配置 vite alias，将 `import from 'jinge'` 改为 `import from 'jinge/source'`，这样的配置通常用于 jinge 库本身的研发。
+   *
+   * 需要说明的是，在 vite serve 模式下，如果没指定 `importAlias` 参数，也会默认使用 `dev`，即从 `jinge/dev` 导入非压缩版本的 `dist/jinge.dev.js`。
+   *
+   * 除 `jinge` 库外，这个参数还会对 `jinge-router` 库以同样的作用生效。
    */
-  importSource?: boolean;
+  importAlias?: 'source' | 'dev';
 }
 
 const HMR_RUNTIME_PATH = '/@jinge-hmr-runtime';
@@ -26,6 +32,24 @@ if (import.meta.hot) {
     newModule.__hmrUpdate__();
   });
 }`;
+}
+
+function getAliasConfig(importAlias?: 'source' | 'dev') {
+  if (!importAlias) return undefined;
+  return {
+    optimizeDeps: {
+      exclude: ['jinge', 'jinge-router'],
+    },
+    resolve: {
+      alias: [
+        { find: 'jinge', replacement: `jinge/${importAlias}` },
+        {
+          find: 'jinge-router',
+          replacement: `jinge-router/${importAlias}`,
+        },
+      ],
+    },
+  };
 }
 export function jingeVitePlugin(options?: JingeVitePluginOptions): PluginOption {
   let hmrEnabled = false;
@@ -50,6 +74,9 @@ export function jingeVitePlugin(options?: JingeVitePluginOptions): PluginOption 
       configResolved(config) {
         if (config.build?.sourcemap) sourcemapEnabled = true;
       },
+      config() {
+        return getAliasConfig(options?.importAlias);
+      },
       transform(code: string, id: string) {
         return transform(code, id);
       },
@@ -71,22 +98,8 @@ export function jingeVitePlugin(options?: JingeVitePluginOptions): PluginOption 
         else if (base.endsWith('/')) base = base.slice(0, base.length - 1);
       },
       config() {
-        const importSource = !!options?.importSource;
         return {
-          optimizeDeps: importSource
-            ? {
-                exclude: ['jinge', 'jinge-router'],
-              }
-            : undefined,
-          resolve: {
-            alias: [
-              { find: /^jinge$/, replacement: importSource ? 'jinge/source' : 'jinge/dev' },
-              {
-                find: /^jinge-router$/,
-                replacement: importSource ? 'jinge-router/source' : 'jinge-router/dev',
-              },
-            ],
-          },
+          ...getAliasConfig(options?.importAlias ?? 'dev'), // serve 模式默认将 import 别名为 dev，即加载 `dist/jinge.dev.js` 而不是 `dist/jinge.prod.js`
           esbuild: false,
         };
       },
