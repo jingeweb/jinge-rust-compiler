@@ -88,29 +88,29 @@ pub fn tpl_render_const_text(
   }
 }
 
+/// 生成不带 watch params 参数的简单 renderIntlText 渲染函数。
+/// 如果 params 参数不为空，则一定是全常量无需监听变更的 object。
 pub fn tpl_render_intl_text(
   key: &Atom,
-  params: Option<&ExprOrSpread>,
+  params: Option<ExprOrSpread>,
   default_text: Option<&Atom>,
   is_parent_component: bool,
   is_root_container: bool,
 ) -> Box<Expr> {
-  println!("{}, {}", is_parent_component, is_root_container);
   let mut args = vec![
     ast_create_arg_expr(ast_create_id_of_container(is_root_container)),
     ast_create_arg_expr(ast_create_expr_lit_bool(is_parent_component)),
     ast_create_arg_expr(ast_create_expr_lit_str(key.clone())),
   ];
+  let has_params = params.is_some();
   if let Some(params) = params {
-    args.push(params.clone());
-    println!("{:?}", params);
+    args.push(params);
   }
   if let Some(default_text) = default_text {
-    if params.is_none() {
-      args.push(ast_create_arg_expr(Box::new(Expr::Object(ObjectLit {
-        span: DUMMY_SP,
-        props: vec![],
-      }))));
+    if !has_params {
+      args.push(ast_create_arg_expr(Box::new(Expr::Ident(Ident::from(
+        JINGE_UNDEFINED.clone(),
+      )))));
     }
     args.push(ast_create_arg_expr(ast_create_expr_lit_str(
       default_text.clone(),

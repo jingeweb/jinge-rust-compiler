@@ -112,6 +112,20 @@ impl TemplateParser {
       .expressions
       .push(ast_create_arg_expr(e));
   }
+  #[inline]
+  /// push spread expression to last slot
+  fn push_expression_with_spread(&mut self, e: Box<Expr>) {
+    self
+      .context
+      .slots
+      .last_mut()
+      .unwrap()
+      .expressions
+      .push(ExprOrSpread {
+        spread: Some(DUMMY_SP),
+        expr: e,
+      });
+  }
   pub fn parse(&mut self, expr: &Expr) -> Option<Box<Expr>> {
     if has_jsx(expr) || matches!(expr, Expr::Lit(_)) {
       self.visit_expr(expr);

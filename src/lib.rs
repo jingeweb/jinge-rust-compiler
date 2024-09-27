@@ -4,9 +4,11 @@ mod parser;
 mod visitor;
 
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use neon::prelude::*;
 
+use swc_common::input::SourceFileInput;
 use swc_common::{
   collections::AHashMap,
   errors::{ColorConfig, Handler, HANDLER},
@@ -14,9 +16,9 @@ use swc_common::{
   sync::Lrc,
   BytePos, FileName, Globals, Mark, SourceMap, GLOBALS,
 };
-use swc_core::ecma::ast::{Ident, IdentName};
+use swc_core::ecma::ast::{EsVersion, Ident, IdentName};
 use swc_ecma_codegen::{text_writer::JsWriter, Emitter, Node};
-use swc_ecma_parser::{lexer::Lexer, Parser, StringInput, Syntax, TsSyntax};
+use swc_ecma_parser::{lexer::Lexer, Parser, Syntax, TsSyntax};
 use swc_ecma_transforms_base::fixer::fixer;
 use swc_ecma_transforms_typescript::strip;
 use swc_ecma_visit::{as_folder, noop_visit_type, FoldWith, Visit, VisitWith};
@@ -114,8 +116,8 @@ fn inner_transform(
   sourcemap_enabled: bool,
 ) -> (String, String, Option<String>) {
   // let code = Lrc::new(code);
-  let cm: Lrc<SourceMap> = Lrc::<SourceMap>::default();
-  let fm = cm.new_source_file(Lrc::new(FileName::from(PathBuf::from(&filename))), code);
+  let cm: Arc<SourceMap> = Arc::<SourceMap>::default();
+  let fm = cm.new_source_file(Arc::new(FileName::from(PathBuf::from(&filename))), code);
   let handler = Handler::with_tty_emitter(ColorConfig::Auto, true, false, Some(cm.clone()));
   // HANDLER.set(t, f)
   let lexer = Lexer::new(
@@ -123,8 +125,8 @@ fn inner_transform(
       tsx: true,
       ..Default::default()
     }),
-    Default::default(),
-    StringInput::new(&fm.src, BytePos(0), BytePos(fm.src.len() as u32)),
+    EsVersion::latest(),
+    SourceFileInput::from(&*fm),
     None,
   );
 
@@ -215,11 +217,22 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
 
 #[test]
 fn test_transform() {
-  let (code, parsed_components, _) =
-    inner_transform("test.tsx".into(), 2, "`hello, ${a}我`;".into(), true);
+  let (code, parsed_components, _) = inner_transform(
+    "test.tsx".into(),
+    2,
+    "const $jg$ = (src: string, content: string) => src.replace('{:?}', content);
+export default {
+  XKVhbP: ({ name }: Record<string, string>) => `你好，${name}`,
+  m3HSJL: () => '你好',
+  '7fxvwR': ({ name, red, b }: Record<string, string>) =>
+    `你好，${$jg$(red, `${$jg$(b, `哦哦`)}：${name}`)}`,
+};"
+      .into(),
+    true,
+  );
   println!("PARSED COMPONENTS: {}", parsed_components);
   std::fs::write("target/out.ts", &code).unwrap();
   // println!("{:#?}", code);
   // assert_eq!(code, "x");
-  assert!(false)
+  // assert!(false)
 }

@@ -260,26 +260,17 @@ impl TemplateParser {
       )),
     }));
 
-    self
-      .context
-      .slots
-      .last_mut()
-      .unwrap()
-      .expressions
-      .push(ExprOrSpread {
-        spread: Some(DUMMY_SP),
-        expr: ast_create_expr_call(
-          ast_create_expr_arrow_fn(
-            vec![],
-            Box::new(BlockStmtOrExpr::BlockStmt(BlockStmt {
-              span: DUMMY_SP,
-              ctxt: SyntaxContext::empty(),
-              stmts,
-            })),
-          ),
-          vec![],
-        ),
-      });
+    self.push_expression_with_spread(ast_create_expr_call(
+      ast_create_expr_arrow_fn(
+        vec![],
+        Box::new(BlockStmtOrExpr::BlockStmt(BlockStmt {
+          span: DUMMY_SP,
+          ctxt: SyntaxContext::empty(),
+          stmts,
+        })),
+      ),
+      vec![],
+    ));
   }
   fn transform_slot_args(
     &mut self,
