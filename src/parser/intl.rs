@@ -7,8 +7,8 @@ use super::{
   ast_create_arg_expr, ast_create_expr_arrow_fn, ast_create_expr_call, ast_create_expr_ident,
   ast_create_stmt_decl_const, emit_error,
   expr::{ExprParseResult, ExprVisitor},
-  tpl_render_intl_text, tpl_watch_and_render, TemplateParser, JINGE_ATTR_IDENT, JINGE_IMPORT_VM,
-  JINGE_KEY, JINGE_T, JINGE_V_IDENT,
+  tpl_render_intl_normal_text, tpl_render_intl_text, tpl_watch_and_render, TemplateParser,
+  JINGE_ATTR_IDENT, JINGE_IMPORT_VM, JINGE_KEY, JINGE_T, JINGE_V_IDENT,
 };
 
 /// 计算文本的 hash。
@@ -29,6 +29,7 @@ fn calc_key(message: &str, filename: Option<&str>) -> String {
 }
 
 struct IntlParams {
+  pub is_rich_text: bool,
   pub const_props: Vec<(PropName, Box<Expr>)>,
   pub watch_props: Vec<(PropName, ExprParseResult)>,
 }
@@ -85,7 +86,7 @@ impl TemplateParser {
     }
 
     let Some(params) = params_arg else {
-      self.push_expression(tpl_render_intl_text(
+      self.push_expression(tpl_render_intl_normal_text(
         &key.unwrap(),
         None,
         Some(default_text),
@@ -100,7 +101,7 @@ impl TemplateParser {
         options_arg.span(),
         "t 函数的 params 参数不支持 ... 解构写法",
       );
-      self.push_expression(tpl_render_intl_text(
+      self.push_expression(tpl_render_intl_normal_text(
         &key.unwrap(),
         None,
         Some(default_text),
@@ -112,7 +113,7 @@ impl TemplateParser {
 
     let Expr::Object(params) = params.expr.as_ref() else {
       emit_error(options_arg.span(), "t 函数的 params 参数必须是 object 类型");
-      self.push_expression(tpl_render_intl_text(
+      self.push_expression(tpl_render_intl_normal_text(
         &key.unwrap(),
         None,
         Some(default_text),
@@ -123,6 +124,7 @@ impl TemplateParser {
     };
 
     let mut vm = IntlParams {
+      is_rich_text: false,
       const_props: vec![],
       watch_props: vec![],
     };
@@ -133,7 +135,7 @@ impl TemplateParser {
             options_arg.span(),
             "t 函数的 params 参数不支持 ... 解构写法",
           );
-          self.push_expression(tpl_render_intl_text(
+          self.push_expression(tpl_render_intl_normal_text(
             &key.unwrap(),
             None,
             Some(default_text),
@@ -148,7 +150,7 @@ impl TemplateParser {
               prop.span(),
               "t 函数的 params 参数必须是 key-value 类型的 Object。",
             );
-            self.push_expression(tpl_render_intl_text(
+            self.push_expression(tpl_render_intl_normal_text(
               &key.unwrap(),
               None,
               Some(default_text),
@@ -163,19 +165,11 @@ impl TemplateParser {
             | Expr::JSXEmpty(_)
             | Expr::JSXFragment(_)
             | Expr::JSXMember(_)
-            | Expr::JSXNamespacedName(_) => {
-              emit_error(
-                kv.value.span(),
-                "t 函数的 params 参数不支持 JSX 元素作为属性值",
-              );
-              self.push_expression(tpl_render_intl_text(
-                &key.unwrap(),
-                None,
-                Some(default_text),
-                self.context.is_parent_component(),
-                self.context.root_container,
-              ));
-              return true;
+            | Expr::JSXNamespacedName(_)
+            | Expr::Arrow(_)
+            | Expr::Fn(_) => {
+              // jsx 或者函数都认为是富文本格式的组件
+              vm.is_rich_text = true;
             }
             Expr::Lit(val) => {
               vm.const_props
@@ -211,7 +205,8 @@ impl TemplateParser {
     }));
 
     if !has_watch_props {
-      self.push_expression(tpl_render_intl_text(
+      let expr = tpl_render_intl_text(
+        vm.is_rich_text,
         &key.unwrap(),
         if has_const_props {
           Some(ExprOrSpread {
@@ -224,7 +219,12 @@ impl TemplateParser {
         Some(default_text),
         self.context.is_parent_component(),
         self.context.root_container,
-      ));
+      );
+      if vm.is_rich_text {
+        self.push_expression_with_spread(expr);
+      } else {
+        self.push_expression(expr);
+      }
       return true;
     }
 
@@ -273,6 +273,7 @@ impl TemplateParser {
     stmts.push(Stmt::Return(ReturnStmt {
       span: DUMMY_SP,
       arg: Some(tpl_render_intl_text(
+        vm.is_rich_text,
         &key.unwrap(),
         Some(ExprOrSpread {
           spread: None,
@@ -284,7 +285,7 @@ impl TemplateParser {
       )),
     }));
 
-    self.push_expression(ast_create_expr_call(
+    let expr = ast_create_expr_call(
       ast_create_expr_arrow_fn(
         vec![],
         Box::new(BlockStmtOrExpr::BlockStmt(BlockStmt {
@@ -294,7 +295,12 @@ impl TemplateParser {
         })),
       ),
       vec![],
-    ));
+    );
+    if vm.is_rich_text {
+      self.push_expression_with_spread(expr);
+    } else {
+      self.push_expression(expr);
+    }
 
     true
   }

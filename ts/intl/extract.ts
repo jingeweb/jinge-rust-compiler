@@ -11,6 +11,8 @@ type Dict = Record<
     defaultMessage: string;
   }
 >;
+
+const CWD = process.cwd();
 async function parseFile({ file, filename, dict }: { file: string; filename: string; dict: Dict }) {
   const src = ts.createSourceFile(
     file,
@@ -115,7 +117,8 @@ export async function intlExtract({
   const rows: Record<string, string>[] = [];
 
   Object.entries(dict).forEach(([id, v]) => {
-    const row: Record<string, string> = { id, orig: v.defaultMessage };
+    const fp = path.relative(CWD, v.file);
+    const row: Record<string, string> = { id, file: fp, orig: v.defaultMessage };
     const transRow = transDict[id];
     if (transRow) {
       languages.forEach((l) => {
@@ -130,6 +133,6 @@ export async function intlExtract({
   rows.sort((ra, rb) => {
     return ra.file > rb.file ? -1 : ra.file < rb.file ? 1 : 0;
   });
-  await writeCsv(['id', 'orig', ...languages], rows, translateFilePath);
+  await writeCsv(['id', 'file', 'orig', ...languages], rows, translateFilePath);
   console.info('\nAll Done.');
 }

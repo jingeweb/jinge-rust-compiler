@@ -88,9 +88,8 @@ pub fn tpl_render_const_text(
   }
 }
 
-/// 生成不带 watch params 参数的简单 renderIntlText 渲染函数。
-/// 如果 params 参数不为空，则一定是全常量无需监听变更的 object。
 pub fn tpl_render_intl_text(
+  is_rich: bool,
   key: &Atom,
   params: Option<ExprOrSpread>,
   default_text: Option<&Atom>,
@@ -117,8 +116,32 @@ pub fn tpl_render_intl_text(
     )));
   }
   ast_create_expr_call(
-    ast_create_expr_ident(JINGE_IMPORT_RENDER_INTL_TEXT.local()),
+    ast_create_expr_ident(if is_rich {
+      JINGE_IMPORT_RENDER_INTL_RICH_TEXT.local()
+    } else {
+      JINGE_IMPORT_RENDER_INTL_TEXT.local()
+    }),
     args,
+  )
+}
+
+#[inline]
+/// 生成不带富文本格式的 renderIntlText 渲染函数。
+/// 如果 params 参数不为空，则一定是全常量无需监听变更的 object。
+pub fn tpl_render_intl_normal_text(
+  key: &Atom,
+  params: Option<ExprOrSpread>,
+  default_text: Option<&Atom>,
+  is_parent_component: bool,
+  is_root_container: bool,
+) -> Box<Expr> {
+  tpl_render_intl_text(
+    false,
+    key,
+    params,
+    default_text,
+    is_parent_component,
+    is_root_container,
   )
 }
 
