@@ -1,9 +1,30 @@
-import { promises as fs } from 'node:fs';
+import { promises as fs, readFileSync } from 'node:fs';
 import path from 'node:path';
 import ts from 'typescript';
-import { parseCsv } from './helper';
+import { type ExtractMessage, extractKeyAndMessage, parseCsv } from './helper';
+const CWD = process.cwd();
 
-// const CWD = process.cwd();
+const sourceCache = new Map<string, Map<string, ExtractMessage>>();
+
+function extractSource(file: string) {
+  const filepath = path.resolve(CWD, file);
+  let src = sourceCache.get(filepath);
+  if (src) return src;
+  src = new Map();
+  const cnt = readFileSync(filepath, 'utf-8');
+  const srcFile = ts.createSourceFile(file, cnt, ts.ScriptTarget.Latest);
+  function walk(node: ts.Node) {
+    ts.forEachChild(node, walk);
+
+    const km = extractKeyAndMessage(node, 'compile');
+    if (!km) return;
+    src!.set(km.key, km);
+  }
+  ts.forEachChild(srcFile, walk);
+
+  sourceCache.set(filepath, src);
+  return src;
+}
 
 async function compileText(
   lang: string,
@@ -12,12 +33,7 @@ async function compileText(
   text: string,
   flag: { hasVars: boolean; hasTags: boolean },
 ) {
-  const src = ts.createSourceFile(
-    `${key}.tsx`,
-    `<>${text}</>`,
-    ts.ScriptTarget.ES2022,
-    /*setParentNodes */ true,
-  );
+  const src = ts.createSourceFile(`${key}.tsx`, `<>${text}</>`, ts.ScriptTarget.ES2022);
   function err(e?: unknown): never {
     throw new Error(`parse failed for ${lang}: ${key} -> ${text}, ${e || 'unexpected grammar.'}`);
   }
@@ -54,6 +70,12 @@ async function compileText(
       if (!ts.isIdentifier(tagNode)) err('not tag???');
       const tag = tagNode.text;
       if (vars.has(tag)) err(`conflict tag name "${tag}"`);
+
+      const srcFile = extractSource(file);
+      const keyMsg = srcFile.get(key);
+      if (!keyMsg) err(`message not found in source file, ${key}: ${text}, ${file}`);
+      // console.log(keyMsg);
+
       tags.set(
         tag,
         `function T_${key}_${tag}(props: { children: unknown }) { return <>{ props.children }</>; }`,
