@@ -3,6 +3,11 @@ use swc_core::common::errors::HANDLER;
 use swc_core::common::{Span, DUMMY_SP};
 use swc_core::ecma::ast::*;
 
+#[derive(Clone, Copy)]
+pub enum IntlType {
+  Disabled,
+  Enabled(bool),
+}
 pub struct JingeImport {
   local: Ident,
   imported: Ident,
@@ -37,6 +42,7 @@ macro_rules! x {
 lazy_static::lazy_static! {
   pub static ref JINGE_IMPORT_TEXT_RENDER_FN: JingeImport = x!("textRenderFn");
   pub static ref JINGE_IMPORT_RENDER_INTL_TEXT: JingeImport = x!("renderIntlText");
+  pub static ref JINGE_IMPORT_RENDER_INTL_TEXT_WITH_PARAMS: JingeImport = x!("renderIntlTextWithParams");
   pub static ref JINGE_IMPORT_RENDER_INTL_RICH_TEXT: JingeImport = x!("renderIntlRichText");
   pub static ref JINGE_IMPORT_CREATE_ELE: JingeImport = x!("createEle");
   pub static ref JINGE_IMPORT_CREATE_TEXT_NODE: JingeImport = x!("createTextNode");
@@ -103,9 +109,10 @@ lazy_static::lazy_static! {
 }
 
 fn gen_import_jinge() -> ModuleItem {
-  let imports: [&'static JingeImport; 28] = [
+  let imports: [&'static JingeImport; 29] = [
     &JINGE_IMPORT_TEXT_RENDER_FN,
     &JINGE_IMPORT_RENDER_INTL_TEXT,
+    &JINGE_IMPORT_RENDER_INTL_TEXT_WITH_PARAMS,
     &JINGE_IMPORT_RENDER_INTL_RICH_TEXT,
     &JINGE_IMPORT_CREATE_ELE,
     &JINGE_IMPORT_CREATE_ELE_A,

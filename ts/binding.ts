@@ -10,6 +10,7 @@ export interface JingeCompiler {
     type: number,
     code: string,
     sourcemap: boolean,
+    intl: number,
   ): {
     code: string;
     parsedComponents: string;

@@ -132,7 +132,7 @@ export async function loopMkdir(dir: string) {
 }
 
 export interface ExtractRichComp {
-  type: 'jsx' | 'fc';
+  type: 'jsx' | 'fc' | 'fc_with_props';
   expr: string;
 }
 export interface ExtractMessage {
@@ -149,6 +149,7 @@ export interface ExtractMessage {
 export function extractKeyAndMessage(
   node: ts.Node,
   mode: 'extract' | 'compile',
+  srcFile: ts.SourceFile,
 ): ExtractMessage | null {
   if (
     !ts.isCallExpression(node) ||
@@ -168,17 +169,27 @@ export function extractKeyAndMessage(
       if (!ts.isPropertyAssignment(prop)) continue;
       if (!ts.isIdentifier(prop.name)) continue;
       const expr = prop.initializer;
-      if (ts.isJsxElement(expr) || ts.isJsxFragment(expr)) {
+      if (ts.isJsxSelfClosingElement(expr) || ts.isJsxElement(expr) || ts.isJsxFragment(expr)) {
         if (!richComps) richComps = new Map();
-        richComps.set(prop.name.text, { type: 'jsx', expr: expr.getFullText() });
-      } else if (ts.isFunctionExpression(expr) || ts.isArrowFunction(expr)) {
-        const arg0 = expr.parameters.at(0)?.initializer;
-        let code = expr.getFullText();
-        if (arg0 && ts.isIdentifier(arg0)) {
-          code = code.replace(new RegExp(`\\b${arg0.text}\\b`, 'g'), 'props.children');
+        richComps.set(prop.name.text, {
+          type: 'jsx',
+          expr: `return ${expr.getFullText(srcFile).trim()}`,
+        });
+      } else if (ts.isArrowFunction(expr) || ts.isFunctionExpression(expr)) {
+        let code = expr.body.getFullText(srcFile).trim();
+        let type: ExtractRichComp['type'] = 'fc';
+        const arg0 = expr.parameters.at(0);
+        if (arg0 && ts.isIdentifier(arg0.name)) {
+          type = 'fc_with_props';
+          code = code.replace(new RegExp(`\\b${arg0.name.text}\\b`, 'g'), 'props.children');
+        }
+        if (ts.isArrowFunction(expr)) {
+          if (ts.isExpression(expr.body)) {
+            code = `return ${code}`;
+          }
         }
         if (!richComps) richComps = new Map();
-        richComps.set(prop.name.text, { type: 'fc', expr: code });
+        richComps.set(prop.name.text, { type, expr: code });
       }
     }
     if (!richComps?.size) return null;

@@ -14,7 +14,11 @@ type Dict = Record<
 const CWD = process.cwd();
 
 async function parseFile({ file, filename, dict }: { file: string; filename: string; dict: Dict }) {
-  const src = ts.createSourceFile(file, await fs.readFile(file, 'utf-8'), ts.ScriptTarget.Latest);
+  const srcFile = ts.createSourceFile(
+    file,
+    await fs.readFile(file, 'utf-8'),
+    ts.ScriptTarget.Latest,
+  );
 
   let hasMessage = false;
 
@@ -22,7 +26,7 @@ async function parseFile({ file, filename, dict }: { file: string; filename: str
     ts.forEachChild(node, walk);
 
     hasMessage = true;
-    const km = extractKeyAndMessage(node, 'extract');
+    const km = extractKeyAndMessage(node, 'extract', srcFile);
     if (!km) return;
     const { key, defaultMessage } = km;
     hasMessage = true;
@@ -31,7 +35,7 @@ async function parseFile({ file, filename, dict }: { file: string; filename: str
       defaultMessage,
     };
   }
-  ts.forEachChild(src, walk);
+  ts.forEachChild(srcFile, walk);
 
   return hasMessage;
 }

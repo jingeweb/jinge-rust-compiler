@@ -1,18 +1,23 @@
 use swc_common::Spanned;
 use swc_core::ecma::ast::*;
 use swc_core::ecma::visit::VisitMut;
+use swc_ecma_visit::VisitMutWith;
 
-use crate::common::{emit_error, JINGE_IMPORT_MODULE_ITEM};
+use crate::ast::{ast_create_arg_expr, ast_create_expr_ident, ast_create_expr_lit_str};
+use crate::common::{emit_error, IntlType, JINGE_IMPORT_MODULE_ITEM, JINGE_T, JINGE_UNDEFINED};
 use crate::parser;
+use crate::parser::intl::extract_t;
 
-pub struct TransformVisitor<'a> {
+pub struct TemplateTransformVisitor<'a> {
   changed: bool,
   pub parsed_components: &'a mut Vec<String>,
+  pub intl_type: IntlType,
 }
-impl<'a> TransformVisitor<'a> {
-  pub fn new(parsed_components: &'a mut Vec<String>) -> Self {
+impl<'a> TemplateTransformVisitor<'a> {
+  pub fn new(parsed_components: &'a mut Vec<String>, intl_type: IntlType) -> Self {
     Self {
       parsed_components,
+      intl_type,
       changed: false,
     }
   }
@@ -44,14 +49,17 @@ impl<'a> TransformVisitor<'a> {
   }
 
   fn v_return(&mut self, fn_name: Option<&Ident>, expr: &mut Box<Expr>, props_arg: Option<&Pat>) {
-    let mut visitor = parser::TemplateParser::new(props_arg.and_then(|p| {
-      if let Pat::Ident(id) = p {
-        Some(id.sym.clone())
-      } else {
-        emit_error(props_arg.span(), "函数组件的 props 参数不能使用解构写法");
-        None
-      }
-    }));
+    let mut visitor = parser::TemplateParser::new(
+      props_arg.and_then(|p| {
+        if let Pat::Ident(id) = p {
+          Some(id.sym.clone())
+        } else {
+          emit_error(props_arg.span(), "函数组件的 props 参数不能使用解构写法");
+          None
+        }
+      }),
+      self.intl_type,
+    );
     if let Some(replaced_expr) = visitor.parse(expr.as_mut()) {
       *expr = replaced_expr;
       self.changed = true;
@@ -61,7 +69,7 @@ impl<'a> TransformVisitor<'a> {
     }
   }
 }
-impl VisitMut for TransformVisitor<'_> {
+impl VisitMut for TemplateTransformVisitor<'_> {
   fn visit_mut_module(&mut self, n: &mut Module) {
     n.body.iter_mut().for_each(|item| match item {
       ModuleItem::ModuleDecl(decl) => match decl {
@@ -142,5 +150,51 @@ fn is_jsx(expr: &Expr) -> bool {
     Expr::Cond(expr) => is_jsx(expr.alt.as_ref()) || is_jsx(expr.cons.as_ref()),
     Expr::Bin(expr) => is_jsx(expr.right.as_ref()),
     _ => false,
+  }
+}
+
+pub struct IntlTransformVisitor {
+  drop_default_text: bool,
+}
+impl IntlTransformVisitor {
+  pub fn new(drop_default_text: bool) -> Self {
+    IntlTransformVisitor { drop_default_text }
+  }
+}
+impl VisitMut for IntlTransformVisitor {
+  fn visit_mut_call_expr(&mut self, node: &mut CallExpr) {
+    let Callee::Expr(callee) = &node.callee else {
+      node.visit_mut_children_with(self);
+      return;
+    };
+    if !matches!(callee.as_ref(), Expr::Ident(name) if JINGE_T.eq(&name.sym)) {
+      node.visit_mut_children_with(self);
+      return;
+    }
+    let Some((key, default_text, params)) = extract_t(&node.args) else {
+      return;
+    };
+
+    let mut args = vec![ExprOrSpread {
+      spread: None,
+      expr: ast_create_expr_lit_str(key),
+    }];
+    let mut has_params = false;
+    if let Some(params) = params {
+      has_params = true;
+      args.push(ast_create_arg_expr(Box::new(Expr::Object(params.clone()))));
+    }
+    if !self.drop_default_text {
+      if !has_params {
+        args.push(ast_create_arg_expr(ast_create_expr_ident(
+          JINGE_UNDEFINED.clone().into(),
+        )));
+      }
+      args.push(ast_create_arg_expr(ast_create_expr_lit_str(
+        default_text.clone(),
+      )));
+    }
+
+    node.args = args;
   }
 }

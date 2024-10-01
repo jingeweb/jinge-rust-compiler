@@ -6,6 +6,7 @@ mod visitor;
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use common::IntlType;
 use neon::prelude::*;
 
 use swc_common::input::SourceFileInput;
@@ -22,7 +23,7 @@ use swc_ecma_parser::{lexer::Lexer, Parser, Syntax, TsSyntax};
 use swc_ecma_transforms_base::fixer::fixer;
 use swc_ecma_transforms_typescript::strip;
 use swc_ecma_visit::{as_folder, noop_visit_type, FoldWith, Visit, VisitWith};
-use visitor::TransformVisitor;
+use visitor::{IntlTransformVisitor, TemplateTransformVisitor};
 
 struct SourceMapConfig<'a> {
   filename: &'a str,
@@ -109,11 +110,14 @@ fn print(
   (src, map)
 }
 
+///
+/// intl_type 国际化类型： 0： 不启用国际化，1： 启用国际化，保留原始文本，2：启用国际化，去除原始文本。
 fn inner_transform(
   filename: String,
   code_type: usize,
   code: String,
   sourcemap_enabled: bool,
+  intl_type: IntlType,
 ) -> (String, String, Option<String>) {
   // let code = Lrc::new(code);
   let cm: Arc<SourceMap> = Arc::<SourceMap>::default();
@@ -153,16 +157,21 @@ fn inner_transform(
 
       let module = if code_type == 2 {
         // 只有 tsx 类型才需要转换
-        let t = TransformVisitor::new(&mut parsed_components);
-        let module = module.fold_with(&mut as_folder(t));
-        module.fold_with(&mut fixer(None))
+        let t = TemplateTransformVisitor::new(&mut parsed_components, intl_type);
+        module.fold_with(&mut as_folder(t))
       } else {
         // Ensure that we have enough parenthesis.
-        module.fold_with(&mut fixer(None))
+        module
       };
 
-      // Fix up any identifiers with the same name, but different contexts
-      // let module = module.fold_with(&mut hygiene());
+      let module = if let IntlType::Enabled(drop_default_text) = intl_type {
+        let t = IntlTransformVisitor::new(drop_default_text);
+        module.fold_with(&mut as_folder(t))
+      } else {
+        module
+      };
+
+      let module = module.fold_with(&mut fixer(None));
 
       let source_map_names = if sourcemap_enabled {
         let mut v = IdentCollector {
@@ -177,15 +186,7 @@ fn inner_transform(
       };
       let (code, map) = print(&filename, cm, &module, sourcemap_enabled, &source_map_names);
 
-      (
-        code,
-        if parsed_components.is_empty() {
-          "".to_owned()
-        } else {
-          parsed_components.join(",")
-        },
-        map,
-      )
+      (code, parsed_components.join(","), map)
     })
   })
 }
@@ -195,9 +196,19 @@ fn transform(mut cx: FunctionContext) -> JsResult<JsObject> {
   let code_type = cx.argument::<JsNumber>(1)?.value(&mut cx) as usize;
   let origin_code = cx.argument::<JsString>(2)?.value(&mut cx);
   let sourcemap_enabled = cx.argument::<JsBoolean>(3)?.value(&mut cx);
+  let intl_type = cx.argument::<JsNumber>(4)?.value(&mut cx) as u8;
   // let hmr_enabled = cx.argument::<JsBoolean>(3)?.value(&mut cx);
-  let (code, parsed_components, map) =
-    inner_transform(file_name, code_type, origin_code, sourcemap_enabled);
+  let (code, parsed_components, map) = inner_transform(
+    file_name,
+    code_type,
+    origin_code,
+    sourcemap_enabled,
+    if intl_type == 0 {
+      IntlType::Disabled
+    } else {
+      IntlType::Enabled(intl_type > 1)
+    },
+  );
   let obj = cx.empty_object();
   let obj_code = cx.string(code);
   let obj_map = cx.string(map.unwrap_or("".into()));
@@ -229,6 +240,7 @@ export default {
 };"
       .into(),
     true,
+    IntlType::Disabled,
   );
   println!("PARSED COMPONENTS: {}", parsed_components);
   std::fs::write("target/out.ts", &code).unwrap();

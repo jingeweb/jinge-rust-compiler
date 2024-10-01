@@ -11,12 +11,12 @@ mod attrs;
 mod component;
 mod cond;
 mod expr;
-mod intl;
+pub mod intl;
 mod jsx;
 mod map;
 mod map_key;
 mod slot;
-mod tpl;
+pub mod tpl;
 
 pub enum Parent {
   Component,
@@ -64,6 +64,7 @@ impl Context {
 }
 
 pub struct TemplateParser {
+  intl_type: IntlType,
   context: Context,
   stack: Vec<Context>,
   props_arg: Option<Atom>,
@@ -85,8 +86,9 @@ fn has_jsx(expr: &Expr) -> bool {
 }
 
 impl TemplateParser {
-  pub fn new(props_arg: Option<Atom>) -> Self {
+  pub fn new(props_arg: Option<Atom>, intl_type: IntlType) -> Self {
     Self {
+      intl_type,
       context: Context::new(Parent::Component, true),
       stack: vec![],
       props_arg,
@@ -176,7 +178,7 @@ impl TemplateParser {
     }
   }
   fn parse_call(&mut self, parent_expr: &Expr, callee: &Expr, args: &Vec<ExprOrSpread>) {
-    if self.parse_intl_t(callee, args) {
+    if matches!(self.intl_type, IntlType::Enabled(_)) && self.parse_intl_t(callee, args) {
       // 如果是 t 函数，则转换为国际化组件。
     } else if self.parse_map_fn(callee, args) {
       // 如果是 [xx].map() 函数调用，则转换为 <For> 组件。

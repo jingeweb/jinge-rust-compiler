@@ -1,20 +1,20 @@
 use base64ct::{Base64, Encoding};
 use sha2::{Digest, Sha512};
 use swc_common::{Spanned, SyntaxContext, DUMMY_SP};
-use swc_core::ecma::ast::*;
+use swc_core::{atoms::Atom, ecma::ast::*};
 
 use super::{
   ast_create_arg_expr, ast_create_expr_arrow_fn, ast_create_expr_call, ast_create_expr_ident,
   ast_create_stmt_decl_const, emit_error,
   expr::{ExprParseResult, ExprVisitor},
-  tpl_render_intl_normal_text, tpl_render_intl_text, tpl_watch_and_render, TemplateParser,
-  JINGE_ATTR_IDENT, JINGE_IMPORT_VM, JINGE_KEY, JINGE_T, JINGE_V_IDENT,
+  tpl_render_intl_normal_text, tpl_render_intl_text, tpl_watch_and_render, IntlType,
+  TemplateParser, JINGE_ATTR_IDENT, JINGE_IMPORT_VM, JINGE_KEY, JINGE_T, JINGE_V_IDENT,
 };
 
 /// 计算文本的 hash。
 /// 需要和 /ts/intl/extract/helper.rs 中使用算法一致，当前统一为 sha512().toBase64().slice(0,6)。
 /// 如果修改两处都要变更。
-fn calc_key(message: &str, filename: Option<&str>) -> String {
+pub fn calc_intl_key(message: &str, filename: Option<&str>) -> String {
   let mut h = Sha512::new();
   h.update(message);
   if let Some(filename) = filename {
@@ -33,6 +33,69 @@ struct IntlParams {
   pub const_props: Vec<(PropName, Box<Expr>)>,
   pub watch_props: Vec<(PropName, ExprParseResult)>,
 }
+
+pub fn extract_t<'a>(
+  args: &'a Vec<ExprOrSpread>,
+) -> Option<(Atom, &'a Atom, Option<&'a ObjectLit>)> {
+  let Some(default_text) = args.get(0) else {
+    return None;
+  };
+  if default_text.spread.is_some() {
+    return None;
+  }
+  let Expr::Lit(Lit::Str(default_text)) = default_text.expr.as_ref() else {
+    emit_error(
+      default_text.span(),
+      "t 函数的第一个参数必须是字符串常量，代表默认文本",
+    );
+    return None;
+  };
+
+  let default_text = &default_text.value;
+
+  let mut key = None;
+  // let mut isolate = false;
+  let options_arg = args.get(2);
+  if let Some(options) = options_arg {
+    if options.spread.is_some() {
+      emit_error(options.span(), "t 函数的 options 参数不支持 ... 解构写法");
+    } else if let Expr::Object(opts) = options.expr.as_ref() {
+      for prop in opts.props.iter() {
+        if let PropOrSpread::Prop(prop) = prop {
+          if let Prop::KeyValue(kv) = prop.as_ref() {
+            if let PropName::Ident(id) = &kv.key {
+              if JINGE_KEY.eq(&id.sym) {
+                if let Expr::Lit(Lit::Str(v)) = kv.value.as_ref() {
+                  key = Some(v.value.clone());
+                }
+                // 找到 key 就退出循环。
+                break;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  let params_arg = args.get(1).and_then(|p| {
+    if p.spread.is_some() {
+      emit_error(p.span(), "t 函数的 params 参数不支持 ... 解构写法");
+      None
+    } else if let Expr::Object(expr) = p.expr.as_ref() {
+      Some(expr)
+    } else {
+      emit_error(options_arg.span(), "t 函数的 params 参数必须是 object 类型");
+      None
+    }
+  });
+
+  if key.is_none() {
+    key = Some(calc_intl_key(default_text.as_str(), None).into());
+  }
+
+  Some((key.unwrap(), default_text, params_arg))
+}
 impl TemplateParser {
   /// 将国际化多语言的 t 函数转换为相应的组件或渲染。这里采用了极简单的粗糙方法，仅通过函数名为 t 来判定。
   /// 因此有很大的问题，比如不支持 `import {t as someFn} from 'jinge'` 的别名 import 写法；
@@ -42,85 +105,25 @@ impl TemplateParser {
     if !matches!(callee, Expr::Ident(name) if JINGE_T.eq(&name.sym)) {
       return false;
     }
-    let Some(default_text) = args.get(0) else {
+    let Some((key, default_text, params_arg)) = extract_t(args) else {
       return false;
     };
-    if default_text.spread.is_some() {
-      return false;
-    }
-    let Expr::Lit(default_text) = default_text.expr.as_ref() else {
-      return false;
-    };
-    let Lit::Str(default_text) = default_text else {
-      return false;
-    };
-    let default_text = &default_text.value;
-    let mut key = None;
-    // let mut isolate = false;
-    let params_arg = args.get(1);
-    let options_arg = args.get(2);
-    if let Some(options) = options_arg {
-      if options.spread.is_some() {
-        emit_error(options.span(), "t 函数的 options 参数不支持 ... 解构写法");
-      } else if let Expr::Object(opts) = options.expr.as_ref() {
-        for prop in opts.props.iter() {
-          if let PropOrSpread::Prop(prop) = prop {
-            if let Prop::KeyValue(kv) = prop.as_ref() {
-              if let PropName::Ident(id) = &kv.key {
-                if JINGE_KEY.eq(&id.sym) {
-                  if let Expr::Lit(Lit::Str(v)) = kv.value.as_ref() {
-                    key = Some(v.value.clone());
-                  }
-                  // 找到 key 就退出循环。
-                  break;
-                }
-              }
-            }
-          }
-        }
-      }
-    }
 
-    if key.is_none() {
-      key = Some(calc_key(default_text.as_str(), None).into());
-    }
+    let default_text_param = if matches!(self.intl_type, IntlType::Enabled(true)) {
+      None
+    } else {
+      Some(default_text)
+    };
 
     let Some(params) = params_arg else {
       self.push_expression(tpl_render_intl_normal_text(
-        &key.unwrap(),
+        key,
         None,
-        Some(default_text),
+        default_text_param,
         self.context.is_parent_component(),
         self.context.root_container,
       ));
       return true; // 如果没有 params 参数，生成简单的 renderIntlText 函数。
-    };
-
-    if params.spread.is_some() {
-      emit_error(
-        options_arg.span(),
-        "t 函数的 params 参数不支持 ... 解构写法",
-      );
-      self.push_expression(tpl_render_intl_normal_text(
-        &key.unwrap(),
-        None,
-        Some(default_text),
-        self.context.is_parent_component(),
-        self.context.root_container,
-      ));
-      return true;
-    }
-
-    let Expr::Object(params) = params.expr.as_ref() else {
-      emit_error(options_arg.span(), "t 函数的 params 参数必须是 object 类型");
-      self.push_expression(tpl_render_intl_normal_text(
-        &key.unwrap(),
-        None,
-        Some(default_text),
-        self.context.is_parent_component(),
-        self.context.root_container,
-      ));
-      return true;
     };
 
     let mut vm = IntlParams {
@@ -131,14 +134,11 @@ impl TemplateParser {
     for prop in params.props.iter() {
       match prop {
         PropOrSpread::Spread(_) => {
-          emit_error(
-            options_arg.span(),
-            "t 函数的 params 参数不支持 ... 解构写法",
-          );
+          emit_error(prop.span(), "t 函数的 params 参数不支持 ... 解构写法");
           self.push_expression(tpl_render_intl_normal_text(
-            &key.unwrap(),
+            key,
             None,
-            Some(default_text),
+            default_text_param,
             self.context.is_parent_component(),
             self.context.root_container,
           ));
@@ -151,9 +151,9 @@ impl TemplateParser {
               "t 函数的 params 参数必须是 key-value 类型的 Object。",
             );
             self.push_expression(tpl_render_intl_normal_text(
-              &key.unwrap(),
+              key,
               None,
-              Some(default_text),
+              default_text_param,
               self.context.is_parent_component(),
               self.context.root_container,
             ));
@@ -207,7 +207,7 @@ impl TemplateParser {
     if !has_watch_props {
       let expr = tpl_render_intl_text(
         vm.is_rich_text,
-        &key.unwrap(),
+        key,
         if has_const_props {
           Some(ExprOrSpread {
             spread: None,
@@ -216,7 +216,7 @@ impl TemplateParser {
         } else {
           None
         },
-        Some(default_text),
+        default_text_param,
         self.context.is_parent_component(),
         self.context.root_container,
       );
@@ -274,12 +274,12 @@ impl TemplateParser {
       span: DUMMY_SP,
       arg: Some(tpl_render_intl_text(
         vm.is_rich_text,
-        &key.unwrap(),
+        key,
         Some(ExprOrSpread {
           spread: None,
           expr: ast_create_expr_ident(JINGE_ATTR_IDENT.clone()),
         }),
-        Some(default_text),
+        default_text_param,
         self.context.is_parent_component(),
         self.context.root_container,
       )),

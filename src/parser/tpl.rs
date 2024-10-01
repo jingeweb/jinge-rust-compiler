@@ -90,7 +90,7 @@ pub fn tpl_render_const_text(
 
 pub fn tpl_render_intl_text(
   is_rich: bool,
-  key: &Atom,
+  key: Atom,
   params: Option<ExprOrSpread>,
   default_text: Option<&Atom>,
   is_parent_component: bool,
@@ -99,7 +99,7 @@ pub fn tpl_render_intl_text(
   let mut args = vec![
     ast_create_arg_expr(ast_create_id_of_container(is_root_container)),
     ast_create_arg_expr(ast_create_expr_lit_bool(is_parent_component)),
-    ast_create_arg_expr(ast_create_expr_lit_str(key.clone())),
+    ast_create_arg_expr(ast_create_expr_lit_str(key)),
   ];
   let has_params = params.is_some();
   if let Some(params) = params {
@@ -118,6 +118,8 @@ pub fn tpl_render_intl_text(
   ast_create_expr_call(
     ast_create_expr_ident(if is_rich {
       JINGE_IMPORT_RENDER_INTL_RICH_TEXT.local()
+    } else if has_params {
+      JINGE_IMPORT_RENDER_INTL_TEXT_WITH_PARAMS.local()
     } else {
       JINGE_IMPORT_RENDER_INTL_TEXT.local()
     }),
@@ -129,7 +131,7 @@ pub fn tpl_render_intl_text(
 /// 生成不带富文本格式的 renderIntlText 渲染函数。
 /// 如果 params 参数不为空，则一定是全常量无需监听变更的 object。
 pub fn tpl_render_intl_normal_text(
-  key: &Atom,
+  key: Atom,
   params: Option<ExprOrSpread>,
   default_text: Option<&Atom>,
   is_parent_component: bool,

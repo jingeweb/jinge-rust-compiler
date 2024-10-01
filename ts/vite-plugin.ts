@@ -16,6 +16,17 @@ export interface JingeVitePluginOptions {
    * 除 `jinge` 库外，这个参数还会对 `jinge-router` 库以同样的作用生效。
    */
   importAlias?: 'source' | 'dev';
+  /**
+   * 打开国际化多语言功能。
+   */
+  intl?:
+    | boolean
+    | {
+        /**
+         * 是否去除源码中的默认文本。dev 模式下默认为 false，会保留源文本，即便未翻译也能在界面展示原始文本。prod 模式下默认为 true，不保留原始文本，减少打包产物大小。
+         */
+        dropDefaultText?: boolean;
+      };
 }
 
 const HMR_RUNTIME_PATH = '/@jinge-hmr-runtime';
@@ -53,6 +64,7 @@ function getAliasConfig(importAlias?: 'source' | 'dev') {
 }
 export function jingeVitePlugin(options?: JingeVitePluginOptions): PluginOption {
   let hmrEnabled = false;
+  let intlOpts: { dropDefaultText?: boolean } | null = null;
   let sourcemapEnabled = true;
   let base = '';
   function transform(code: string, id: string) {
@@ -61,7 +73,13 @@ export function jingeVitePlugin(options?: JingeVitePluginOptions): PluginOption 
     const type = id.endsWith('.tsx') ? 2 : id.endsWith('.ts') ? 1 : 0;
     if (type === 0) return;
     const binding = loadBinding(options?.loadDebugNativeBinding);
-    const result = binding.transform(id, type, code, sourcemapEnabled);
+    const result = binding.transform(
+      id,
+      type,
+      code,
+      sourcemapEnabled,
+      intlOpts ? (intlOpts.dropDefaultText ? 2 : 1) : 0,
+    );
     if (!result.map) result.map = null; // 空字符串转成 null
     return result;
   }
@@ -73,6 +91,11 @@ export function jingeVitePlugin(options?: JingeVitePluginOptions): PluginOption 
       enforce: 'pre',
       configResolved(config) {
         if (config.build?.sourcemap) sourcemapEnabled = true;
+        options?.intl &&
+          (intlOpts = {
+            dropDefaultText: true,
+            ...(typeof options?.intl === 'object' ? options.intl : null),
+          });
       },
       config() {
         return getAliasConfig(options?.importAlias);
@@ -93,6 +116,11 @@ export function jingeVitePlugin(options?: JingeVitePluginOptions): PluginOption 
       apply: 'serve',
       configResolved(config) {
         if (config.server.hmr !== false) hmrEnabled = true;
+        options?.intl &&
+          (intlOpts = {
+            dropDefaultText: false,
+            ...(typeof options?.intl === 'object' ? options.intl : null),
+          });
         base = config.base ?? '';
         if (base === '/') base = '';
         else if (base.endsWith('/')) base = base.slice(0, base.length - 1);

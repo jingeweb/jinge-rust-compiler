@@ -16,7 +16,7 @@ function extractSource(file: string) {
   function walk(node: ts.Node) {
     ts.forEachChild(node, walk);
 
-    const km = extractKeyAndMessage(node, 'compile');
+    const km = extractKeyAndMessage(node, 'compile', srcFile);
     if (!km) return;
     src!.set(km.key, km);
   }
@@ -31,14 +31,14 @@ async function compileText(
   file: string,
   key: string,
   text: string,
-  flag: { hasVars: boolean; hasTags: boolean },
+  flag: { needImportJNode: boolean; richComponents: string[] },
 ) {
-  const src = ts.createSourceFile(`${key}.tsx`, `<>${text}</>`, ts.ScriptTarget.ES2022);
+  const srcFile = ts.createSourceFile(`${key}.tsx`, `<>${text}</>`, ts.ScriptTarget.Latest);
   function err(e?: unknown): never {
     throw new Error(`parse failed for ${lang}: ${key} -> ${text}, ${e || 'unexpected grammar.'}`);
   }
 
-  const stmt = src.statements[0];
+  const stmt = srcFile.statements[0];
   if (!stmt || !ts.isExpressionStatement(stmt)) {
     err();
   }
@@ -47,70 +47,80 @@ async function compileText(
     err();
   }
   if (!expr.children.length) {
-    return `() => ""`;
+    return `""`;
   }
 
   const vars = new Set<string>();
   const tags = new Map<string, string>();
-  let stack = [] as string[];
+  let hasTag = false;
+  let stack = [] as unknown[];
+  function varSeg(n: string) {
+    return {
+      toString: () => (hasTag ? n : `$${n}`),
+    };
+  }
+  function dealTag(tag: string) {
+    if (vars.has(tag)) err(`conflict tag name "${tag}"`);
+
+    const srcFile = extractSource(file);
+    const keyMsg = srcFile.get(key);
+    if (!keyMsg) err(`message not found in source file, ${key}: ${text}, ${file}`);
+    // console.log(keyMsg);
+    const comp = keyMsg.richComps?.get(tag);
+    if (!comp) err(`rich component not found: ${key}: ${text}, ${file}, ${tag}`);
+    const compName = `T_${key}_${tag}`;
+    if (comp.type === 'fc_with_props') {
+      flag.needImportJNode = true;
+    }
+    tags.set(
+      tag,
+      `function ${compName}(${comp.type === 'fc_with_props' ? 'props: { children: JNode }' : ''}) { ${comp.expr} }`,
+    );
+    return compName;
+  }
   function walk(node: ts.Node) {
     if (ts.isJsxText(node)) {
       stack.push(node.text);
     } else if (ts.isJsxExpression(node)) {
-      const e = node.expression?.getFullText().trim();
-      if (!e) err();
-      const vn = e.split('.')[0];
-
-      if (tags.has(vn)) err(`conflict var name "${vn}"`);
-      vars.add(vn);
-      flag.hasVars = true;
-      stack.push(`$\{props.${e}}`);
+      const e = node.expression;
+      if (!e || !ts.isIdentifier(e)) {
+        err('bad variable name');
+      }
+      const varName = e.text;
+      if (tags.has(varName)) err(`conflict var name "${varName}"`);
+      vars.add(varName);
+      stack.push(varSeg(`{props.${varName}}`));
     } else if (ts.isJsxElement(node)) {
       const tagNode = node.openingElement.tagName;
       if (!ts.isIdentifier(tagNode)) err('not tag???');
-      const tag = tagNode.text;
-      if (vars.has(tag)) err(`conflict tag name "${tag}"`);
-
-      const srcFile = extractSource(file);
-      const keyMsg = srcFile.get(key);
-      if (!keyMsg) err(`message not found in source file, ${key}: ${text}, ${file}`);
-      // console.log(keyMsg);
-
-      tags.set(
-        tag,
-        `function T_${key}_${tag}(props: { children: unknown }) { return <>{ props.children }</>; }`,
-      );
-      flag.hasTags = true;
+      hasTag = true;
+      const compName = dealTag(tagNode.text);
       const parentStack = stack;
       stack = [];
       ts.forEachChild(node, walk);
-      const c = `T_${key}_${tag}`;
-      parentStack.push(`<${c}>${stack.join('')}</${c}>`);
+      parentStack.push(`<${compName}>${stack.join('')}</${compName}>`);
       stack = parentStack;
     } else if (ts.isJsxSelfClosingElement(node)) {
+      hasTag = true;
       const tagNode = node.tagName;
       if (!ts.isIdentifier(tagNode)) err('not tag???');
-      const tag = tagNode.text;
-      if (vars.has(tag)) err(`conflict tag name "${tag}"`);
-      tags.set(tag, `function T_${key}_${tag}() { return <></>; }`);
-      flag.hasTags = true;
-      const c = `T_${key}_${tag}`;
-      stack.push(`<${c} />`);
+      const compName = dealTag(tagNode.text);
+      stack.push(`<${compName} />`);
     }
   }
   ts.forEachChild(expr, walk);
 
-  if (!vars.size && !tags.size) {
-    return `() => ${JSON.stringify(text)}`;
-  } else if (!tags.size) {
+  if (!vars.size && !hasTag) {
+    return `${JSON.stringify(text)}`;
+  } else if (!hasTag) {
     return `(props: Record<string, unknown>) => \`${stack.join('')}\``;
   } else {
-    return `(() => {
-${[...tags.values()].join('\n')}
-return function T(${vars.size ? 'props: Record<string, unknown>' : ''}) {
+    flag.richComponents.push(...tags.values());
+    flag.richComponents
+      .push(`function T_${key}(${vars.size ? 'props: Record<string, JNode>' : ''}) {
   return <>${stack.join('')}</>;
-}
-})()`;
+}`);
+    return `T_${key}`;
   }
 }
 export async function intlCompile({
@@ -132,8 +142,8 @@ export async function intlCompile({
     languages.map((l) => [
       l,
       {
-        hasVars: false,
-        hasTags: false,
+        needImportJNode: false,
+        richComponents: [],
         rows: [] as string[],
       },
     ]),
@@ -146,14 +156,14 @@ export async function intlCompile({
         const v = row[lang];
         if (!v) continue;
         const result = await compileText(lang, row.file, row.id, v, loc);
-        loc.rows.push(`${JSON.stringify(row.id)}: ${result}`);
+        loc.rows.push(`  ${JSON.stringify(row.id)}: ${result}`);
       }
     }),
   );
 
   for await (const lang of languages) {
     const loc = outputs[lang];
-    const cnt = `export default {\n${loc.rows.join(',\n')}\n}`;
+    const cnt = `${loc.needImportJNode ? 'import type { JNode } from "jinge";\n' : ''}${loc.richComponents.length ? `${loc.richComponents.join('\n')}\n` : ''}export default {\n${loc.rows.join(',\n')}\n}`;
 
     await fs.writeFile(path.join(outputDir, `${lang}.tsx`), cnt);
   }
