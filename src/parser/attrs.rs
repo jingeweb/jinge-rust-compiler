@@ -3,11 +3,14 @@ use std::rc::Rc;
 use crate::common::emit_error;
 use crate::parser::TemplateParser;
 use hashbrown::HashSet;
-use swc_core::{atoms::Atom, common::Spanned};
 use swc_core::ecma::ast::*;
+use swc_core::{atoms::Atom, common::Spanned};
 
 use super::expr::{ExprParseResult, ExprVisitor};
-use super::{JINGE_CHILDREN, JINGE_CLASS, JINGE_CLASSNAME, JINGE_DBLCLICK, JINGE_FOR, JINGE_HTML_FOR, JINGE_KEY, JINGE_DOUBLECLICK, JINGE_REF};
+use super::{
+  JINGE_CHILDREN, JINGE_CLASS, JINGE_CLASSNAME, JINGE_DBLCLICK, JINGE_DOUBLECLICK, JINGE_FOR,
+  JINGE_HTML_FOR, JINGE_KEY, JINGE_REF,
+};
 
 pub struct AttrEvt {
   pub event_name: Atom,
@@ -64,19 +67,16 @@ impl TemplateParser {
             emit_error(attr.span(), "不能重复指定 ref");
             return;
           }
-      
           let Some(JSXAttrValue::JSXExprContainer(val)) = &attr.value else {
             emit_error(attr.value.span(), "ref 属性值不合法");
             return;
           };
-         
           let JSXExpr::Expr(val) = &val.expr else {
             emit_error(val.expr.span(), "ref 属性值不合法");
             return;
           };
           attrs.ref_prop.replace(val.clone());
-        } else if !is_component // html 元素的事件处理要单独处理，把 onClick 等转换成 click 事件。Component 元素的事件处理也是标准的属性传递。
-          && an.sym.starts_with("on")
+        } else if an.sym.starts_with("on")
           && matches!(an.sym.chars().nth(2), Some(c) if c >= 'A' && c <= 'Z')
         {
           let Some(JSXAttrValue::JSXExprContainer(val)) = &attr.value else {
@@ -91,21 +91,25 @@ impl TemplateParser {
             emit_error(attr.span(), "事件属性的属性值必须是箭头函数");
             return;
           };
-          let mut event_name = &an.sym[2..];
-          let mut capture = false;
-          if event_name.ends_with("Capture") {
-            event_name = &event_name[..event_name.len() - 7];
-            capture = true;
-          }
-          let mut event_name = Atom::from(event_name.to_lowercase());
-          if JINGE_DOUBLECLICK.eq(&event_name) {
-            event_name = JINGE_DBLCLICK.clone();
-          }
-          attrs.evt_props.push(AttrEvt {
-            event_name,
-            event_handler: val.clone(),
-            capture,
-          })
+          if is_component {
+            attrs.const_props.push((IdentName::from(an.sym.clone()), val.clone()));
+          } else {
+            let mut event_name = &an.sym[2..];
+            let mut capture = false;
+            if  event_name.ends_with("Capture") {
+              event_name = &event_name[..event_name.len() - 7];
+              capture = true;
+            }
+            let mut event_name = Atom::from(event_name.to_lowercase());
+            if JINGE_DOUBLECLICK.eq(&event_name) {
+              event_name = JINGE_DBLCLICK.clone();
+            }
+            attrs.evt_props.push(AttrEvt {
+              event_name,
+              event_handler: val.clone(),
+              capture,
+            });
+          };
         } else {
           let attr_name = if !is_component {
             if JINGE_CLASSNAME.eq(&an.sym) {
@@ -206,7 +210,9 @@ impl TemplateParser {
       }
     });
 
-    if attrs.spread_prop.is_some() && (!attrs.const_props.is_empty() || !attrs.watch_props.is_empty()) {
+    if attrs.spread_prop.is_some()
+      && (!attrs.const_props.is_empty() || !attrs.watch_props.is_empty())
+    {
       let id = attrs.spread_prop.take();
       emit_error(id.span(), "解构写法透传属性只能出现一次");
     }

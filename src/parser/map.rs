@@ -2,10 +2,7 @@ use swc_common::Spanned;
 use swc_core::{atoms::Atom, common::DUMMY_SP, ecma::ast::*};
 use swc_ecma_visit::{VisitMut, VisitMutWith};
 
-use crate::{
-  ast::{ast_create_expr_ident, ast_create_expr_member},
-  parser::JINGE_LOOP_EACH_DATA,
-};
+use crate::{ast::ast_create_expr_ident, parser::JINGE_LOOP_EACH_DATA};
 
 use super::{
   emit_error, map_key::KeyFnFindVisitor, TemplateParser, JINGE_IMPORT_FOR, JINGE_KEY_FN,
@@ -127,46 +124,25 @@ impl VisitMut for ReplaceVisitor {
     }
     self.stack.pop();
   }
-  fn visit_mut_member_expr(&mut self, node: &mut MemberExpr) {
-    match node.obj.as_ref() {
-      Expr::Ident(id) => {
-        let overrided: &(bool, bool) = self.stack.last().unwrap();
-        if !overrided.0 && matches!(self.arg_data, Some(ref a) if a.eq(&id.sym)) {
-          // println!("replace mem expr");
-          node.obj = ast_create_expr_member(
-            ast_create_expr_ident(Ident::from(self.slot_vm_name.clone())),
-            MemberProp::Ident(IdentName::from(JINGE_LOOP_EACH_DATA.clone())),
-          )
-        } else if !overrided.1 && matches!(self.arg_index, Some(ref a) if a.eq(&id.sym)) {
-          node.obj = ast_create_expr_member(
-            ast_create_expr_ident(Ident::from(self.slot_vm_name.clone())),
-            MemberProp::Ident(IdentName::from(JINGE_LOOP_EACH_INDEX.clone())),
-          )
-        }
+  fn visit_mut_expr(&mut self, e: &mut Expr) {
+    if let Expr::Ident(id) = e {
+      let overrided: &(bool, bool) = self.stack.last().unwrap();
+      if !overrided.0 && matches!(self.arg_data, Some(ref a) if a.eq(&id.sym)) {
+        *e = Expr::Member(MemberExpr {
+          span: DUMMY_SP,
+          obj: ast_create_expr_ident(Ident::from(self.slot_vm_name.clone())),
+          prop: MemberProp::Ident(IdentName::from(JINGE_LOOP_EACH_DATA.clone())),
+        });
+      } else if !overrided.1 && matches!(self.arg_index, Some(ref a) if a.eq(&id.sym)) {
+        *e = Expr::Member(MemberExpr {
+          span: DUMMY_SP,
+          obj: ast_create_expr_ident(Ident::from(self.slot_vm_name.clone())),
+          prop: MemberProp::Ident(IdentName::from(JINGE_LOOP_EACH_INDEX.clone())),
+        });
       }
-      _ => node.visit_mut_children_with(self),
+    } else {
+      e.visit_mut_children_with(self);
     }
-  }
-  fn visit_mut_jsx_expr(&mut self, node: &mut JSXExpr) {
-    if let JSXExpr::Expr(e) = node {
-      if let Expr::Ident(id) = e.as_ref() {
-        let overrided: &(bool, bool) = self.stack.last().unwrap();
-        if !overrided.0 && matches!(self.arg_data, Some(ref a) if a.eq(&id.sym)) {
-          // println!("replace ident expr");
-          *e = ast_create_expr_member(
-            ast_create_expr_ident(Ident::from(self.slot_vm_name.clone())),
-            MemberProp::Ident(IdentName::from(JINGE_LOOP_EACH_DATA.clone())),
-          );
-        } else if !overrided.1 && matches!(self.arg_index, Some(ref a) if a.eq(&id.sym)) {
-          *e = ast_create_expr_member(
-            ast_create_expr_ident(Ident::from(self.slot_vm_name.clone())),
-            MemberProp::Ident(IdentName::from(JINGE_LOOP_EACH_INDEX.clone())),
-          )
-        }
-        return; // 重要！Ident 类型不再需要后续的 visit_mut_children_with
-      }
-    }
-    node.visit_mut_children_with(self);
   }
 }
 

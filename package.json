@@ -1,6 +1,6 @@
 {
   "name": "jinge-compiler",
-  "version": "4.0.0-alpha.8",
+  "version": "4.0.0-alpha.9",
   "description": "compiler for jinge framework",
   "author": "Yuhang Ge<abeyuhang@gmail.com>",
   "license": "ISC",
@@ -17,11 +17,12 @@
     "swc"
   ],
   "scripts": {
-    "build-ts": "rm -rf dist && tsup ts/index.ts ts/cli/intl-extract.ts ts/cli/intl-compile.ts --sourcemap --format esm",
+    "build-ts": "rm -rf dist && bun build ts/index.ts ts/cli/intl-extract.ts ts/cli/intl-compile.ts --outdir dist --sourcemap=linked --target node --packages external",
     "build-cargo-debug": "cargo build && cp target/debug/libjinge_compiler.so index.node 2>/dev/null || : && cp target/debug/libjinge_compiler.dylib index.node 2>/dev/null || :",
     "watch-cargo": "cargo watch -i lib -i ts -- pnpm build-cargo-debug",
     "dev": "concurrently \"pnpm build-ts --watch\" \"pnpm watch-cargo\"",
     "build": "pnpm lint && pnpm build-ts --silent && echo 'Build ts done. Use github actions to build and release rust core!!'",
+    "patch-version": "bun run scripts/version.ts",
     "lint-fix": "eslint '**/*.{js,mjs,ts}' --fix && prettier --log-level=warn --write . !*.yaml",
     "lint": "tsc --noEmit && eslint '**/*.{js,mjs,ts}' && prettier --check . !*.yaml",
     "lint-staged": "lint-staged",
@@ -42,8 +43,10 @@
   ],
   "devDependencies": {
     "@eslint/js": "^9.12.0",
+    "@types/bun": "^1.1.10",
     "@types/eslint__js": "^8.42.3",
     "@types/node": "^22.7.4",
+    "bun": "^1.1.29",
     "concurrently": "^9.0.1",
     "eslint": "^9.12.0",
     "eslint-config-prettier": "^9.1.0",
@@ -51,17 +54,16 @@
     "husky": "^9.1.6",
     "lint-staged": "^15.2.10",
     "prettier": "^3.3.3",
-    "tsup": "^8.3.0",
     "typescript-eslint": "^8.8.0",
     "vite": "^5.4.8"
   },
   "dependencies": {
     "csv-parse": "^5.5.6",
-    "jinge-compiler-core-linux-aarch64": "4.0.0-alpha.8",
-    "jinge-compiler-core-linux-x86_64": "4.0.0-alpha.8",
-    "jinge-compiler-core-macos-aarch64": "4.0.0-alpha.8",
-    "jinge-compiler-core-macos-x86_64": "4.0.0-alpha.8",
-    "jinge-compiler-core-windows-x86_64": "4.0.0-alpha.8",
+    "jinge-compiler-core-linux-aarch64": "4.0.0-alpha.9",
+    "jinge-compiler-core-linux-x86_64": "4.0.0-alpha.9",
+    "jinge-compiler-core-macos-aarch64": "4.0.0-alpha.9",
+    "jinge-compiler-core-macos-x86_64": "4.0.0-alpha.9",
+    "jinge-compiler-core-windows-x86_64": "4.0.0-alpha.9",
     "typescript": "^5.6.2"
   }
 }
