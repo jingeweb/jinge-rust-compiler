@@ -5,11 +5,12 @@ use crate::parser::TemplateParser;
 use hashbrown::HashSet;
 use swc_core::ecma::ast::*;
 use swc_core::{atoms::Atom, common::Spanned};
+use swc_ecma_visit::Visit;
 
 use super::expr::{ExprParseResult, ExprVisitor};
 use super::{
-  JINGE_CHILDREN, JINGE_CLASS, JINGE_CLASSNAME, JINGE_DBLCLICK, JINGE_DOUBLECLICK, JINGE_FOR,
-  JINGE_HTML_FOR, JINGE_KEY, JINGE_REF,
+  Parent, Slot, JINGE_CHILDREN, JINGE_CLASS, JINGE_CLASSNAME, JINGE_DBLCLICK, JINGE_DOUBLECLICK,
+  JINGE_FOR, JINGE_HTML_FOR, JINGE_KEY, JINGE_REF, JINGE_SLOTS,
 };
 
 pub struct AttrEvt {
@@ -28,6 +29,8 @@ pub struct AttrStore {
   /// ... 解构写法透传的属性，例如 `<A {...state} />` 本质上就是把 state 作为 A 组件的 props 参数直接传递。
   /// 这种写法的情况下，不能再有其它 const 或 watch 属性，并且只能出现一次。
   pub spread_prop: Option<Ident>,
+  /// Slot 属性
+  pub slot_props: Vec<Slot>,
 }
 
 impl TemplateParser {
@@ -38,8 +41,10 @@ impl TemplateParser {
       const_props: vec![],
       watch_props: vec![],
       spread_prop: None,
+      slot_props: vec![],
     };
 
+    let mut slots_attrs = vec![];
     n.opening.attrs.iter().for_each(|attr| match attr {
       JSXAttrOrSpread::SpreadElement(s) => {
         let Expr::Ident(id) = s.expr.as_ref() else {
@@ -58,6 +63,8 @@ impl TemplateParser {
         };
         if JINGE_CHILDREN.eq(&an.sym) {
           emit_error(an.span(), "警告：不能使用 children 属性名，如果是定义  Slot，请使用 jsx 子元素的方式定义！");
+        } else if JINGE_SLOTS.eq(&an.sym) {
+          emit_error(an.span(), "警告：不能使用 slots 作为属性名，该属性名是用于 Slot 渲染的特殊名称。");
         } else if JINGE_KEY.eq(&an.sym) {
           // 当前版本 key 属性暂时仅用于在语法层面兼容 react/vue，实际没有作用，直接忽略。
           // 列表循环使用的 <For> 组件，等价的属性为 `keyFn` 属性。
@@ -87,10 +94,25 @@ impl TemplateParser {
             emit_error(attr.span(), "事件属性的属性值必须是箭头函数");
             return;
           };
-          if !matches!(val.as_ref(), Expr::Arrow(_)) {
+          let Expr::Arrow(_) = val.as_ref() else {
             emit_error(attr.span(), "事件属性的属性值必须是箭头函数");
             return;
           };
+          // match f.body.as_ref() {
+          //   BlockStmtOrExpr::Expr(e) => {
+
+          //   },
+          //   BlockStmtOrExpr::BlockStmt(stmt) => {
+          //     if let Some(x) = stmt.stmts.last() {
+          //       match x {
+          //           Stmt::Return(r) => {
+          //             r.arg
+          //           },
+          //           _ => ()
+          //       }
+          //     }
+          //   }
+          // };
           if is_component {
             attrs.const_props.push((IdentName::from(an.sym.clone()), val.clone()));
           } else {
@@ -132,12 +154,13 @@ impl TemplateParser {
               JSXAttrValue::JSXExprContainer(val) => match &val.expr {
                 JSXExpr::JSXEmptyExpr(_) => (),
                 JSXExpr::Expr(expr) => match expr.as_ref() {
-                  Expr::JSXElement(_)
-                  | Expr::JSXEmpty(_)
-                  | Expr::JSXFragment(_)
+                 Expr::JSXEmpty(_)
                   | Expr::JSXMember(_)
                   | Expr::JSXNamespacedName(_) => {
-                    emit_error(val.expr.span(), "不支持 JSX 元素作为属性值");
+                    // ignore
+                  }
+                  Expr::JSXElement(_) | Expr::JSXFragment(_) => {
+                    slots_attrs.push((attr_name.sym, expr));
                   }
                   Expr::Lit(val) => {
                     attrs
@@ -209,6 +232,16 @@ impl TemplateParser {
         }
       }
     });
+
+    if !slots_attrs.is_empty() {
+      self.push_context(Parent::Component, false);
+      slots_attrs.into_iter().for_each(|(attr_name, expr)| {
+        self.context.slots.push(Slot::new(attr_name));
+        self.visit_expr(expr);
+      });
+      let mut children_context = self.pop_context();
+      attrs.slot_props.append(&mut children_context.slots);
+    };
 
     if attrs.spread_prop.is_some()
       && (!attrs.const_props.is_empty() || !attrs.watch_props.is_empty())

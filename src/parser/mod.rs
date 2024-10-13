@@ -24,7 +24,7 @@ pub enum Parent {
   Svg,
 }
 
-struct Slot {
+pub struct Slot {
   name: Atom,
   params: Vec<Pat>,
   expressions: Vec<ExprOrSpread>,

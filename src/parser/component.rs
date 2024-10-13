@@ -55,6 +55,9 @@ impl TemplateParser {
 
     let set_ref_code = attrs.ref_prop.take().map(|r| tpl_set_ref_code(r));
     let mut slots = children_context.slots;
+    if !attrs.slot_props.is_empty() {
+      slots.append(&mut attrs.slot_props);
+    }
     let mut args = vec![ast_create_arg_expr(ast_create_expr_member(
       ast_create_id_of_container(root_container),
       MemberProp::Computed(ComputedPropName {
@@ -64,27 +67,44 @@ impl TemplateParser {
     ))];
     let has_named_slots = slots.len() > 1;
     if has_named_slots {
-      assert!(slots[0].expressions.is_empty());
-      let x: Vec<_> = slots
-        .into_iter()
-        .skip(1)
-        .filter(|s| !s.expressions.is_empty()) // 跳过默认 DEFAULT_SLOT，一定是空的
-        .map(|mut s| {
-          let mut params = vec![Pat::Ident(BindingIdent::from(JINGE_HOST_IDENT.clone()))];
-          params.append(&mut s.params);
-          (
-            IdentName::from(s.name),
-            ast_create_expr_arrow_fn(
-              params,
-              Box::new(BlockStmtOrExpr::Expr(Box::new(Expr::Array(ArrayLit {
-                span: DUMMY_SP,
-                elems: s.expressions.into_iter().map(|e| Some(e)).collect(),
-              })))),
-            ),
-          )
-        })
-        .collect();
-      args.push(ast_create_arg_expr(tpl_lit_obj(x)));
+      let mut slots_arg: Vec<_> = vec![];
+      slots.into_iter().enumerate().for_each(|(i, mut s)| {
+        if s.expressions.is_empty() {
+          return;
+        }
+        let mut params = vec![Pat::Ident(BindingIdent::from(JINGE_HOST_IDENT.clone()))];
+        params.append(&mut s.params);
+        slots_arg.push((
+          if i == 0 {
+            // 第 0 个是默认 slot
+            PropName::Computed(ComputedPropName {
+              span: DUMMY_SP,
+              expr: ast_create_expr_ident(JINGE_IMPORT_DEFAULT_SLOT.local()),
+            })
+          } else {
+            PropName::Str(Str::from(s.name))
+          },
+          ast_create_expr_arrow_fn(
+            params,
+            Box::new(BlockStmtOrExpr::Expr(Box::new(Expr::Array(ArrayLit {
+              span: DUMMY_SP,
+              elems: s.expressions.into_iter().map(|e| Some(e)).collect(),
+            })))),
+          ),
+        ))
+      });
+
+      if !slots_arg.is_empty() {
+        args.push(ast_create_arg_expr(Box::new(Expr::Object(ObjectLit {
+          span: DUMMY_SP,
+          props: slots_arg
+            .into_iter()
+            .map(|(prop, value)| {
+              PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp { key: prop, value })))
+            })
+            .collect(),
+        }))));
+      }
     } else {
       let mut default_slot = slots.pop().unwrap();
       if !default_slot.expressions.is_empty() {

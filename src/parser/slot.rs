@@ -25,7 +25,7 @@ use crate::{
 use super::{
   emit_error, expr::ExprParseResult, tpl::tpl_push_el_code, TemplateParser, JINGE_CHILDREN,
   JINGE_EL_IDENT, JINGE_IMPORT_CONTEXT, JINGE_IMPORT_DEFAULT_SLOT,
-  JINGE_IMPORT_NEW_COM_DEFAULT_SLOT, JINGE_IMPORT_RENDER_SLOT, JINGE_IMPORT_SLOTS,
+  JINGE_IMPORT_NEW_COM_DEFAULT_SLOT, JINGE_IMPORT_RENDER_SLOT, JINGE_IMPORT_SLOTS, JINGE_SLOTS,
 };
 
 #[derive(Debug)]
@@ -60,7 +60,7 @@ fn get_slot(expr: &MemberExpr, props_arg: &Atom) -> Slot {
         obj_mem = m2;
       }
       Expr::Ident(id) => {
-        if props_arg.eq(&id.sym) && JINGE_CHILDREN.eq(&pa.sym) {
+        if props_arg.eq(&id.sym) && (JINGE_CHILDREN.eq(&pa.sym) || JINGE_SLOTS.eq(&pa.sym)) {
           if lv > 3 {
             emit_error(
               id.span(),
