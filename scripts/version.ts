@@ -1,6 +1,8 @@
 import path from 'node:path';
 import { readFile, readdir, writeFile } from 'node:fs/promises';
-
+import { fileURLToPath } from 'node:url';
+const __filename = fileURLToPath(import.meta.url); // get the resolved path to the file
+const __dirname = path.dirname(__filename); // get the name of the directory
 const VER_REG = /"version":\s*"([^"]+)"/;
 const PLATFORM_DIR = path.resolve(__dirname, '../platform');
 

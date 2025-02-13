@@ -9,16 +9,17 @@ crate-type = ["cdylib"]
 [dependencies]
 sha2 = "0.10"
 base64ct = "1.6"
-swc_core = { version = "0.106", features = ["ecma_plugin_transform"] }
-swc_ecma_parser = "0.152"
-swc_common = "0.40"
-swc_ecma_codegen = "0.158"
-swc_ecma_transforms_base = "0.149"
-swc_ecma_transforms_typescript = "0.202"
-swc_ecma_visit = "0.107"
+swc_core = { version = "13.3", features = ["ecma_plugin_transform"] }
+swc_ecma_parser = "8.0"
+swc_common = "6.1"
+swc_ecma_codegen = "6.1"
+swc_ecma_transforms_base = "9.0"
+swc_ecma_transforms_typescript = "9.0"
+swc_ecma_visit = "6.0"
 lazy_static = "1.5"
-hashbrown = "0.14"
+hashbrown = "0.15"
 neon = { version = "1", features = ["napi-6" ] }
+ahash = "0.8.11"
 
 # .cargo/config defines few alias to build plugin.
 # cargo build-wasi generates wasm-wasi32 binary

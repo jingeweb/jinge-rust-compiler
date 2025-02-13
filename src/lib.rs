@@ -9,9 +9,9 @@ use std::sync::Arc;
 use common::IntlType;
 use neon::prelude::*;
 
+use ahash::AHashMap;
 use swc_common::input::SourceFileInput;
 use swc_common::{
-  collections::AHashMap,
   errors::{ColorConfig, Handler, HANDLER},
   source_map::SourceMapGenConfig,
   sync::Lrc,
@@ -22,7 +22,7 @@ use swc_ecma_codegen::{text_writer::JsWriter, Emitter, Node};
 use swc_ecma_parser::{lexer::Lexer, Parser, Syntax, TsSyntax};
 use swc_ecma_transforms_base::fixer::fixer;
 use swc_ecma_transforms_typescript::strip;
-use swc_ecma_visit::{as_folder, noop_visit_type, FoldWith, Visit, VisitWith};
+use swc_ecma_visit::{noop_visit_type, visit_mut_pass, Visit, VisitWith};
 use visitor::{IntlTransformVisitor, TemplateTransformVisitor};
 
 struct SourceMapConfig<'a> {
@@ -150,7 +150,7 @@ fn inner_transform(
     let top_level_mark = Mark::new();
 
     // Remove typescript types
-    let module = module.fold_with(&mut strip(unresolved_mark, top_level_mark));
+    let module = module.apply(strip(unresolved_mark, top_level_mark));
 
     HANDLER.set(&handler, move || {
       let mut parsed_components: Vec<String> = vec![];
@@ -158,7 +158,8 @@ fn inner_transform(
       let module = if code_type == 2 {
         // 只有 tsx 类型才需要转换
         let t = TemplateTransformVisitor::new(&mut parsed_components, intl_type);
-        module.fold_with(&mut as_folder(t))
+        // module.fold_with(&mut as_folder(t))
+        module.apply(visit_mut_pass(t))
       } else {
         // Ensure that we have enough parenthesis.
         module
@@ -166,12 +167,12 @@ fn inner_transform(
 
       let module = if let IntlType::Enabled(drop_default_text) = intl_type {
         let t = IntlTransformVisitor::new(drop_default_text);
-        module.fold_with(&mut as_folder(t))
+        module.apply(visit_mut_pass(t))
       } else {
         module
       };
 
-      let module = module.fold_with(&mut fixer(None));
+      let module = module.apply(fixer(None));
 
       let source_map_names = if sourcemap_enabled {
         let mut v = IdentCollector {
@@ -231,14 +232,7 @@ fn test_transform() {
   let (code, parsed_components, _) = inner_transform(
     "test.tsx".into(),
     2,
-    "const $jg$ = (src: string, content: string) => src.replace('{:?}', content);
-export default {
-  XKVhbP: ({ name }: Record<string, string>) => `你好，${name}`,
-  m3HSJL: () => '你好',
-  '7fxvwR': ({ name, red, b }: Record<string, string>) =>
-    `你好，${$jg$(red, `${$jg$(b, `哦哦`)}：${name}`)}`,
-};"
-      .into(),
+    "export function A() { return <div>hello</div>; }".into(),
     true,
     IntlType::Disabled,
   );
