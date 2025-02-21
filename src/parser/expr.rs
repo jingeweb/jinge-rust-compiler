@@ -55,9 +55,9 @@ impl ExprVisitor {
   pub fn new() -> Self {
     Self::new_with_level(0, None)
   }
-  pub fn new_with_exclude_roots(exclude_roots: ExcludeRoots) -> Self {
-    Self::new_with_level(0, exclude_roots)
-  }
+  // pub fn new_with_exclude_roots(exclude_roots: ExcludeRoots) -> Self {
+  //   Self::new_with_level(0, exclude_roots)
+  // }
   fn new_with_level(level: usize, watch_exclude_roots: ExcludeRoots) -> Self {
     Self {
       level,

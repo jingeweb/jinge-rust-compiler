@@ -115,10 +115,7 @@ impl VisitMut for TemplateTransformVisitor<'_> {
             if let Some(init) = decl.init.as_mut() {
               let name = match &decl.name {
                 Pat::Ident(id) => Some(&id.id),
-                _ => {
-                  emit_error(decl.name.span(), "警告：非常规命令的函数组件无法使用 HMR");
-                  None
-                }
+                _ => None,
               };
               match init.as_mut() {
                 Expr::Fn(func) => self.v_func(name, func.function.as_mut()),

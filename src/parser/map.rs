@@ -2,11 +2,17 @@ use swc_common::Spanned;
 use swc_core::{atoms::Atom, common::DUMMY_SP, ecma::ast::*};
 use swc_ecma_visit::{VisitMut, VisitMutWith};
 
-use crate::{ast::ast_create_expr_ident, parser::JINGE_LOOP_EACH_DATA};
+use crate::{
+  ast::{ast_create_expr_ident, ast_create_expr_lit_str},
+  common::{emit_warn, JINGE_IMPORT_KEY_DATA, JINGE_IMPORT_KEY_INDEX, JINGE_KEY},
+  parser::JINGE_LOOP_EACH_DATA,
+};
 
 use super::{
-  emit_error, map_key::KeyFnFindVisitor, TemplateParser, JINGE_IMPORT_FOR, JINGE_KEY_FN,
-  JINGE_LOOP, JINGE_LOOP_EACH_IDENTS, JINGE_LOOP_EACH_INDEX, JINGE_MAP,
+  emit_error,
+  map_key::{MapKey, MapKeyFindVisitor},
+  TemplateParser, JINGE_IMPORT_FOR, JINGE_LOOP, JINGE_LOOP_EACH_IDENTS, JINGE_LOOP_EACH_INDEX,
+  JINGE_MAP,
 };
 
 /// map 循环转换成 <For> 组件时，需要把 map 函数的参数，转成 <For> 组件的 Slot 函数的参数。
@@ -146,7 +152,7 @@ impl VisitMut for ReplaceVisitor {
   }
 }
 
-fn gen_for_component(looop: &Box<Expr>, key: Option<Box<Expr>>, func: ArrowExpr) -> JSXElement {
+fn gen_for_component(looop: &Box<Expr>, key: MapKey, func: ArrowExpr) -> JSXElement {
   let mut attrs = vec![JSXAttrOrSpread::JSXAttr(JSXAttr {
     span: looop.span(),
     name: JSXAttrName::Ident(IdentName::from(JINGE_LOOP.clone())),
@@ -155,16 +161,34 @@ fn gen_for_component(looop: &Box<Expr>, key: Option<Box<Expr>>, func: ArrowExpr)
       expr: JSXExpr::Expr(looop.clone()),
     })),
   })];
-  if let Some(key) = key {
-    attrs.push(JSXAttrOrSpread::JSXAttr(JSXAttr {
+  match key {
+    MapKey::Data => attrs.push(JSXAttrOrSpread::JSXAttr(JSXAttr {
       span: DUMMY_SP,
-      name: JSXAttrName::Ident(IdentName::from(JINGE_KEY_FN.clone())),
+      name: JSXAttrName::Ident(IdentName::from(JINGE_KEY.clone())),
       value: Some(JSXAttrValue::JSXExprContainer(JSXExprContainer {
-        span: key.span(),
-        expr: JSXExpr::Expr(key),
+        span: DUMMY_SP,
+        expr: JSXExpr::Expr(ast_create_expr_ident(JINGE_IMPORT_KEY_DATA.local())),
       })),
-    }))
-  };
+    })),
+    MapKey::Index => attrs.push(JSXAttrOrSpread::JSXAttr(JSXAttr {
+      span: DUMMY_SP,
+      name: JSXAttrName::Ident(IdentName::from(JINGE_KEY.clone())),
+      value: Some(JSXAttrValue::JSXExprContainer(JSXExprContainer {
+        span: DUMMY_SP,
+        expr: JSXExpr::Expr(ast_create_expr_ident(JINGE_IMPORT_KEY_INDEX.local())),
+      })),
+    })),
+    MapKey::Prop(path) => attrs.push(JSXAttrOrSpread::JSXAttr(JSXAttr {
+      span: DUMMY_SP,
+      name: JSXAttrName::Ident(IdentName::from(JINGE_KEY.clone())),
+      value: Some(JSXAttrValue::JSXExprContainer(JSXExprContainer {
+        span: DUMMY_SP,
+        expr: JSXExpr::Expr(ast_create_expr_lit_str(path.into())),
+      })),
+    })),
+    _ => (),
+  }
+
   JSXElement {
     span: DUMMY_SP,
     opening: JSXOpeningElement {
@@ -241,19 +265,25 @@ impl TemplateParser {
       ReplaceVisitor::new(arg_data.clone(), arg_index.clone(), slot_vm_name.clone());
     func.params = vec![Pat::Ident(BindingIdent::from(slot_vm_name.clone()))];
 
-    let find_key_visitor = KeyFnFindVisitor {
+    let find_key_visitor = MapKeyFindVisitor {
       arg_data,
       arg_index,
       // slot_vm_name,
     };
-    let key_fn = find_key_visitor.get_key_fn(&func);
+    let map_key = find_key_visitor.get_key(&func);
+    if map_key.is_none() {
+      emit_warn(
+        func.span(),
+        "map 函数转换为 <For> 组件时缺失 key，建议始终指定 key 用于提升性能",
+      );
+    }
 
     // replace_visitor 必须在 find_key_visitor 之后执行，因为 replace_visitor 也会把 key 属性值里的表达式替换。
     if !replace_visitor.all_params_overrided() {
       func.body.visit_mut_children_with(&mut replace_visitor);
     }
 
-    let for_component = gen_for_component(looop, key_fn, func);
+    let for_component = gen_for_component(looop, map_key, func);
     let tn = Ident::from(JINGE_IMPORT_FOR.local());
 
     self.map_loop_level += 1;

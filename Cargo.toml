@@ -9,13 +9,13 @@ crate-type = ["cdylib"]
 [dependencies]
 sha2 = "0.10"
 base64ct = "1.6"
-swc_core = { version = "13.3", features = ["ecma_plugin_transform"] }
-swc_ecma_parser = "8.0"
-swc_common = "6.1"
-swc_ecma_codegen = "6.1"
-swc_ecma_transforms_base = "9.0"
-swc_ecma_transforms_typescript = "9.0"
-swc_ecma_visit = "6.0"
+swc_core = { version = "14.1", features = ["ecma_plugin_transform"] }
+swc_ecma_parser = "9.0"
+swc_common = "7.0"
+swc_ecma_codegen = "7.0"
+swc_ecma_transforms_base = "10.0"
+swc_ecma_transforms_typescript = "10.0"
+swc_ecma_visit = "7.0"
 lazy_static = "1.5"
 hashbrown = "0.15"
 neon = { version = "1", features = ["napi-6" ] }

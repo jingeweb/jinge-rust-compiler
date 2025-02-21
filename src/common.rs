@@ -71,6 +71,8 @@ lazy_static::lazy_static! {
   pub static ref JINGE_IMPORT_RENDER_SLOT: JingeImport = x!("renderSlotFunction");
   pub static ref JINGE_IMPORT_RENDER_FC: JingeImport = x!("renderFunctionComponent");
   pub static ref JINGE_IMPORT_NON_ROOT_COMPONENT_NODES: JingeImport = x!("NON_ROOT_COMPONENT_NODES");
+  pub static ref JINGE_IMPORT_KEY_DATA: JingeImport = x!("KEY_DATA");
+  pub static ref JINGE_IMPORT_KEY_INDEX: JingeImport = x!("KEY_INDEX");
 
   pub static ref JINGE_EL_IDENT: Ident = "$jg$".into();
   pub static ref JINGE_ATTR_IDENT: Ident = "attrs$jg$".into();
@@ -86,7 +88,9 @@ lazy_static::lazy_static! {
   pub static ref JINGE_REF: Atom = "ref".into();
   pub static ref JINGE_CALL: Atom = "call".into();
   pub static ref JINGE_CHILDREN: Atom = "children".into();
-  pub static ref JINGE_SLOTS: Atom = "slots".into();
+  pub static ref JINGE_ON: Atom = "on".into();
+  pub static ref JINGE_SLOT: Atom = "slot".into();
+  // pub static ref JINGE_SLOTS: Atom = "slots".into();
   pub static ref JINGE_CLASSNAME: Atom = "className".into();
   pub static ref JINGE_HTML_FOR: Atom = "htmlFor".into();
   pub static ref JINGE_CLASS: Atom = "class".into();
@@ -95,10 +99,7 @@ lazy_static::lazy_static! {
   pub static ref JINGE_MAP: Atom = "map".into();
   pub static ref JINGE_LOOP: Atom = "loop".into();
   pub static ref JINGE_KEY: Atom = "key".into();
-  pub static ref JINGE_KEY_FN: Atom = "keyFn".into();
   pub static ref JINGE_EMPTY_STR: Atom = "".into();
-  pub static ref JINGE_DOUBLECLICK: Atom = "doubleclick".into();
-  pub static ref JINGE_DBLCLICK: Atom = "dblclick".into();
 
   pub static ref IDL_ATTRIBUTE_SET: Vec<Atom> = {
     let mut attrs = vec!["disabled", "readOnly", "value", "autoFocus", "autoComplete", "autoPlay", "controls", "required", "checked", "selected", "multiple", "muted", "draggable"];
@@ -110,7 +111,7 @@ lazy_static::lazy_static! {
 }
 
 fn gen_import_jinge() -> ModuleItem {
-  let imports: [&'static JingeImport; 29] = [
+  let imports: [&'static JingeImport; 31] = [
     &JINGE_IMPORT_TEXT_RENDER_FN,
     &JINGE_IMPORT_RENDER_INTL_TEXT,
     &JINGE_IMPORT_RENDER_INTL_TEXT_WITH_PARAMS,
@@ -140,6 +141,8 @@ fn gen_import_jinge() -> ModuleItem {
     &JINGE_IMPORT_WATCH_PATH_FOR_RENDER_2,
     &JINGE_IMPORT_IF,
     &JINGE_IMPORT_FOR,
+    &JINGE_IMPORT_KEY_DATA,
+    &JINGE_IMPORT_KEY_INDEX,
   ];
   let specs: Vec<_> = imports
     .map(|e| {
@@ -165,5 +168,11 @@ fn gen_import_jinge() -> ModuleItem {
 pub fn emit_error(sp: Span, msg: &str) {
   HANDLER.with(|h| {
     h.struct_span_err(sp, msg).emit();
+  });
+}
+
+pub fn emit_warn(sp: Span, msg: &str) {
+  HANDLER.with(|h| {
+    h.struct_span_warn(sp, msg).emit();
   });
 }

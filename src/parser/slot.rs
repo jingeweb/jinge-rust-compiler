@@ -1,13 +1,10 @@
-use std::rc::Rc;
-
-use hashbrown::HashSet;
 use swc_common::{Spanned, SyntaxContext, DUMMY_SP};
 use swc_core::{
   atoms::Atom,
   ecma::ast::{
     AssignExpr, AssignOp, AssignTarget, BlockStmt, BlockStmtOrExpr, ComputedPropName, Expr,
     ExprOrSpread, ExprStmt, Ident, IdentName, KeyValueProp, Lit, MemberExpr, MemberProp, ObjectLit,
-    OptChainBase, Pat, Prop, PropName, PropOrSpread, ReturnStmt, SimpleAssignTarget, Stmt,
+    OptChainBase, Prop, PropName, PropOrSpread, ReturnStmt, SimpleAssignTarget, Stmt,
   },
 };
 
@@ -25,7 +22,7 @@ use crate::{
 use super::{
   emit_error, expr::ExprParseResult, tpl::tpl_push_el_code, TemplateParser, JINGE_CHILDREN,
   JINGE_EL_IDENT, JINGE_IMPORT_CONTEXT, JINGE_IMPORT_DEFAULT_SLOT,
-  JINGE_IMPORT_NEW_COM_DEFAULT_SLOT, JINGE_IMPORT_RENDER_SLOT, JINGE_IMPORT_SLOTS, JINGE_SLOTS,
+  JINGE_IMPORT_NEW_COM_DEFAULT_SLOT, JINGE_IMPORT_RENDER_SLOT, JINGE_IMPORT_SLOTS,
 };
 
 #[derive(Debug)]
@@ -33,51 +30,39 @@ enum Slot {
   None,
   Default,
   Named(Atom),
-  Err,
 }
 
 fn get_slot(expr: &MemberExpr, props_arg: &Atom) -> Slot {
-  let mut obj_mem = expr;
-  let mut pa;
-  let mut pb = None;
-  let mut lv = 1;
-  loop {
-    let MemberProp::Ident(prop) = &obj_mem.prop else {
-      return Slot::None;
-    };
-    pa = prop;
-    lv += 1;
-    match obj_mem.obj.as_ref() {
-      Expr::Member(m) => {
-        pb = Some(pa);
-        obj_mem = m;
+  let Expr::Ident(id) = expr.obj.as_ref() else {
+    return Slot::None;
+  };
+  if !id.sym.eq(props_arg) {
+    return Slot::None;
+  }
+  match &expr.prop {
+    MemberProp::Ident(id) => {
+      if JINGE_CHILDREN.eq(&id.sym) {
+        Slot::Default
+      } else {
+        Slot::None
       }
-      Expr::OptChain(oc) => {
-        let OptChainBase::Member(m2) = oc.base.as_ref() else {
-          return Slot::None;
-        };
-        pb = Some(pa);
-        obj_mem = m2;
-      }
-      Expr::Ident(id) => {
-        if props_arg.eq(&id.sym) && (JINGE_CHILDREN.eq(&pa.sym) || JINGE_SLOTS.eq(&pa.sym)) {
-          if lv > 3 {
-            emit_error(
-              id.span(),
-              "Slot 渲染最多支持 2 层，比如 props.children 或 props.children.x",
-            );
-            return Slot::Err;
-          } else if let Some(name) = pb {
-            return Slot::Named(name.sym.clone());
-          } else {
-            return Slot::Default;
-          }
-        } else {
-          return Slot::None;
-        }
-      }
-      _ => return Slot::None,
     }
+    MemberProp::Computed(e) => match e.expr.as_ref() {
+      Expr::Lit(id) => match id {
+        Lit::Str(id) => {
+          if JINGE_CHILDREN.eq(&id.value) {
+            Slot::Default
+          } else if id.value.starts_with("slot:") {
+            Slot::Named(id.value[5..].into())
+          } else {
+            Slot::None
+          }
+        }
+        _ => Slot::None,
+      },
+      _ => Slot::None,
+    },
+    _ => Slot::None,
   }
 }
 
@@ -96,7 +81,7 @@ fn parse_slot_arg(args: &Vec<ExprOrSpread>) -> SlotVm {
   if args.len() > 1 {
     emit_error(
       args[1].span(),
-      "警告：slot 渲染函数的只允许一个参数，该参数应该是具备双向绑定属性的 ViewModel。是否忘了使用 object 包裹这几个参数？",
+      "警告：Slot 渲染函数的只允许一个参数，该参数应该是具备双向绑定属性的 ViewModel。是否忘了使用 object 包裹这几个参数？",
     );
     return vm;
   }
@@ -146,39 +131,41 @@ fn parse_slot_arg(args: &Vec<ExprOrSpread>) -> SlotVm {
           | Expr::JSXFragment(_)
           | Expr::JSXMember(_)
           | Expr::JSXNamespacedName(_) => {
-            emit_error(kv.value.span(), "不支持 JSX 元素作为属性值");
+            emit_error(kv.value.span(), "不支持 JSX 元素作为插槽的传递数据");
           }
           Expr::Lit(val) => {
             vm.const_props
               .push((kv.key.clone(), Box::new(Expr::Lit(val.clone()))));
           }
           Expr::Fn(_) | Expr::Arrow(_) => {
-            let mut set: HashSet<Atom> = HashSet::new();
-            match kv.value.as_ref() {
-              Expr::Fn(e) => e.function.params.iter().for_each(|p| {
-                if let Pat::Ident(id) = &p.pat {
-                  set.insert(id.sym.clone());
-                }
-              }),
-              Expr::Arrow(e) => e.params.iter().for_each(|p| {
-                if let Pat::Ident(id) = p {
-                  set.insert(id.sym.clone());
-                }
-              }),
-              _ => (),
-            }
-            let r = ExprVisitor::new_with_exclude_roots(if set.is_empty() {
-              None
-            } else {
-              Some(Rc::new(set))
-            })
-            .parse(kv.value.as_ref());
-            match r {
-              ExprParseResult::None => {
-                vm.const_props.push((kv.key.clone(), kv.value.clone()));
-              }
-              _ => vm.watch_props.push((kv.key.clone(), r)),
-            }
+            // let mut set: HashSet<Atom> = HashSet::new();
+            // match kv.value.as_ref() {
+            //   Expr::Fn(e) => e.function.params.iter().for_each(|p| {
+            //     if let Pat::Ident(id) = &p.pat {
+            //       set.insert(id.sym.clone());
+            //     }
+            //   }),
+            //   Expr::Arrow(e) => e.params.iter().for_each(|p| {
+            //     if let Pat::Ident(id) = p {
+            //       set.insert(id.sym.clone());
+            //     }
+            //   }),
+            //   _ => (),
+            // }
+            // println!("XXXX {:#?}", set);
+            // let r = ExprVisitor::new_with_exclude_roots(if set.is_empty() {
+            //   None
+            // } else {
+            //   Some(Rc::new(set))
+            // })
+            // .parse(kv.value.as_ref());
+            // match r {
+            //   ExprParseResult::None => {
+            //     vm.const_props.push((kv.key.clone(), kv.value.clone()));
+            //   }
+            //   _ => vm.watch_props.push((kv.key.clone(), r)),
+            // }
+            emit_error(kv.value.span(), "不支持函数作为插槽的传递数据");
           }
           _ => {
             let r = ExprVisitor::new().parse(kv.value.as_ref());
@@ -363,7 +350,6 @@ impl TemplateParser {
         self.transform_slot(Some(n), slot_args);
         true
       }
-      Slot::Err => true,
     }
   }
   pub fn parse_slot_call_expr(&mut self, callee: &Expr, args: &Vec<ExprOrSpread>) -> bool {
@@ -392,7 +378,6 @@ impl TemplateParser {
         self.transform_slot(Some(n), Some(args));
         true
       }
-      Slot::Err => true,
     }
   }
 }

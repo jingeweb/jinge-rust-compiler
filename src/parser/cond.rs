@@ -1,7 +1,7 @@
 use swc_common::Spanned;
 use swc_core::{common::DUMMY_SP, ecma::ast::*};
 
-use crate::ast::*;
+use crate::{ast::*, common::JINGE_SLOT};
 
 use super::{
   expr::{ExprParseResult, ExprVisitor},
@@ -11,57 +11,59 @@ use super::{
 
 lazy_static::lazy_static! {
   static ref EXPECT: IdentName = IdentName::from("expect");
-  static ref TRUE: IdentName = IdentName::from("true");
+
   static ref FALSE: IdentName = IdentName::from("false");
 }
 
-/// 将形如 `test ? cons : alt` 的二元条件表达式，转换为 `If` 组件： `<If expect={test}>{{ true: cons, false: alt }}</If>`
+/// 将形如 `test ? cons : alt` 的二元条件表达式，转换为 `If` 组件： `<If expect={test} slot:true={cons} slot:false={alt} />`
 fn gen_if_component(
   test: &Box<Expr>,
   alt: Option<&Box<Expr>>,
   cons: Option<&Box<Expr>>,
 ) -> JSXElement {
-  let mut slots = Vec::with_capacity(if alt.is_none() || cons.is_none() {
-    1
-  } else {
-    2
-  });
-  if let Some(cons) = cons {
-    slots.push(PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
-      key: PropName::Ident(TRUE.clone()),
-      value: cons.clone(),
-    }))));
-  }
+  let mut attrs = Vec::with_capacity(if alt.is_some() { 2 } else { 1 });
+  attrs.push(JSXAttrOrSpread::JSXAttr(JSXAttr {
+    span: test.span(),
+    name: JSXAttrName::Ident(EXPECT.clone()),
+    value: Some(JSXAttrValue::JSXExprContainer(JSXExprContainer {
+      span: test.span(),
+      expr: JSXExpr::Expr(test.clone()),
+    })),
+  }));
+
   if let Some(alt) = alt {
-    slots.push(PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
-      key: PropName::Ident(FALSE.clone()),
-      value: alt.clone(),
-    }))));
+    attrs.push(JSXAttrOrSpread::JSXAttr(JSXAttr {
+      span: DUMMY_SP,
+      name: JSXAttrName::JSXNamespacedName(JSXNamespacedName {
+        span: DUMMY_SP,
+        ns: IdentName::from(JINGE_SLOT.clone()),
+        name: IdentName::from(FALSE.clone()),
+      }),
+      value: Some(JSXAttrValue::JSXExprContainer(JSXExprContainer {
+        span: DUMMY_SP,
+        expr: JSXExpr::Expr(alt.clone()),
+      })),
+    }));
   }
+
   JSXElement {
     span: DUMMY_SP,
     opening: JSXOpeningElement {
       name: JSXElementName::Ident(JINGE_IMPORT_IF.local()),
       span: cons.span(),
-      attrs: vec![JSXAttrOrSpread::JSXAttr(JSXAttr {
-        span: test.span(),
-        name: JSXAttrName::Ident(EXPECT.clone()),
-        value: Some(JSXAttrValue::JSXExprContainer(JSXExprContainer {
-          span: test.span(),
-          expr: JSXExpr::Expr(test.clone()),
-        })),
-      })],
-      self_closing: false,
+      attrs,
+      self_closing: cons.is_none(),
       type_args: None,
     },
-    children: vec![JSXElementChild::JSXExprContainer(JSXExprContainer {
-      span: DUMMY_SP,
-      expr: JSXExpr::Expr(Box::new(Expr::Object(ObjectLit {
+    children: if cons.is_some() {
+      vec![JSXElementChild::JSXExprContainer(JSXExprContainer {
         span: DUMMY_SP,
-        props: slots,
-      }))),
-    })],
-    closing: Some(JSXClosingElement {
+        expr: JSXExpr::Expr(cons.unwrap().clone()),
+      })]
+    } else {
+      vec![]
+    },
+    closing: cons.map(|_| JSXClosingElement {
       name: JSXElementName::Ident(JINGE_IMPORT_IF.local()),
       span: DUMMY_SP,
     }),
@@ -78,9 +80,9 @@ fn is_null_undef(expr: &Expr) -> bool {
 }
 
 impl TemplateParser {
-  /// 为兼容 react 的 `test ? alt : cons` 写法，将条件表达式转成 <If> 组件：
+  /// 为兼容 react 的 `test ? cons : alt` 写法，将条件表达式转成 <If> 组件：
   /// ```tsx
-  /// <If expect={test}>{{ true: alt, false: cons }}</If>
+  /// <If expect={test} slot:true={cons} slot:false={alt}></If>
   /// ```
   ///
   /// 如果 alt 和 cons 表达式都是常量表达式，比如常见的 `this.submitting ? "提交中..." : "提交"`，

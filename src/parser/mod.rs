@@ -220,18 +220,28 @@ impl Visit for TemplateParser {
       }
 
       Expr::Fn(f) => {
-        emit_error(f.span(), "tsx 中不支持函数，如果是定义 Slot 请使用箭头函数");
+        emit_error(
+          f.span(),
+          "请使用箭头函数定义插槽，且箭头后直接返回 JSX 元素。",
+        );
       }
       Expr::Arrow(expr) => {
         if !self.context.is_parent_component() || self.context.root_container {
           emit_error(expr.span(), "Slot 定义必须位于组件下");
           return;
         }
+        if expr.params.len() > 1 {
+          emit_error(
+            expr.span(),
+            "Slot 函数只允许一个参数，该参数应该是一个具备双向绑定能力的 ViewModel",
+          );
+          return;
+        }
         match &*expr.body {
           BlockStmtOrExpr::BlockStmt(_) => {
             emit_error(
               expr.span(),
-              "使用箭头函数定义默认 Slot 时必须直接在箭头后返回值",
+              "使用箭头函数定义 Slot 时必须直接在箭头后返回 JSX 元素",
             );
           }
           BlockStmtOrExpr::Expr(e) => {
@@ -240,7 +250,7 @@ impl Visit for TemplateParser {
                 if !matches!(par, Pat::Ident(_)) {
                   emit_error(
                     par.span(),
-                    "警告：slot 函数的参数不要使用解构的写法，会导致数据的绑定失效。",
+                    "警告：插槽函数的参数不要使用解构的写法，会导致数据的绑定失效。",
                   );
                   true
                 } else {
@@ -261,32 +271,41 @@ impl Visit for TemplateParser {
           }
         }
       }
+      // Expr::Object(obj) => {
+      //   if !self.context.is_parent_component() || self.context.root_container {
+      //     emit_error(obj.span(), "Slot 定义必须位于组件下");
+      //     return;
+      //   }
+      //   obj.props.iter().for_each(|prop| match prop {
+      //     PropOrSpread::Spread(e) => {
+      //       emit_error(e.dot3_token.span(), "Slot 定义不支持 ... 的书写方式");
+      //     }
+      //     PropOrSpread::Prop(p) => match p.as_ref() {
+      //       Prop::KeyValue(KeyValueProp { key, value }) => {
+      //         match key {
+      //           PropName::Ident(id) => self.context.slots.push(Slot::new(id.sym.clone())),
+      //           PropName::Str(s) => self.context.slots.push(Slot::new(s.value.clone())),
+      //           _ => {
+      //             emit_error(key.span(), "Slot 定义的名称必须是常量字符串");
+      //             return;
+      //           }
+      //         }
+      //         self.visit_expr(value);
+      //       }
+      //       _ => emit_error(p.span(), "Slot 定义必须是 Key: Value 的形式"),
+      //     },
+      //   })
+      // }
       Expr::Object(obj) => {
-        if !self.context.is_parent_component() || self.context.root_container {
-          emit_error(obj.span(), "Slot 定义必须位于组件下");
-          return;
-        }
-        obj.props.iter().for_each(|prop| match prop {
-          PropOrSpread::Spread(e) => {
-            emit_error(e.dot3_token.span(), "Slot 定义不支持 ... 的书写方式");
-          }
-          PropOrSpread::Prop(p) => match p.as_ref() {
-            Prop::KeyValue(KeyValueProp { key, value }) => {
-              match key {
-                PropName::Ident(id) => self.context.slots.push(Slot::new(id.sym.clone())),
-                PropName::Str(s) => self.context.slots.push(Slot::new(s.value.clone())),
-                _ => {
-                  emit_error(key.span(), "Slot 定义的名称必须是常量字符串");
-                  return;
-                }
-              }
-              self.visit_expr(value);
-            }
-            _ => emit_error(p.span(), "Slot 定义必须是 Key: Value 的形式"),
-          },
-        })
+        emit_error(
+          obj.span(),
+          "不能直接使用 Object 表达式。如果想打印对象，可将其放到模板字符串中。",
+        );
       }
-      Expr::Array(e) => emit_error(e.span(), "tsx 中不能直接使用数组表达式"),
+      Expr::Array(e) => emit_error(
+        e.span(),
+        "不能直接使用数组表达式。如果是想渲染多个元素，请使用 For 组件。",
+      ),
       Expr::Paren(e) => self.visit_expr(&e.expr),
       Expr::Lit(e) => self.visit_lit(e),
       Expr::Call(expr) => {
