@@ -12,27 +12,24 @@ importers:
         specifier: ^5.6.0
         version: 5.6.0
       jinge-compiler-core-linux-aarch64:
-        specifier: 4.0.0-alpha.12
-        version: 4.0.0-alpha.12
+        specifier: 4.0.0-alpha.14
+        version: 4.0.0-alpha.14
       jinge-compiler-core-linux-x86_64:
-        specifier: 4.0.0-alpha.12
-        version: 4.0.0-alpha.12
+        specifier: 4.0.0-alpha.14
+        version: 4.0.0-alpha.14
       jinge-compiler-core-macos-aarch64:
-        specifier: 4.0.0-alpha.12
-        version: 4.0.0-alpha.12
+        specifier: 4.0.0-alpha.14
+        version: 4.0.0-alpha.14
       jinge-compiler-core-macos-x86_64:
-        specifier: 4.0.0-alpha.12
-        version: 4.0.0-alpha.12
+        specifier: 4.0.0-alpha.14
+        version: 4.0.0-alpha.14
       jinge-compiler-core-windows-x86_64:
-        specifier: 4.0.0-alpha.12
-        version: 4.0.0-alpha.12
+        specifier: 4.0.0-alpha.14
+        version: 4.0.0-alpha.14
     devDependencies:
       '@eslint/js':
         specifier: ^9.21.0
         version: 9.21.0
-      '@types/eslint__js':
-        specifier: ^9.14.0
-        version: 9.14.0
       '@types/node':
         specifier: ^22.13.5
         version: 22.13.5
@@ -578,10 +575,6 @@ packages:
   '@types/doctrine@0.0.9':
     resolution: {integrity: sha512-eOIHzCUSH7SMfonMG1LsC2f8vxBFtho6NGBznK41R84YzPuvSBzrhEps33IsQiOW9+VL6NQ9DbjQJznk/S4uRA==}
 
-  '@types/eslint__js@9.14.0':
-    resolution: {integrity: sha512-s0jepCjOJWB/GKcuba4jISaVpBudw3ClXJ3fUK4tugChUMQsp6kSwuA8Dcx6wFd/JsJqcY8n4rEpa5RTHs5ypA==}
-    deprecated: This is a stub types definition. @eslint/js provides its own type definitions, so you do not need this installed.
-
   '@types/estree@1.0.6':
     resolution: {integrity: sha512-AYnb1nQyY49te+VRAVgmzfcgjYS91mY5P0TKUDCLEM+gNnA+3T6rWITXRLYCpahpqSQbN5cE+gHpnPyXjHWxcw==}
 
@@ -1073,20 +1066,20 @@ packages:
   jackspeak@3.4.3:
     resolution: {integrity: sha512-OGlZQpz2yfahA/Rd1Y8Cd9SIEsqvXkLVoSw/cgwhnhFMDbsQFeZYoJJ7bIZBS9BcamUW96asq/npPWugM+RQBw==}
 
-  jinge-compiler-core-linux-aarch64@4.0.0-alpha.12:
-    resolution: {integrity: sha512-qSq1v25Kvq7Mkx3oJU2ebksSY1ZsMUcehAI/AiAE4/68RclwIisaE/Y2Qi0RKTQcPnlMdwID4VUPdabc0l1QMA==}
+  jinge-compiler-core-linux-aarch64@4.0.0-alpha.14:
+    resolution: {integrity: sha512-4ryYPWbTpOzlQY17VkcZxyNmYL269HzEAWUgkYa+lTzruDxQcIc+5EBPAreGdcVT4oJxITSYut0NJ2oDfme2VA==}
 
-  jinge-compiler-core-linux-x86_64@4.0.0-alpha.12:
-    resolution: {integrity: sha512-1O60wAJk7DC1xP79rXTgcc0FhZ8ULF1uQ6zmQxPYOeem9X6Yihbc8M88q5c5YtrCcMeaQiNMlNxZFH5N76qUXw==}
+  jinge-compiler-core-linux-x86_64@4.0.0-alpha.14:
+    resolution: {integrity: sha512-7XtjLk78SFtPzavpQLoXqudI6cPtG0HHEuOiT/GHdGgIpOm4yXM9NSOmOGcyfPwPZDE4GSq1qe+IeQeYIZCAwA==}
 
-  jinge-compiler-core-macos-aarch64@4.0.0-alpha.12:
-    resolution: {integrity: sha512-/Xz6UYNTBEc+/rJvG20fP7F+JRBdaxGGOHb60jZLpsY8mSezbgHVertI+28rUnAu22aDTUa7FloWSGmHHl/UAg==}
+  jinge-compiler-core-macos-aarch64@4.0.0-alpha.14:
+    resolution: {integrity: sha512-QQiTvWRj+KoipV0opstyMnvvQvgHR5d79FuqX+UskakD+oRBC+jDIQffaH/LcWIz2Fqn1nNB7RamyNXkmxhd7A==}
 
-  jinge-compiler-core-macos-x86_64@4.0.0-alpha.12:
-    resolution: {integrity: sha512-wTw5O92mCJS8blw8dQwrHjtbpyqUo17CrH9Q2xaHqaTFVWd5pViEW/1zul1RPZX/8jRC9xCK9TIgymYqoW5gRw==}
+  jinge-compiler-core-macos-x86_64@4.0.0-alpha.14:
+    resolution: {integrity: sha512-80SBVUrn2YUQz71aiMXlCKucKNf7oWpXtgmhE5mKhrdKQKGYQe0vZ8Jw+Eg90NII5qgXa9uDukwNRbjfjbF1yg==}
 
-  jinge-compiler-core-windows-x86_64@4.0.0-alpha.12:
-    resolution: {integrity: sha512-+x1xHB/sYrSYTXWC6jcysGEqRShqKTlfjezUW8Xf6m5CfzJui3cz7b3ZHheRSF6n11XJCL5KAux8/BvOUKY5IQ==}
+  jinge-compiler-core-windows-x86_64@4.0.0-alpha.14:
+    resolution: {integrity: sha512-CGW36S4DcC1gN8Zp3clYpqN446zgPXS/+F8q3Rv0qYNJiMQ5fVvL5dwO25AVqvebbkFf0Ejh1xKojH7br0l3yQ==}
 
   joycon@3.1.1:
     resolution: {integrity: sha512-34wB/Y7MW7bzjKRjUKTa46I2Z7eV62Rkhva+KkopW7Qvv/OSWBqvkSY7vusOPrNuZcUG3tApvdVgNB8POj3SPw==}
@@ -1956,10 +1949,6 @@ snapshots:
 
   '@types/doctrine@0.0.9': {}
 
-  '@types/eslint__js@9.14.0':
-    dependencies:
-      '@eslint/js': 9.21.0
-
   '@types/estree@1.0.6': {}
 
   '@types/json-schema@7.0.15': {}
@@ -2524,15 +2513,15 @@ snapshots:
     optionalDependencies:
       '@pkgjs/parseargs': 0.11.0
 
-  jinge-compiler-core-linux-aarch64@4.0.0-alpha.12: {}
+  jinge-compiler-core-linux-aarch64@4.0.0-alpha.14: {}
 
-  jinge-compiler-core-linux-x86_64@4.0.0-alpha.12: {}
+  jinge-compiler-core-linux-x86_64@4.0.0-alpha.14: {}
 
-  jinge-compiler-core-macos-aarch64@4.0.0-alpha.12: {}
+  jinge-compiler-core-macos-aarch64@4.0.0-alpha.14: {}
 
-  jinge-compiler-core-macos-x86_64@4.0.0-alpha.12: {}
+  jinge-compiler-core-macos-x86_64@4.0.0-alpha.14: {}
 
-  jinge-compiler-core-windows-x86_64@4.0.0-alpha.12: {}
+  jinge-compiler-core-windows-x86_64@4.0.0-alpha.14: {}
 
   joycon@3.1.1: {}
 

@@ -14,5 +14,5 @@
     "moduleResolution": "Bundler",
     "noEmit": true
   },
-  "include": ["ts/**/*", "scripts/**/*", "*.js", "*.mjs", "version.ts"]
+  "include": ["ts/**/*", "scripts/**/*", "*.js", "*.mjs"]
 }
