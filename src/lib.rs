@@ -9,60 +9,26 @@ use std::sync::Arc;
 use common::IntlType;
 use neon::prelude::*;
 
-use ahash::AHashMap;
 use swc_common::input::SourceFileInput;
 use swc_common::{
-  errors::{ColorConfig, Handler, HANDLER},
-  source_map::SourceMapGenConfig,
+  FileName, GLOBALS, Globals, Mark, SourceMap,
+  errors::{ColorConfig, HANDLER, Handler},
   sync::Lrc,
-  BytePos, FileName, Globals, Mark, SourceMap, GLOBALS,
 };
-use swc_core::ecma::ast::{EsVersion, Ident, IdentName};
-use swc_ecma_codegen::{text_writer::JsWriter, Emitter, Node};
-use swc_ecma_parser::{lexer::Lexer, Parser, Syntax, TsSyntax};
+use swc_core::ecma::ast::EsVersion;
+use swc_ecma_codegen::{Emitter, Node, text_writer::JsWriter};
+use swc_ecma_parser::{Parser, Syntax, TsSyntax, lexer::Lexer};
 use swc_ecma_transforms_base::fixer::fixer;
+use swc_ecma_transforms_base::resolver;
 use swc_ecma_transforms_typescript::strip;
-use swc_ecma_visit::{noop_visit_type, visit_mut_pass, Visit, VisitWith};
+use swc_ecma_visit::visit_mut_pass;
 use visitor::{IntlTransformVisitor, TemplateTransformVisitor};
 
-struct SourceMapConfig<'a> {
-  filename: &'a str,
-  names: &'a AHashMap<BytePos, swc_core::atoms::JsWord>,
-}
-impl SourceMapGenConfig for SourceMapConfig<'_> {
-  fn file_name_to_source(&self, _: &FileName) -> String {
-    self.filename.to_string()
-  }
-  fn inline_sources_content(&self, _: &FileName) -> bool {
-    true
-  }
-  fn name_for_bytepos(&self, pos: BytePos) -> Option<&str> {
-    self.names.get(&pos).map(|v| &**v)
-  }
-}
-
-pub struct IdentCollector {
-  pub names: AHashMap<BytePos, swc_core::atoms::JsWord>,
-}
-
-impl Visit for IdentCollector {
-  noop_visit_type!();
-
-  fn visit_ident(&mut self, ident: &Ident) {
-    self.names.insert(ident.span.lo, ident.sym.clone());
-  }
-
-  fn visit_ident_name(&mut self, ident: &IdentName) {
-    self.names.insert(ident.span.lo, ident.sym.clone());
-  }
-}
-
 fn print(
-  filename: &str,
   cm: Lrc<SourceMap>,
   node: &impl Node,
   sourcemap_enabled: bool,
-  names: &AHashMap<BytePos, swc_core::atoms::JsWord>,
+  // names: &AHashMap<BytePos, swc_core::atoms::JsWord>,
 ) -> (String, Option<String>) {
   let mut src_map_buf = Vec::new();
   let src = {
@@ -89,14 +55,7 @@ fn print(
     String::from_utf8(buf).expect("codegen generated non-utf8 output")
   };
   let map = if sourcemap_enabled {
-    let map = cm.build_source_map_with_config(
-      &src_map_buf,
-      None,
-      SourceMapConfig {
-        filename: filename,
-        names,
-      },
-    );
+    let map = cm.build_source_map(&src_map_buf);
     let mut buf = Vec::new();
 
     map
@@ -106,7 +65,7 @@ fn print(
   } else {
     None
   };
-  // println!("{}", src);
+  // println!("{:?}", map);
   (src, map)
 }
 
@@ -123,7 +82,7 @@ fn inner_transform(
   let cm: Arc<SourceMap> = Arc::<SourceMap>::default();
   let fm = cm.new_source_file(Arc::new(FileName::from(PathBuf::from(&filename))), code);
   let handler = Handler::with_tty_emitter(ColorConfig::Auto, true, false, Some(cm.clone()));
-  // HANDLER.set(t, f)
+
   let lexer = Lexer::new(
     Syntax::Typescript(TsSyntax {
       tsx: true,
@@ -149,6 +108,9 @@ fn inner_transform(
     let unresolved_mark = Mark::new();
     let top_level_mark = Mark::new();
 
+    // https://github.com/swc-project/swc/blob/main/crates/swc_ecma_transforms_typescript/examples/ts_to_js.rs
+    // Conduct identifier scope analysis
+    let module = module.apply(resolver(unresolved_mark, top_level_mark, true));
     // Remove typescript types
     let module = module.apply(strip(unresolved_mark, top_level_mark));
 
@@ -172,20 +134,13 @@ fn inner_transform(
         module
       };
 
+      // Fix up any identifiers with the same name, but different contexts
+      // let module = module.apply(hygiene());
+      // Ensure that we have enough parenthesis.
       let module = module.apply(fixer(None));
 
-      let source_map_names = if sourcemap_enabled {
-        let mut v = IdentCollector {
-          names: Default::default(),
-        };
-
-        module.visit_with(&mut v);
-
-        v.names
-      } else {
-        Default::default()
-      };
-      let (code, map) = print(&filename, cm, &module, sourcemap_enabled, &source_map_names);
+      // https://github.com/swc-project/swc/blob/main/crates/swc_ecma_codegen/examples/sourcemap.rs
+      let (code, map) = print(cm, &module, sourcemap_enabled);
 
       (code, parsed_components.join(","), map)
     })
@@ -196,7 +151,7 @@ fn transform(mut cx: FunctionContext) -> JsResult<JsObject> {
   let file_name = cx.argument::<JsString>(0)?.value(&mut cx);
   let code_type = cx.argument::<JsNumber>(1)?.value(&mut cx) as usize;
   let origin_code = cx.argument::<JsString>(2)?.value(&mut cx);
-  let sourcemap_enabled = cx.argument::<JsBoolean>(3)?.value(&mut cx);
+  let sourcemap_enabled = true; // cx.argument::<JsBoolean>(3)?.value(&mut cx);
   let intl_type = cx.argument::<JsNumber>(4)?.value(&mut cx) as u8;
   // let hmr_enabled = cx.argument::<JsBoolean>(3)?.value(&mut cx);
   let (code, parsed_components, map) = inner_transform(
@@ -222,7 +177,6 @@ fn transform(mut cx: FunctionContext) -> JsResult<JsObject> {
 
 #[neon::main]
 fn main(mut cx: ModuleContext) -> NeonResult<()> {
-  // println!("rust core loaded");
   cx.export_function("transform", transform)?;
   Ok(())
 }
