@@ -1,8 +1,9 @@
 use crate::ast::*;
 use crate::common::*;
 use expr::{ExprParseResult, ExprVisitor};
+use helper::has_jsx;
 use swc_core::atoms::Atom;
-use swc_core::common::{Spanned, DUMMY_SP};
+use swc_core::common::{DUMMY_SP, Spanned};
 use swc_core::ecma::ast::*;
 use swc_core::ecma::visit::{Visit, VisitWith};
 use tpl::*;
@@ -11,6 +12,7 @@ mod attrs;
 mod component;
 mod cond;
 mod expr;
+mod helper;
 pub mod intl;
 mod jsx;
 mod map;
@@ -18,6 +20,7 @@ mod map_key;
 mod slot;
 pub mod tpl;
 
+#[derive(Debug, Clone, Copy)]
 pub enum Parent {
   Component,
   Html,
@@ -69,20 +72,6 @@ pub struct TemplateParser {
   stack: Vec<Context>,
   props_arg: Option<Atom>,
   map_loop_level: usize,
-}
-
-fn has_jsx(expr: &Expr) -> bool {
-  match expr {
-    Expr::JSXElement(_) | Expr::JSXFragment(_) => true,
-    Expr::Cond(e) => {
-      return has_jsx(&e.alt) || has_jsx(&e.cons);
-    }
-    Expr::Bin(e) => return e.op == BinaryOp::LogicalAnd && has_jsx(&e.right),
-    Expr::Paren(e) => return has_jsx(&e.expr),
-    _ => {
-      return false;
-    }
-  }
 }
 
 impl TemplateParser {
@@ -209,12 +198,22 @@ impl Visit for TemplateParser {
       }
 
       Expr::Cond(e) => {
-        self.parse_cond_expr(e);
+        if !self.parse_cond_expr(e) {
+          self.parse_expr(expr_node);
+        }
       }
       Expr::Bin(e) => {
+        // 处理在 tsx 中常见的 binary 表达式，比如 `someVar && <div>hello</div>`，`someVar ?? <div>hello</div>`
         if e.op == BinaryOp::LogicalAnd {
-          self.parse_logic_and_expr(e);
+          if !self.parse_logic_and_expr(e) {
+            self.parse_expr(expr_node);
+          }
+        } else if e.op == BinaryOp::NullishCoalescing {
+          if !self.parse_nullish_coalescing_expr(e) {
+            self.parse_expr(expr_node);
+          }
         } else {
+          // 其它类型的写法，比如 someVar || <div>hello</div> 都没有实际意义，假设不会出现这种写法。直接当作表达式处理。
           self.parse_expr(expr_node);
         }
       }

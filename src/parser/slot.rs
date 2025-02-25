@@ -1,12 +1,14 @@
-use swc_common::{Spanned, SyntaxContext, DUMMY_SP};
+use swc_common::{DUMMY_SP, Spanned, SyntaxContext};
 use swc_core::{
   atoms::Atom,
   ecma::ast::{
-    AssignExpr, AssignOp, AssignTarget, BlockStmt, BlockStmtOrExpr, ComputedPropName, Expr,
-    ExprOrSpread, ExprStmt, Ident, IdentName, KeyValueProp, Lit, MemberExpr, MemberProp, ObjectLit,
-    OptChainBase, Prop, PropName, PropOrSpread, ReturnStmt, SimpleAssignTarget, Stmt,
+    ArrayLit, AssignExpr, AssignOp, AssignTarget, BinExpr, BlockStmt, BlockStmtOrExpr,
+    ComputedPropName, CondExpr, Expr, ExprOrSpread, ExprStmt, Ident, IdentName, KeyValueProp, Lit,
+    MemberExpr, MemberProp, ObjectLit, OptChainBase, Prop, PropName, PropOrSpread, ReturnStmt,
+    SimpleAssignTarget, Stmt,
   },
 };
+use swc_ecma_visit::Visit;
 
 use crate::{
   ast::{
@@ -14,15 +16,16 @@ use crate::{
     ast_create_expr_member, ast_create_expr_this, ast_create_id_of_container,
     ast_create_stmt_decl_const,
   },
+  common::emit_warn,
   parser::{
-    expr::ExprVisitor, tpl::tpl_watch_and_render, JINGE_ATTR_IDENT, JINGE_IMPORT_VM, JINGE_V_IDENT,
+    JINGE_ATTR_IDENT, JINGE_IMPORT_VM, JINGE_V_IDENT, expr::ExprVisitor, tpl::tpl_watch_and_render,
   },
 };
 
 use super::{
-  emit_error, expr::ExprParseResult, tpl::tpl_push_el_code, TemplateParser, JINGE_CHILDREN,
-  JINGE_EL_IDENT, JINGE_IMPORT_CONTEXT, JINGE_IMPORT_DEFAULT_SLOT,
-  JINGE_IMPORT_NEW_COM_DEFAULT_SLOT, JINGE_IMPORT_RENDER_SLOT, JINGE_IMPORT_SLOTS,
+  JINGE_CHILDREN, JINGE_EL_IDENT, JINGE_IMPORT_CONTEXT, JINGE_IMPORT_DEFAULT_SLOT,
+  JINGE_IMPORT_NEW_COM_DEFAULT_SLOT, JINGE_IMPORT_RENDER_SLOT, JINGE_IMPORT_SLOTS, TemplateParser,
+  emit_error, expr::ExprParseResult, tpl::tpl_push_el_code,
 };
 
 #[derive(Debug)]
@@ -66,6 +69,18 @@ fn get_slot(expr: &MemberExpr, props_arg: &Atom) -> Slot {
   }
 }
 
+#[inline]
+fn exprorspread_to_expr(expr: ExprOrSpread) -> Box<Expr> {
+  if expr.spread.is_some() {
+    expr.expr
+  } else {
+    Box::new(Expr::Array(ArrayLit {
+      span: DUMMY_SP,
+      elems: vec![Some(expr)],
+    }))
+  }
+}
+
 struct SlotVm {
   pub const_props: Vec<(PropName, Box<Expr>)>,
   pub watch_props: Vec<(PropName, ExprParseResult)>,
@@ -95,7 +110,10 @@ fn parse_slot_arg(args: &Vec<ExprOrSpread>) -> SlotVm {
   }
   let arg = match arg.expr.as_ref() {
     Expr::Ident(id) => {
-      let msg = format!("Slot 渲染参数应该是具备双向绑定属性的 ViewModel。是否忘了使用 object 包裹 {0}？如果就是想透传该 ViewModel 作为 Slot 参数，可使用 {{...{0}}} 的写法。", id.sym);
+      let msg = format!(
+        "Slot 渲染参数应该是具备双向绑定属性的 ViewModel。是否忘了使用 object 包裹 {0}？如果就是想透传该 ViewModel 作为 Slot 参数，可使用 {{...{0}}} 的写法。",
+        id.sym
+      );
       emit_error(arg.span(), &msg);
       return vm;
     }
@@ -189,8 +207,32 @@ fn parse_slot_arg(args: &Vec<ExprOrSpread>) -> SlotVm {
   vm
 }
 
+fn slot_name_to_mem(slot_name: Option<Atom>) -> Box<Expr> {
+  ast_create_expr_member(
+    ast_create_expr_member(
+      ast_create_expr_this(),
+      MemberProp::Computed(ComputedPropName {
+        span: DUMMY_SP,
+        expr: ast_create_expr_ident(JINGE_IMPORT_SLOTS.local()),
+      }),
+    ),
+    if let Some(slot_name) = slot_name {
+      MemberProp::Ident(IdentName::from(slot_name))
+    } else {
+      MemberProp::Computed(ComputedPropName {
+        span: DUMMY_SP,
+        expr: ast_create_expr_ident(JINGE_IMPORT_DEFAULT_SLOT.local()),
+      })
+    },
+  )
+}
+
 impl TemplateParser {
-  fn transform_slot(&mut self, slot_name: Option<Atom>, slot_args: Option<&Vec<ExprOrSpread>>) {
+  fn transform_slot_to_render_fn(
+    &mut self,
+    slot_name: Option<Atom>,
+    slot_args: Option<&Vec<ExprOrSpread>>,
+  ) -> Box<Expr> {
     let mut stmts = vec![];
 
     let slot_vm_id =
@@ -218,23 +260,7 @@ impl TemplateParser {
 
     let mut args = vec![
       ast_create_arg_expr(ast_create_expr_ident(JINGE_EL_IDENT.clone())),
-      ast_create_arg_expr(ast_create_expr_member(
-        ast_create_expr_member(
-          ast_create_expr_this(),
-          MemberProp::Computed(ComputedPropName {
-            span: DUMMY_SP,
-            expr: ast_create_expr_ident(JINGE_IMPORT_SLOTS.local()),
-          }),
-        ),
-        if let Some(slot_name) = slot_name {
-          MemberProp::Ident(IdentName::from(slot_name))
-        } else {
-          MemberProp::Computed(ComputedPropName {
-            span: DUMMY_SP,
-            expr: ast_create_expr_ident(JINGE_IMPORT_DEFAULT_SLOT.local()),
-          })
-        },
-      )),
+      ast_create_arg_expr(slot_name_to_mem(slot_name)),
     ];
     if let Some(id) = slot_vm_id {
       args.push(ast_create_arg_expr(ast_create_expr_ident(id)));
@@ -247,7 +273,7 @@ impl TemplateParser {
       )),
     }));
 
-    self.push_expression_with_spread(ast_create_expr_call(
+    ast_create_expr_call(
       ast_create_expr_arrow_fn(
         vec![],
         Box::new(BlockStmtOrExpr::BlockStmt(BlockStmt {
@@ -257,7 +283,12 @@ impl TemplateParser {
         })),
       ),
       vec![],
-    ));
+    )
+  }
+  #[inline]
+  fn transform_slot(&mut self, slot_name: Option<Atom>, slot_args: Option<&Vec<ExprOrSpread>>) {
+    let render_fn_expr = self.transform_slot_to_render_fn(slot_name, slot_args);
+    self.push_expression_with_spread(render_fn_expr);
   }
   fn transform_slot_args(
     &mut self,
@@ -340,17 +371,13 @@ impl TemplateParser {
     let Some(props_arg) = &self.props_arg else {
       return false;
     };
-    match get_slot(expr, props_arg) {
-      Slot::None => false,
-      Slot::Default => {
-        self.transform_slot(None, slot_args);
-        true
-      }
-      Slot::Named(n) => {
-        self.transform_slot(Some(n), slot_args);
-        true
-      }
-    }
+    let slot_name = match get_slot(expr, props_arg) {
+      Slot::None => return false,
+      Slot::Default => None,
+      Slot::Named(n) => Some(n),
+    };
+    self.transform_slot(slot_name, slot_args);
+    true
   }
   pub fn parse_slot_call_expr(&mut self, callee: &Expr, args: &Vec<ExprOrSpread>) -> bool {
     let Some(props_arg) = &self.props_arg else {
@@ -368,16 +395,92 @@ impl TemplateParser {
       }
       _ => return false,
     };
-    match get_slot(maybe_slot_expr, props_arg) {
-      Slot::None => false,
-      Slot::Default => {
-        self.transform_slot(None, Some(args));
-        true
-      }
-      Slot::Named(n) => {
-        self.transform_slot(Some(n), Some(args));
-        true
-      }
+    let slot_name = match get_slot(maybe_slot_expr, props_arg) {
+      Slot::None => return false,
+      Slot::Default => None,
+      Slot::Named(n) => Some(n),
+    };
+    self.transform_slot(slot_name, Some(args));
+    true
+  }
+
+  fn get_bin_expr_slot_name(&self, expr: &Expr) -> Option<Option<Atom>> {
+    let Some(props_arg) = &self.props_arg else {
+      return None;
+    };
+    let Expr::Member(mem) = expr else {
+      return None;
+    };
+
+    match get_slot(mem, props_arg) {
+      Slot::None => None,
+      Slot::Default => Some(None),
+      Slot::Named(n) => Some(Some(n)),
     }
+  }
+  fn parse_expr_to_render_fn(&mut self, expr: &Expr) -> Option<ExprOrSpread> {
+    self.push_context(self.context.parent, self.context.root_container);
+    self.visit_expr(expr);
+    let mut context = self.pop_context();
+    context.slots.pop().and_then(|mut s| s.expressions.pop())
+  }
+  pub fn parse_cond_slot(&mut self, expr: &CondExpr) -> bool {
+    let Some(slot_name) = self.get_bin_expr_slot_name(&expr.test) else {
+      return false;
+    };
+    let Some(conds_render_fn) = self.parse_expr_to_render_fn(&expr.cons) else {
+      emit_warn(expr.span(), "unexpected");
+      return true;
+    };
+    let Some(alt_render_fn) = self.parse_expr_to_render_fn(&expr.alt) else {
+      emit_warn(expr.span(), "unexpected");
+      return true;
+    };
+    self.push_expression_with_spread(Box::new(Expr::Cond(CondExpr {
+      span: DUMMY_SP,
+
+      test: slot_name_to_mem(slot_name),
+      cons: exprorspread_to_expr(conds_render_fn),
+      alt: exprorspread_to_expr(alt_render_fn),
+    })));
+    true
+  }
+
+  pub fn parse_logic_and_slot(&mut self, expr: &BinExpr) -> bool {
+    let Some(slot_name) = self.get_bin_expr_slot_name(&expr.left) else {
+      return false;
+    };
+    let Some(render_fn) = self.parse_expr_to_render_fn(&expr.right) else {
+      emit_warn(expr.span(), "unexpected");
+      return true;
+    };
+    self.push_expression_with_spread(Box::new(Expr::Cond(CondExpr {
+      span: DUMMY_SP,
+      test: slot_name_to_mem(slot_name),
+      cons: exprorspread_to_expr(render_fn),
+      alt: Box::new(Expr::Array(ArrayLit {
+        span: DUMMY_SP,
+        elems: vec![],
+      })),
+    })));
+    true
+  }
+
+  pub fn parse_nullish_coalescing_slot(&mut self, expr: &BinExpr) -> bool {
+    let Some(slot_name) = self.get_bin_expr_slot_name(&expr.left) else {
+      return false;
+    };
+    let Some(default_slot) = self.parse_expr_to_render_fn(&expr.right) else {
+      emit_warn(expr.span(), "unexpected");
+      return true;
+    };
+    let render_fn = self.transform_slot_to_render_fn(slot_name.clone(), None);
+    self.push_expression_with_spread(Box::new(Expr::Cond(CondExpr {
+      span: DUMMY_SP,
+      test: slot_name_to_mem(slot_name),
+      cons: render_fn,
+      alt: exprorspread_to_expr(default_slot),
+    })));
+    true
   }
 }

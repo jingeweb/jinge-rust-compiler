@@ -3,7 +3,7 @@ use std::rc::Rc;
 use hashbrown::HashSet;
 use swc_core::{
   atoms::Atom,
-  common::{Spanned, DUMMY_SP},
+  common::{DUMMY_SP, Spanned},
   ecma::{
     ast::*,
     visit::{Visit, VisitMut, VisitMutWith},
@@ -17,7 +17,7 @@ use crate::{
     ast_create_expr_this,
   },
   common::{
-    emit_error, JINGE_IMPORT_DYM_PATH_WATCHER, JINGE_IMPORT_EXPR_WATCHER, JINGE_IMPORT_PATH_WATCHER,
+    JINGE_IMPORT_DYM_PATH_WATCHER, JINGE_IMPORT_EXPR_WATCHER, JINGE_IMPORT_PATH_WATCHER, emit_error,
   },
 };
 
@@ -160,7 +160,14 @@ impl Visit for ExprVisitor {
     if self.no_watch {
       return;
     }
+
     node.visit_children_with(self);
+  }
+  fn visit_jsx_element(&mut self, node: &JSXElement) {
+    emit_error(node.span(), "表达式中不能有 JSX 元素");
+  }
+  fn visit_jsx_fragment(&mut self, node: &JSXFragment) {
+    emit_error(node.span(), "表达式中不能有 JSX 元素");
   }
   fn visit_member_expr(&mut self, node: &MemberExpr) {
     if self.no_watch {
