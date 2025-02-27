@@ -4,8 +4,8 @@ use swc_core::{
   ecma::ast::{
     ArrayLit, AssignExpr, AssignOp, AssignTarget, BinExpr, BlockStmt, BlockStmtOrExpr,
     ComputedPropName, CondExpr, Expr, ExprOrSpread, ExprStmt, Ident, IdentName, KeyValueProp, Lit,
-    MemberExpr, MemberProp, ObjectLit, OptChainBase, Prop, PropName, PropOrSpread, ReturnStmt,
-    SimpleAssignTarget, Stmt,
+    MemberExpr, MemberProp, Null, ObjectLit, OptChainBase, Prop, PropName, PropOrSpread,
+    ReturnStmt, SimpleAssignTarget, Stmt,
   },
 };
 use swc_ecma_visit::Visit;
@@ -16,7 +16,6 @@ use crate::{
     ast_create_expr_member, ast_create_expr_this, ast_create_id_of_container,
     ast_create_stmt_decl_const,
   },
-  common::emit_warn,
   parser::{
     JINGE_ATTR_IDENT, JINGE_IMPORT_VM, JINGE_V_IDENT, expr::ExprVisitor, tpl::tpl_watch_and_render,
   },
@@ -70,13 +69,23 @@ fn get_slot(expr: &MemberExpr, props_arg: &Atom) -> Slot {
 }
 
 #[inline]
-fn exprorspread_to_expr(expr: ExprOrSpread) -> Box<Expr> {
-  if expr.spread.is_some() {
-    expr.expr
+fn exprorspread_vec_to_expr(mut exprorspread_vec: Vec<ExprOrSpread>) -> Box<Expr> {
+  if exprorspread_vec.is_empty() {
+    Box::new(Expr::Lit(Lit::Null(Null { span: DUMMY_SP })))
+  } else if exprorspread_vec.len() == 1 {
+    let e = exprorspread_vec.pop().unwrap();
+    if e.spread.is_some() {
+      e.expr
+    } else {
+      Box::new(Expr::Array(ArrayLit {
+        span: DUMMY_SP,
+        elems: vec![Some(e)],
+      }))
+    }
   } else {
     Box::new(Expr::Array(ArrayLit {
       span: DUMMY_SP,
-      elems: vec![Some(expr)],
+      elems: exprorspread_vec.into_iter().map(|e| Some(e)).collect(),
     }))
   }
 }
@@ -418,30 +427,27 @@ impl TemplateParser {
       Slot::Named(n) => Some(Some(n)),
     }
   }
-  fn parse_expr_to_render_fn(&mut self, expr: &Expr) -> Option<ExprOrSpread> {
+  fn parse_expr_to_render_fn(&mut self, expr: &Expr) -> Vec<ExprOrSpread> {
     self.push_context(self.context.parent, self.context.root_container);
     self.visit_expr(expr);
     let mut context = self.pop_context();
-    context.slots.pop().and_then(|mut s| s.expressions.pop())
+    let Some(s) = context.slots.pop() else {
+      return vec![];
+    };
+    s.expressions
   }
   pub fn parse_cond_slot(&mut self, expr: &CondExpr) -> bool {
     let Some(slot_name) = self.get_bin_expr_slot_name(&expr.test) else {
       return false;
     };
-    let Some(conds_render_fn) = self.parse_expr_to_render_fn(&expr.cons) else {
-      emit_warn(expr.span(), "unexpected");
-      return true;
-    };
-    let Some(alt_render_fn) = self.parse_expr_to_render_fn(&expr.alt) else {
-      emit_warn(expr.span(), "unexpected");
-      return true;
-    };
+    let conds_render_fn = self.parse_expr_to_render_fn(&expr.cons);
+    let alt_render_fn = self.parse_expr_to_render_fn(&expr.alt);
     self.push_expression_with_spread(Box::new(Expr::Cond(CondExpr {
       span: DUMMY_SP,
 
       test: slot_name_to_mem(slot_name),
-      cons: exprorspread_to_expr(conds_render_fn),
-      alt: exprorspread_to_expr(alt_render_fn),
+      cons: exprorspread_vec_to_expr(conds_render_fn),
+      alt: exprorspread_vec_to_expr(alt_render_fn),
     })));
     true
   }
@@ -450,14 +456,11 @@ impl TemplateParser {
     let Some(slot_name) = self.get_bin_expr_slot_name(&expr.left) else {
       return false;
     };
-    let Some(render_fn) = self.parse_expr_to_render_fn(&expr.right) else {
-      emit_warn(expr.span(), "unexpected");
-      return true;
-    };
+    let render_fn = self.parse_expr_to_render_fn(&expr.right);
     self.push_expression_with_spread(Box::new(Expr::Cond(CondExpr {
       span: DUMMY_SP,
       test: slot_name_to_mem(slot_name),
-      cons: exprorspread_to_expr(render_fn),
+      cons: exprorspread_vec_to_expr(render_fn),
       alt: Box::new(Expr::Array(ArrayLit {
         span: DUMMY_SP,
         elems: vec![],
@@ -470,16 +473,13 @@ impl TemplateParser {
     let Some(slot_name) = self.get_bin_expr_slot_name(&expr.left) else {
       return false;
     };
-    let Some(default_slot) = self.parse_expr_to_render_fn(&expr.right) else {
-      emit_warn(expr.span(), "unexpected");
-      return true;
-    };
+    let default_slot = self.parse_expr_to_render_fn(&expr.right);
     let render_fn = self.transform_slot_to_render_fn(slot_name.clone(), None);
     self.push_expression_with_spread(Box::new(Expr::Cond(CondExpr {
       span: DUMMY_SP,
       test: slot_name_to_mem(slot_name),
       cons: render_fn,
-      alt: exprorspread_to_expr(default_slot),
+      alt: exprorspread_vec_to_expr(default_slot),
     })));
     true
   }

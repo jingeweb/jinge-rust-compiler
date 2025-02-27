@@ -186,7 +186,8 @@ fn test_transform() {
   let (code, parsed_components, _) = inner_transform(
     "test.tsx".into(),
     2,
-    "export function A() { return <div>hello</div>; }".into(),
+    "export function A(props) { return <div>{props.children && <div>{props.children}</div>}</div>; }"
+      .into(),
     true,
     IntlType::Disabled,
   );
@@ -194,5 +195,5 @@ fn test_transform() {
   std::fs::write("target/out.ts", &code).unwrap();
   // println!("{:#?}", code);
   // assert_eq!(code, "x");
-  // assert!(false)
+  assert!(false)
 }
