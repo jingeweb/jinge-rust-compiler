@@ -192,7 +192,31 @@ fn parse_slot_arg(args: &Vec<ExprOrSpread>) -> SlotVm {
             //   }
             //   _ => vm.watch_props.push((kv.key.clone(), r)),
             // }
-            emit_error(kv.value.span(), "不支持函数作为插槽的传递数据");
+            println!("{:#?}", kv.key);
+            if match &kv.key {
+              PropName::Str(s) => {
+                if s.value.starts_with("on:") {
+                  true
+                } else {
+                  false
+                }
+              }
+              PropName::Ident(s) => {
+                if s.sym.starts_with("on:") {
+                  true
+                } else {
+                  false
+                }
+              }
+              _ => false,
+            } {
+              vm.const_props.push((kv.key.clone(), kv.value.clone()));
+            } else {
+              emit_error(
+                kv.value.span(),
+                "不支持函数作为插槽的传递数据。如果是要传递事件函数，请使用 on: 打头的事件名。",
+              );
+            }
           }
           _ => {
             let r = ExprVisitor::new().parse(kv.value.as_ref());
