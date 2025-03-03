@@ -75,6 +75,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9d297deb1925b89f2ccc13d7635fa0714f12c87adce1c75356b39ca9b7178567"
 
 [[package]]
+name = "base64"
+version = "0.22.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "72b3254f16251a8381aa12e40e3c4d2f0199f8c6508fbecb9d91f575e0fbb8c6"
+
+[[package]]
 name = "base64-simd"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1598,9 +1604,9 @@ dependencies = [
 
 [[package]]
 name = "swc_core"
-version = "15.0.1"
+version = "16.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a622dbfdda214d472e8da044d5bd5975c831d6e17c5016fcde4b2681c2be1cf2"
+checksum = "a0890fd720ce6a3df52a174f623351634fe8486d0137226de5eb7ea7eef211f3"
 dependencies = [
  "once_cell",
  "swc_allocator",
@@ -1710,9 +1716,9 @@ dependencies = [
 
 [[package]]
 name = "swc_ecma_transforms_base"
-version = "11.0.0"
+version = "11.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f13897adabc6ba621560a5898e752e02fb328f4c9797309ead6209d8db55d0e1"
+checksum = "39889063ff4819eae414dfe6426aa5cd72ebb0f9f48739a1fa1e7eb82d0adc78"
 dependencies = [
  "better_scoped_tls",
  "bitflags",
@@ -1746,11 +1752,11 @@ dependencies = [
 
 [[package]]
 name = "swc_ecma_transforms_react"
-version = "11.0.0"
+version = "12.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bc1707dd7cf4699336e081a9a764409532139990b4e9f733feb74a17c647606a"
+checksum = "3db098e259f9543aaa0f77961e64d351a7fd1394ab7588a691eb15aee2ab236e"
 dependencies = [
- "base64",
+ "base64 0.22.1",
  "dashmap",
  "indexmap",
  "once_cell",
@@ -1778,7 +1784,7 @@ checksum = "7dce5bbd4417919ff4e7a15500c18d88fc135e57b512f3ebd59cf82439d80ef9"
 dependencies = [
  "ansi_term",
  "anyhow",
- "base64",
+ "base64 0.21.7",
  "hex",
  "serde",
  "serde_json",
@@ -1799,9 +1805,9 @@ dependencies = [
 
 [[package]]
 name = "swc_ecma_transforms_typescript"
-version = "11.0.0"
+version = "12.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "06b455ded4b426c1d8016807b8fab11bd36607d5f1dabeb07e3ab94976e6b528"
+checksum = "19c32ebb3dd1942d35142de60c9dc0f3c034d26567de7eb8b3ad6de426f5b0e9"
 dependencies = [
  "once_cell",
  "rustc-hash 2.1.1",

@@ -1,6 +1,3 @@
-use std::rc::Rc;
-
-use hashbrown::HashSet;
 use swc_core::{
   atoms::Atom,
   common::{DUMMY_SP, Spanned},
@@ -14,7 +11,6 @@ use swc_ecma_visit::VisitWith;
 use crate::{
   ast::{
     ast_create_arg_expr, ast_create_expr_arrow_fn, ast_create_expr_call, ast_create_expr_ident,
-    ast_create_expr_this,
   },
   common::{
     JINGE_IMPORT_DYM_PATH_WATCHER, JINGE_IMPORT_EXPR_WATCHER, JINGE_IMPORT_PATH_WATCHER, emit_error,
@@ -23,13 +19,13 @@ use crate::{
 
 enum Root {
   None,
-  This,
+  // This,
   Id(Atom),
 }
 #[derive(Debug)]
 pub struct SimpleExprParseResult {
   pub vm: Box<Expr>,
-  pub is_this: bool,
+  // pub is_this: bool,
   pub path: Box<Expr>,
   pub not_op: i8,
 }
@@ -41,30 +37,30 @@ pub enum ExprParseResult {
   Complex(Box<Expr>),
 }
 
-type ExcludeRoots = Option<Rc<HashSet<Atom>>>;
+// type ExcludeRoots = Option<Rc<HashSet<Atom>>>;
 
 pub struct ExprVisitor {
   no_watch: bool,
   expressions: Vec<Box<Expr>>,
   level: usize,
   simple_result: Option<SimpleExprParseResult>,
-  exclude_roots: ExcludeRoots,
+  // exclude_roots: ExcludeRoots,
 }
 
 impl ExprVisitor {
   pub fn new() -> Self {
-    Self::new_with_level(0, None)
+    Self::new_with_level(0)
   }
   // pub fn new_with_exclude_roots(exclude_roots: ExcludeRoots) -> Self {
   //   Self::new_with_level(0, exclude_roots)
   // }
-  fn new_with_level(level: usize, watch_exclude_roots: ExcludeRoots) -> Self {
+  fn new_with_level(level: usize) -> Self {
     Self {
       level,
       no_watch: false,
       expressions: vec![],
       simple_result: None,
-      exclude_roots: watch_exclude_roots,
+      // exclude_roots: watch_exclude_roots,
     }
   }
 
@@ -173,7 +169,7 @@ impl Visit for ExprVisitor {
     if self.no_watch {
       return;
     }
-    let mut mem_parser = MemberExprVisitor::new(self.level, self.exclude_roots.clone());
+    let mut mem_parser = MemberExprVisitor::new(self.level);
     mem_parser.visit_member_expr(node);
     if mem_parser.meet_error || mem_parser.path.is_empty() || matches!(&mem_parser.root, Root::None)
     {
@@ -182,12 +178,12 @@ impl Visit for ExprVisitor {
     }
 
     let mut args: Vec<ExprOrSpread> = Vec::with_capacity(mem_parser.path.len() + 2);
-    let mut is_this = false;
+    // let mut is_this = false;
     let target = match mem_parser.root {
-      Root::This => {
-        is_this = true;
-        ast_create_expr_this()
-      }
+      // Root::This => {
+      //   is_this = true;
+      //   ast_create_expr_this()
+      // }
       Root::Id(id) => Box::new(Expr::Ident(Ident::from(id))),
       Root::None => unreachable!(),
     };
@@ -207,7 +203,7 @@ impl Visit for ExprVisitor {
         vm: target.clone(),
         path: watch_path.clone(),
         not_op: 0,
-        is_this,
+        // is_this,
       })
     }
 
@@ -271,40 +267,41 @@ struct MemberExprVisitor {
   root: Root,
   path: Vec<Box<Expr>>,
   meet_error: bool,
-  meet_private: bool,
+  // meet_private: bool,
   level: usize,
   computed: bool,
-  exclude_roots: ExcludeRoots,
+  // exclude_roots: ExcludeRoots,
 }
 impl MemberExprVisitor {
-  fn new(level: usize, exclude_roots: ExcludeRoots) -> Self {
+  fn new(level: usize) -> Self {
     Self {
       level,
       root: Root::None,
       path: vec![],
       meet_error: false,
-      meet_private: false,
+      // meet_private: false,
       computed: false,
-      exclude_roots,
+      // exclude_roots,
     }
   }
 }
 impl Visit for MemberExprVisitor {
   fn visit_member_expr(&mut self, node: &MemberExpr) {
     match node.obj.as_ref() {
-      Expr::This(_) => {
-        self.root = Root::This;
-      }
+      // Expr::This(_) => {
+      //   self.root = Root::This;
+      // }
       Expr::Ident(id) => {
-        if let Some(exclude_roots) = &self.exclude_roots {
-          if exclude_roots.contains(&id.sym) {
-            self.meet_private = true;
-          } else {
-            self.root = Root::Id(id.sym.clone());
-          }
-        } else {
-          self.root = Root::Id(id.sym.clone());
-        }
+        // if let Some(exclude_roots) = &self.exclude_roots {
+        //   if exclude_roots.contains(&id.sym) {
+        //     self.meet_private = true;
+        //   } else {
+        //     self.root = Root::Id(id.sym.clone());
+        //   }
+        // } else {
+        //   self.root = Root::Id(id.sym.clone());
+        // }
+        self.root = Root::Id(id.sym.clone());
       }
       Expr::Member(expr) => {
         self.visit_member_expr(expr);
@@ -336,7 +333,7 @@ impl Visit for MemberExprVisitor {
         self.meet_error = true;
       }
     }
-    if self.meet_error || self.meet_private {
+    if self.meet_error {
       return;
     }
     match &node.prop {
@@ -345,8 +342,9 @@ impl Visit for MemberExprVisitor {
           .path
           .push(Box::new(Expr::Lit(Lit::Str(Str::from(id.sym.clone())))));
       }
-      MemberProp::PrivateName(_) => {
-        self.meet_private = true;
+      MemberProp::PrivateName(v) => {
+        emit_error(v.span(), "不支持 PrivateName");
+        self.meet_error = true;
       }
       MemberProp::Computed(c) => {
         let expr = c.expr.as_ref();
@@ -360,14 +358,11 @@ impl Visit for MemberExprVisitor {
           },
 
           _ => {
-            if let Some(result) =
-              ExprVisitor::new_with_level(self.level + 1, self.exclude_roots.clone())
-                .inner_parse(expr)
-            {
+            if let Some(result) = ExprVisitor::new_with_level(self.level + 1).inner_parse(expr) {
               self.computed = true;
               self.path.push(result);
             } else {
-              todo!("xxx")
+              self.meet_error = true;
             }
           }
         }
