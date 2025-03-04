@@ -4,7 +4,7 @@ use swc_ecma_visit::VisitWith;
 
 use crate::{ast::*, parser::*};
 
-use super::{emit_error, TemplateParser};
+use super::{TemplateParser, emit_error};
 
 impl TemplateParser {
   fn parse_html_element(&mut self, tn: &Ident, n: &JSXElement) {
@@ -28,9 +28,9 @@ impl TemplateParser {
     assert_eq!(children_context.slots.len(), 1);
     let callee_ident = if self.context.is_parent_svg() || tn.sym.eq("svg") {
       if !attrs.const_props.is_empty() {
-        JINGE_IMPORT_CREATE_ELE_A.local()
+        JINGE_IMPORT_CREATE_SVG_ELE_A.local()
       } else {
-        JINGE_IMPORT_CREATE_ELE.local()
+        JINGE_IMPORT_CREATE_SVG_ELE.local()
       }
     } else {
       if !attrs.const_props.is_empty() {

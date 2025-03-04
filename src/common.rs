@@ -1,6 +1,6 @@
 use swc_core::atoms::Atom;
 use swc_core::common::errors::HANDLER;
-use swc_core::common::{Span, DUMMY_SP};
+use swc_core::common::{DUMMY_SP, Span};
 use swc_core::ecma::ast::*;
 
 #[derive(Clone, Copy)]
@@ -45,9 +45,11 @@ lazy_static::lazy_static! {
   pub static ref JINGE_IMPORT_RENDER_INTL_TEXT_WITH_PARAMS: JingeImport = x!("renderIntlTextWithParams");
   pub static ref JINGE_IMPORT_RENDER_INTL_RICH_TEXT: JingeImport = x!("renderIntlRichText");
   pub static ref JINGE_IMPORT_CREATE_ELE: JingeImport = x!("createEle");
+  pub static ref JINGE_IMPORT_CREATE_SVG_ELE: JingeImport = x!("createSVGEle");
   pub static ref JINGE_IMPORT_CREATE_TEXT_NODE: JingeImport = x!("createTextNode");
 
   pub static ref JINGE_IMPORT_CREATE_ELE_A: JingeImport = x!("createEleA");
+  pub static ref JINGE_IMPORT_CREATE_SVG_ELE_A: JingeImport = x!("createSVGEleA");
   pub static ref JINGE_IMPORT_ADD_EVENT: JingeImport = x!("addEvent");
   pub static ref JINGE_IMPORT_SET_ATTRIBUTE: JingeImport = x!("setAttribute");
   pub static ref JINGE_IMPORT_SET_TEXT_CONTENT: JingeImport = x!("setTextContent");
@@ -111,13 +113,15 @@ lazy_static::lazy_static! {
 }
 
 fn gen_import_jinge() -> ModuleItem {
-  let imports: [&'static JingeImport; 31] = [
+  let imports: [&'static JingeImport; 33] = [
     &JINGE_IMPORT_TEXT_RENDER_FN,
     &JINGE_IMPORT_RENDER_INTL_TEXT,
     &JINGE_IMPORT_RENDER_INTL_TEXT_WITH_PARAMS,
     &JINGE_IMPORT_RENDER_INTL_RICH_TEXT,
     &JINGE_IMPORT_CREATE_ELE,
     &JINGE_IMPORT_CREATE_ELE_A,
+    &JINGE_IMPORT_CREATE_SVG_ELE,
+    &JINGE_IMPORT_CREATE_SVG_ELE_A,
     &JINGE_IMPORT_CONTEXT,
     &JINGE_IMPORT_CREATE_TEXT_NODE,
     &JINGE_IMPORT_SET_TEXT_CONTENT,
