@@ -4,7 +4,7 @@ use swc_core::ecma::visit::VisitMut;
 use swc_ecma_visit::VisitMutWith;
 
 use crate::ast::{ast_create_arg_expr, ast_create_expr_ident, ast_create_expr_lit_str};
-use crate::common::{emit_error, IntlType, JINGE_IMPORT_MODULE_ITEM, JINGE_T, JINGE_UNDEFINED};
+use crate::common::{IntlType, JINGE_IMPORT_MODULE_ITEM, JINGE_T, JINGE_UNDEFINED, emit_error};
 use crate::parser;
 use crate::parser::intl::extract_t;
 
@@ -181,6 +181,7 @@ impl VisitMut for IntlTransformVisitor {
       has_params = true;
       args.push(ast_create_arg_expr(Box::new(Expr::Object(params.clone()))));
     }
+    println!("OOOO {} {}", self.drop_default_text, default_text);
     if !self.drop_default_text {
       if !has_params {
         args.push(ast_create_arg_expr(ast_create_expr_ident(

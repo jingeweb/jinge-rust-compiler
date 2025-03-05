@@ -112,7 +112,7 @@ export function jingeVitePlugin(options?: JingeVitePluginOptions): PluginOption 
       load: (id) => (id === HMR_RUNTIME_PATH ? HMR_RUNTIME_CODE : undefined),
     },
     {
-      name: 'vite:jinge:sereve',
+      name: 'vite:jinge:serve',
       apply: 'serve',
       configResolved(config) {
         if (config.server.hmr !== false) hmrEnabled = true;

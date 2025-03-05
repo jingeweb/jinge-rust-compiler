@@ -3,7 +3,7 @@ use swc_core::common::errors::HANDLER;
 use swc_core::common::{DUMMY_SP, Span};
 use swc_core::ecma::ast::*;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum IntlType {
   Disabled,
   Enabled(bool),

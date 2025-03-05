@@ -105,16 +105,13 @@ pub fn tpl_render_intl_text(
   if let Some(params) = params {
     args.push(params);
   }
+
   if let Some(default_text) = default_text {
-    if !has_params {
-      args.push(ast_create_arg_expr(Box::new(Expr::Ident(Ident::from(
-        JINGE_UNDEFINED.clone(),
-      )))));
-    }
     args.push(ast_create_arg_expr(ast_create_expr_lit_str(
       default_text.clone(),
     )));
   }
+
   ast_create_expr_call(
     ast_create_expr_ident(if is_rich {
       JINGE_IMPORT_RENDER_INTL_RICH_TEXT.local()

@@ -1,14 +1,14 @@
 use base64ct::{Base64, Encoding};
 use sha2::{Digest, Sha512};
-use swc_common::{Spanned, SyntaxContext, DUMMY_SP};
+use swc_common::{DUMMY_SP, Spanned, SyntaxContext};
 use swc_core::{atoms::Atom, ecma::ast::*};
 
 use super::{
+  IntlType, JINGE_ATTR_IDENT, JINGE_IMPORT_VM, JINGE_KEY, JINGE_T, JINGE_V_IDENT, TemplateParser,
   ast_create_arg_expr, ast_create_expr_arrow_fn, ast_create_expr_call, ast_create_expr_ident,
   ast_create_stmt_decl_const, emit_error,
   expr::{ExprParseResult, ExprVisitor},
-  tpl_render_intl_normal_text, tpl_render_intl_text, tpl_watch_and_render, IntlType,
-  TemplateParser, JINGE_ATTR_IDENT, JINGE_IMPORT_VM, JINGE_KEY, JINGE_T, JINGE_V_IDENT,
+  tpl_render_intl_normal_text, tpl_render_intl_text, tpl_watch_and_render,
 };
 
 /// 计算文本的 hash。
