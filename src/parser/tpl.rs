@@ -237,21 +237,9 @@ pub fn tpl_watch_and_render(
           Number::from(sr.not_op as usize),
         )))));
       }
-      // if !is_root_container || !sr.is_this {
-      //   // 简单表达式，如果不是 root container，说明一定有 Slot 传递的 host component，需要添加 [HOST WATCH]
-      //   // 如果表达式不是 this. 打头的，也就是监听的可能是全局 vm，或监听的 Slot 传递进来的 vm。
-      //   // 如果监听全局 vm，则要把对全局变量 vm 的监听放到 this 组件的 [HOST_WATCH]中，在 this 组件销毁时卸载。
-      //   // 如果监听的传递进来的 vm ，也同理。
-      //   args.push(ast_create_arg_expr(ast_create_id_of_container(
-      //     is_root_container,
-      //   )));
-      // }
-      if !is_root_container {
-        // 简单表达式，如果不是 root container，说明一定有 Slot 传递的 host component，需要添加 [HOST WATCH]
-        args.push(ast_create_arg_expr(ast_create_id_of_container(
-          is_root_container,
-        )));
-      }
+      args.push(ast_create_arg_expr(ast_create_id_of_container(
+        is_root_container,
+      )));
       ast_create_expr_call(
         ast_create_expr_ident(if sr.not_op > 0 {
           JINGE_IMPORT_WATCH_PATH_FOR_RENDER_2.local()
