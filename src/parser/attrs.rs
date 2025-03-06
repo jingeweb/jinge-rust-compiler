@@ -1,5 +1,5 @@
 use crate::ast::{ast_create_expr_arrow_fn, ast_create_expr_call, ast_create_expr_ident};
-use crate::common::{emit_error, JINGE_ATTR_IDENT, JINGE_ON, JINGE_SLOT};
+use crate::common::{JINGE_ATTR_IDENT, JINGE_ON, JINGE_SLOT, emit_error};
 use crate::parser::TemplateParser;
 use swc_common::DUMMY_SP;
 use swc_core::ecma::ast::*;
@@ -8,7 +8,7 @@ use swc_ecma_visit::Visit;
 
 use super::expr::{ExprParseResult, ExprVisitor};
 use super::{
-  Parent, Slot, JINGE_CHILDREN, JINGE_CLASS, JINGE_CLASSNAME, JINGE_FOR, JINGE_HTML_FOR, JINGE_REF,
+  JINGE_CHILDREN, JINGE_CLASS, JINGE_CLASSNAME, JINGE_FOR, JINGE_HTML_FOR, JINGE_REF, Parent, Slot,
 };
 
 pub struct AttrEvt {
@@ -103,10 +103,15 @@ impl TemplateParser {
               .push((attr_name, Box::new(Expr::Lit(val.clone()))));
           }
           Expr::Fn(_) | Expr::Arrow(_) => {
-            emit_error(
-              an.span(),
-              "不支持函数作为属性值。如果是想传递事件，请使用 on: 打头的属性名，例如 on:click；如果是想传递插槽，请使用 slot: 打头的属性名，例如 slot:icon ",
-            );
+            if !attr_name.sym.starts_with('_') {
+              emit_error(
+                an.span(),
+                "函数作为属性值时，属性名必须是 _ 打头的单向属性名。即，当该函数体内部依赖到的数据变更时，不会触发该属性的变更。",
+              );
+            } else {
+              // 属性值如果是函数，则直接赋值。注意，当函数体内部依赖到的数据的变更时不会触发该属性的变更。
+              attrs.const_props.push((attr_name, expr.clone()));
+            }
           }
           _ => {
             let r = ExprVisitor::new().parse(expr.as_ref());
