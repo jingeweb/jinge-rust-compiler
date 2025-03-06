@@ -181,7 +181,7 @@ impl VisitMut for IntlTransformVisitor {
       has_params = true;
       args.push(ast_create_arg_expr(Box::new(Expr::Object(params.clone()))));
     }
-    println!("OOOO {} {}", self.drop_default_text, default_text);
+    // println!("OOOO {} {}", self.drop_default_text, default_text);
     if !self.drop_default_text {
       if !has_params {
         args.push(ast_create_arg_expr(ast_create_expr_ident(
