@@ -192,7 +192,7 @@ fn parse_slot_arg(args: &Vec<ExprOrSpread>) -> SlotVm {
             //   }
             //   _ => vm.watch_props.push((kv.key.clone(), r)),
             // }
-            println!("{:#?}", kv.key);
+            // println!("{:#?}", kv.key);
             if match &kv.key {
               PropName::Str(s) => {
                 if s.value.starts_with("on:") {
