@@ -1,5 +1,6 @@
 mod ast;
 mod common;
+mod helper;
 mod parser;
 mod visitor;
 
@@ -22,7 +23,7 @@ use swc_ecma_transforms_base::fixer::fixer;
 use swc_ecma_transforms_base::resolver;
 use swc_ecma_transforms_typescript::strip;
 use swc_ecma_visit::visit_mut_pass;
-use visitor::{IntlTransformVisitor, TemplateTransformVisitor};
+use visitor::TemplateTransformVisitor;
 
 fn print(
   cm: Lrc<SourceMap>,
@@ -127,12 +128,12 @@ fn inner_transform(
         module
       };
 
-      let module = if let IntlType::Enabled(drop_default_text) = intl_type {
-        let t = IntlTransformVisitor::new(drop_default_text);
-        module.apply(visit_mut_pass(t))
-      } else {
-        module
-      };
+      // let module = if let IntlType::Enabled(drop_default_text) = intl_type {
+      //   let t = IntlTransformVisitor::new(drop_default_text);
+      //   module.apply(visit_mut_pass(t))
+      // } else {
+      //   module
+      // };
 
       // Fix up any identifiers with the same name, but different contexts
       // let module = module.apply(hygiene());

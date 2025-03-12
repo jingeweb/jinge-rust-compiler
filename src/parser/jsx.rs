@@ -9,20 +9,16 @@ use super::{TemplateParser, emit_error};
 impl TemplateParser {
   fn parse_html_element(&mut self, tn: &Ident, n: &JSXElement) {
     let mut attrs = self.parse_attrs(n, false);
-    self.push_context(
-      if JINGE_SVG.eq(&tn.sym) {
-        Parent::Svg
-      } else {
-        Parent::Html
-      },
-      self.context.root_container,
-    );
+    self.push_context_inherit_host_ident(if JINGE_SVG.eq(&tn.sym) {
+      Parent::Svg
+    } else {
+      Parent::Html
+    });
     // println!("meet html {} {}", tn.sym.as_str(), self.context.slot_level);
     // 此处不能直接用 n.visit_children_with(self)，会再次 visit attributes
     n.children.iter().for_each(|child| {
       child.visit_children_with(self);
     });
-    let root_container = self.context.root_container;
     let mut children_context = self.pop_context();
     // html 元素下不可能出现多个 slots。事实上，html 元素没有 slot 概念，只是用统一的数据结构保存子节点。
     assert_eq!(children_context.slots.len(), 1);
@@ -42,9 +38,12 @@ impl TemplateParser {
     let mut args = vec![ast_create_arg_expr(Box::new(Expr::Lit(Lit::Str(
       Str::from(tn.sym.clone()),
     ))))];
-    let set_ref_code = attrs.ref_prop.take().map(|r| tpl_set_ref_code(r));
+    let set_ref_code = attrs
+      .ref_prop
+      .take()
+      .map(|r| tpl_set_ref_code(r, &self.context.host_ident));
     let push_ele_code = if self.context.is_parent_component() {
-      Some(tpl_push_el_code(true, root_container))
+      Some(tpl_push_el_code(true, &self.context.host_ident))
     } else {
       None
     };
@@ -84,7 +83,7 @@ impl TemplateParser {
         .for_each(|(attr_name, watch_expr)| {
           stmts.push(Stmt::Expr(ExprStmt {
             span: DUMMY_SP,
-            expr: tpl_watch_and_set_html_attr(attr_name, watch_expr, self.context.root_container),
+            expr: tpl_watch_and_set_html_attr(attr_name, watch_expr, &self.context.host_ident),
           }));
         });
       if let Some(c) = set_ref_code {

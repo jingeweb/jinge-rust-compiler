@@ -8,9 +8,9 @@ use crate::{ast::*, common::*};
 
 use super::expr::ExprParseResult;
 
-pub fn tpl_set_ref_code(r: Box<Expr>) -> Box<Expr> {
+pub fn tpl_set_ref_code(r: Box<Expr>, host_ident: &Option<Ident>) -> Box<Expr> {
   let args = vec![
-    ast_create_arg_expr(ast_create_expr_this()),
+    ast_create_arg_expr(ast_create_expr_host_ident(host_ident)),
     ast_create_arg_expr(r),
     ast_create_arg_expr(ast_create_expr_ident(JINGE_EL_IDENT.clone())),
   ];
@@ -18,7 +18,7 @@ pub fn tpl_set_ref_code(r: Box<Expr>) -> Box<Expr> {
   ast_create_expr_call(ast_create_expr_ident(JINGE_IMPORT_SET_REF.local()), args)
 }
 
-pub fn tpl_push_el_code(root: bool, is_root_container: bool) -> Box<Expr> {
+pub fn tpl_push_el_code(root: bool, host_ident: &Option<Ident>) -> Box<Expr> {
   let args = vec![ast_create_arg_expr(ast_create_expr_ident(
     JINGE_EL_IDENT.clone(),
   ))];
@@ -27,7 +27,7 @@ pub fn tpl_push_el_code(root: bool, is_root_container: bool) -> Box<Expr> {
     span: DUMMY_SP,
     callee: Callee::Expr(ast_create_expr_member(
       ast_create_expr_member(
-        ast_create_id_of_container(is_root_container),
+        ast_create_expr_host_ident(host_ident),
         MemberProp::Computed(ComputedPropName {
           span: DUMMY_SP,
           expr: ast_create_expr_ident(if root {
@@ -73,13 +73,13 @@ pub fn tpl_set_attribute(el: Box<Expr>, attr_name: Atom, attr_value: Box<Expr>) 
 pub fn tpl_render_const_text(
   c: Box<Expr>,
   is_parent_component: bool,
-  is_root_container: bool,
+  host_ident: &Option<Ident>,
 ) -> Box<Expr> {
   if is_parent_component {
     ast_create_expr_call(
       ast_create_expr_ident(JINGE_IMPORT_TEXT_RENDER_FN.local()),
       vec![
-        ast_create_arg_expr(ast_create_id_of_container(is_root_container)),
+        ast_create_arg_expr(ast_create_expr_host_ident(host_ident)),
         ast_create_arg_expr(c),
       ],
     )
@@ -94,10 +94,10 @@ pub fn tpl_render_intl_text(
   params: Option<ExprOrSpread>,
   default_text: Option<&Atom>,
   is_parent_component: bool,
-  is_root_container: bool,
+  host_ident: &Option<Ident>,
 ) -> Box<Expr> {
   let mut args = vec![
-    ast_create_arg_expr(ast_create_id_of_container(is_root_container)),
+    ast_create_arg_expr(ast_create_expr_host_ident(host_ident)),
     ast_create_arg_expr(ast_create_expr_lit_bool(is_parent_component)),
     ast_create_arg_expr(ast_create_expr_lit_str(key)),
   ];
@@ -132,7 +132,7 @@ pub fn tpl_render_intl_normal_text(
   params: Option<ExprOrSpread>,
   default_text: Option<&Atom>,
   is_parent_component: bool,
-  is_root_container: bool,
+  host_ident: &Option<Ident>,
 ) -> Box<Expr> {
   tpl_render_intl_text(
     false,
@@ -140,7 +140,7 @@ pub fn tpl_render_intl_normal_text(
     params,
     default_text,
     is_parent_component,
-    is_root_container,
+    host_ident,
   )
 }
 
@@ -148,7 +148,7 @@ pub fn tpl_render_expr_text(
   expr_result: ExprParseResult,
   value: Box<Expr>,
   is_parent_component: bool,
-  is_root_container: bool,
+  host_ident: &Option<Ident>,
 ) -> Box<Expr> {
   let render_fn = ast_create_expr_call(
     ast_create_expr_ident(JINGE_IMPORT_SET_TEXT_CONTENT.local()),
@@ -170,14 +170,14 @@ pub fn tpl_render_expr_text(
     ),
     Stmt::Expr(ExprStmt {
       span: DUMMY_SP,
-      expr: tpl_watch_and_render(render_fn, expr_result, is_root_container),
+      expr: tpl_watch_and_render(render_fn, expr_result, host_ident),
     }),
   ];
 
   if is_parent_component {
     stmts.push(Stmt::Expr(ExprStmt {
       span: DUMMY_SP,
-      expr: tpl_push_el_code(true, is_root_container),
+      expr: tpl_push_el_code(true, host_ident),
     }));
   }
   stmts.push(Stmt::Return(ReturnStmt {
@@ -201,7 +201,7 @@ pub fn tpl_render_expr_text(
 pub fn tpl_watch_and_render(
   render_fn_body: Box<Expr>,
   expr_result: ExprParseResult,
-  is_root_container: bool,
+  host_ident: &Option<Ident>,
 ) -> Box<Expr> {
   match expr_result {
     ExprParseResult::None => unreachable!(),
@@ -213,7 +213,7 @@ pub fn tpl_watch_and_render(
           Box::new(BlockStmtOrExpr::Expr(render_fn_body)),
         )),
         // 复杂表达式，会有 PathWatcher/ExprWatcher 等的封装，统一加到 [HOST_WATCH] 中，在 host component 销毁时卸载。
-        ast_create_arg_expr(ast_create_id_of_container(is_root_container)),
+        ast_create_arg_expr(ast_create_expr_host_ident(host_ident)),
       ];
       ast_create_expr_call(
         ast_create_expr_ident(JINGE_IMPORT_WATCH_FOR_RENDER.local()),
@@ -234,9 +234,7 @@ pub fn tpl_watch_and_render(
           Number::from(sr.not_op as usize),
         )))));
       }
-      args.push(ast_create_arg_expr(ast_create_id_of_container(
-        is_root_container,
-      )));
+      args.push(ast_create_arg_expr(ast_create_expr_host_ident(host_ident)));
       ast_create_expr_call(
         ast_create_expr_ident(if sr.not_op > 0 {
           JINGE_IMPORT_WATCH_PATH_FOR_RENDER_2.local()
@@ -252,7 +250,7 @@ pub fn tpl_watch_and_render(
 pub fn tpl_watch_and_set_html_attr(
   attr_name: IdentName,
   expr_result: ExprParseResult,
-  is_root_container: bool,
+  host_ident: &Option<Ident>,
 ) -> Box<Expr> {
   let set_fn = if IDL_ATTRIBUTE_SET.binary_search(&attr_name.sym).is_ok() {
     ast_create_expr_assign_mem(
@@ -267,18 +265,18 @@ pub fn tpl_watch_and_set_html_attr(
       ast_create_expr_ident(JINGE_V_IDENT.clone()),
     )
   };
-  tpl_watch_and_render(set_fn, expr_result, is_root_container)
+  tpl_watch_and_render(set_fn, expr_result, host_ident)
 }
 
 pub fn tpl_watch_and_set_component_attr(
   attr_name: IdentName,
   expr_result: ExprParseResult,
-  is_root_container: bool,
+  host_ident: &Option<Ident>,
 ) -> Box<Expr> {
   let set_fn = ast_create_expr_assign_mem(
     ast_create_expr_ident(JINGE_ATTR_IDENT.clone()),
     attr_name.sym,
     ast_create_expr_ident(JINGE_V_IDENT.clone()),
   );
-  tpl_watch_and_render(set_fn, expr_result, is_root_container)
+  tpl_watch_and_render(set_fn, expr_result, host_ident)
 }

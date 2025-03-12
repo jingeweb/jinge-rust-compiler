@@ -121,11 +121,12 @@ impl TemplateParser {
         None,
         default_text_param,
         self.context.is_parent_component(),
-        self.context.root_container,
+        &self.context.host_ident,
       ));
       return true; // 如果没有 params 参数，生成简单的 renderIntlText 函数。
     };
-
+    let is_parent = self.context.is_parent_component();
+    let host_ident = &self.context.host_ident;
     let mut vm = IntlParams {
       is_rich_text: false,
       const_props: vec![],
@@ -139,8 +140,8 @@ impl TemplateParser {
             key,
             None,
             default_text_param,
-            self.context.is_parent_component(),
-            self.context.root_container,
+            is_parent,
+            host_ident,
           ));
           return true;
         }
@@ -154,8 +155,8 @@ impl TemplateParser {
               key,
               None,
               default_text_param,
-              self.context.is_parent_component(),
-              self.context.root_container,
+              is_parent,
+              host_ident,
             ));
             return true;
           };
@@ -217,8 +218,8 @@ impl TemplateParser {
           None
         },
         default_text_param,
-        self.context.is_parent_component(),
-        self.context.root_container,
+        is_parent,
+        host_ident,
       );
       if vm.is_rich_text {
         self.push_expression_with_spread(expr);
@@ -266,7 +267,7 @@ impl TemplateParser {
         }));
         stmts.push(Stmt::Expr(ExprStmt {
           span: DUMMY_SP,
-          expr: tpl_watch_and_render(set_fn, watch_expr, self.context.root_container),
+          expr: tpl_watch_and_render(set_fn, watch_expr, host_ident),
         }));
       });
 
@@ -280,8 +281,8 @@ impl TemplateParser {
           expr: ast_create_expr_ident(JINGE_ATTR_IDENT.clone()),
         }),
         default_text_param,
-        self.context.is_parent_component(),
-        self.context.root_container,
+        is_parent,
+        host_ident,
       )),
     }));
 

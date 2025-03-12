@@ -1,5 +1,5 @@
 use crate::ast::{ast_create_expr_arrow_fn, ast_create_expr_call, ast_create_expr_ident};
-use crate::common::{JINGE_ATTR_IDENT, JINGE_ON, JINGE_SLOT, emit_error};
+use crate::common::{JINGE_ATTR_IDENT, JINGE_KEY, JINGE_ON, JINGE_SLOT, emit_error};
 use crate::parser::TemplateParser;
 use swc_common::DUMMY_SP;
 use swc_core::ecma::ast::*;
@@ -47,6 +47,29 @@ impl TemplateParser {
       return;
     };
     attrs.ref_prop.replace(val.clone());
+  }
+  fn parse_key_attr(&self, attrs: &mut AttrStore, attr: &JSXAttr) {
+    const KEY_ERROR: &str = "key 属性值不合法";
+    let Some(val) = &attr.value else {
+      emit_error(attr.value.span(), KEY_ERROR);
+      return;
+    };
+
+    let expr = match val {
+      JSXAttrValue::Lit(Lit::Str(v)) => Box::new(Expr::Lit(Lit::Str(v.clone()))),
+      JSXAttrValue::JSXExprContainer(expr) => match &expr.expr {
+        JSXExpr::Expr(expr) => expr.clone(),
+        JSXExpr::JSXEmptyExpr(_) => {
+          emit_error(val.span(), KEY_ERROR);
+          return;
+        }
+      },
+      _ => {
+        emit_error(val.span(), KEY_ERROR);
+        return;
+      }
+    };
+    attrs.const_props.push((JINGE_KEY.clone().into(), expr));
   }
   fn parse_prop_attr(
     &self,
@@ -136,7 +159,7 @@ impl TemplateParser {
   fn meet_slot(&mut self, attrs: &mut AttrStore, an: &IdentName) {
     if !attrs.meet_slot {
       attrs.meet_slot = true;
-      self.push_context(Parent::Component, false);
+      self.push_context(Parent::Component);
     }
     self.context.slots.push(Slot::new(an.sym.clone()));
   }
@@ -160,43 +183,13 @@ impl TemplateParser {
             self.meet_slot(attrs, an);
             self.visit_lit(val);
           }
-          Expr::Fn(_) => {
-            emit_error(
-              val.span(),
-              "请使用箭头函数定义插槽，且箭头后直接返回 JSX 元素。",
-            );
-          }
-          Expr::Arrow(_) => {
+          Expr::Fn(expr) => {
             self.meet_slot(attrs, an);
-            self.visit_expr(expr);
-            // let mut set: HashSet<Atom> = HashSet::new();
-            // match expr.as_ref() {
-            //   Expr::Fn(e) => e.function.params.iter().for_each(|p| {
-            //     if let Pat::Ident(id) = &p.pat {
-            //       set.insert(id.sym.clone());
-            //     }
-            //   }),
-            //   Expr::Arrow(e) => e.params.iter().for_each(|p| {
-            //     if let Pat::Ident(id) = p {
-            //       set.insert(id.sym.clone());
-            //     }
-            //   }),
-            //   _ => (),
-            // }
-            // let r = ExprVisitor::new_with_exclude_roots(if set.is_empty() {
-            //   None
-            // } else {
-            //   Some(Rc::new(set))
-            // })
-            // .parse(expr.as_ref());
-            // println!("{:?}", r);
-
-            // match r {
-            //   ExprParseResult::None => {
-            //     attrs.const_props.push((an, expr.clone()));
-            //   }
-            //   _ => attrs.watch_props.push((attr_name, r)),
-            // }
+            self.parse_func_function(expr);
+          }
+          Expr::Arrow(expr) => {
+            self.meet_slot(attrs, an);
+            self.parse_func_arrow(expr);
           }
           _ => {
             self.meet_slot(attrs, an);
@@ -306,6 +299,8 @@ impl TemplateParser {
             );
           } else if JINGE_REF.eq(&an.sym) {
             self.parse_ref_attr(&mut attrs, attr);
+          } else if JINGE_KEY.eq(&an.sym) {
+            self.parse_key_attr(&mut attrs, attr);
           } else {
             self.parse_prop_attr(&mut attrs, an, &attr.value, is_component);
           }

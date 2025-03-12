@@ -1,6 +1,6 @@
 {
   "name": "jinge-compiler",
-  "version": "4.0.1",
+  "version": "4.0.2",
   "description": "compiler for jinge framework",
   "author": "Yuhang Ge<abeyuhang@gmail.com>",
   "license": "ISC",
@@ -49,12 +49,12 @@
     "eslint-config-prettier": "^10.1.1",
     "eslint-plugin-import-x": "^4.6.1",
     "husky": "^9.1.7",
-    "lint-staged": "^15.4.3",
+    "lint-staged": "^15.5.0",
     "nodemon": "^3.1.9",
     "prettier": "^3.5.3",
     "tsup": "^8.4.0",
     "tsx": "^4.19.3",
-    "typescript-eslint": "^8.26.0",
+    "typescript-eslint": "^8.26.1",
     "vite": "^6.2.1"
   },
   "dependencies": {

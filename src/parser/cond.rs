@@ -1,9 +1,12 @@
 use swc_common::Spanned;
 use swc_core::{common::DUMMY_SP, ecma::ast::*};
 
-use crate::common::{JINGE_IMPORT_IF, JINGE_SLOT, JINGE_UNDEFINED};
+use crate::{
+  common::{JINGE_IMPORT_IF, JINGE_SLOT, JINGE_UNDEFINED},
+  helper::has_jsx,
+};
 
-use super::{TemplateParser, helper::has_jsx};
+use super::TemplateParser;
 
 lazy_static::lazy_static! {
   static ref EXPECT: IdentName = IdentName::from("expect");

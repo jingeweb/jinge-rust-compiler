@@ -2,26 +2,54 @@ use super::tpl::{
   tpl_lit_obj, tpl_push_el_code, tpl_set_ref_code, tpl_watch_and_set_component_attr,
 };
 use super::{Parent, TemplateParser};
-use crate::ast::{
-  ast_create_arg_expr, ast_create_expr_arrow_fn, ast_create_expr_call, ast_create_expr_ident,
-  ast_create_expr_member, ast_create_id_of_container, ast_create_stmt_decl_const,
-};
+use crate::ast::*;
 use crate::common::*;
-use swc_core::common::{SyntaxContext, DUMMY_SP};
+use swc_core::common::{DUMMY_SP, SyntaxContext};
 use swc_core::ecma::ast::*;
 use swc_core::ecma::visit::VisitWith;
+
+fn slot_to_expr(
+  mut params: Vec<Pat>,
+  mut stmts: Vec<Stmt>,
+  expressions: Vec<ExprOrSpread>,
+) -> Box<Expr> {
+  let rtn_expr = Box::new(Expr::Array(ArrayLit {
+    span: DUMMY_SP,
+    elems: expressions.into_iter().map(|e| Some(e)).collect(),
+  }));
+  if params.is_empty() {
+    params.push(Pat::Ident(BindingIdent::from(JINGE_ATTR_IDENT.clone())));
+    params.push(Pat::Ident(BindingIdent::from(JINGE_HOST_IDENT.clone())));
+  }
+  ast_create_expr_arrow_fn(
+    params,
+    Box::new(if stmts.is_empty() {
+      BlockStmtOrExpr::Expr(rtn_expr)
+    } else {
+      stmts.push(Stmt::Return(ReturnStmt {
+        span: DUMMY_SP,
+        arg: Some(rtn_expr),
+      }));
+      BlockStmtOrExpr::BlockStmt(BlockStmt {
+        span: DUMMY_SP,
+        ctxt: SyntaxContext::empty(),
+        stmts: stmts,
+      })
+    }),
+  )
+}
 
 impl TemplateParser {
   pub fn parse_component_element(&mut self, tn: &Ident, n: &JSXElement) {
     let mut attrs = self.parse_attrs(n, true);
     let is_attrs_empty = attrs.const_props.is_empty() && attrs.watch_props.is_empty();
-    self.push_context(Parent::Component, false);
+    self.push_context(Parent::Component);
     // 此处不能直接用 n.visit_children_with(self)，会再次 visit attributes
     n.children.iter().for_each(|child| {
       child.visit_children_with(self);
     });
     let children_context = self.pop_context();
-    let root_container = self.context.root_container;
+    let host_ident = &self.context.host_ident;
 
     let mut stmts: Vec<Stmt> = vec![];
 
@@ -45,21 +73,20 @@ impl TemplateParser {
       .for_each(|(attr_name, expr_result)| {
         stmts.push(Stmt::Expr(ExprStmt {
           span: DUMMY_SP,
-          expr: tpl_watch_and_set_component_attr(
-            attr_name,
-            expr_result,
-            self.context.root_container,
-          ),
+          expr: tpl_watch_and_set_component_attr(attr_name, expr_result, host_ident),
         }));
       });
 
-    let set_ref_code = attrs.ref_prop.take().map(|r| tpl_set_ref_code(r));
+    let set_ref_code = attrs
+      .ref_prop
+      .take()
+      .map(|r| tpl_set_ref_code(r, &self.context.host_ident));
     let mut slots = children_context.slots;
     if !attrs.slot_props.is_empty() {
       slots.append(&mut attrs.slot_props);
     }
     let mut args = vec![ast_create_arg_expr(ast_create_expr_member(
-      ast_create_id_of_container(root_container),
+      ast_create_expr_host_ident(host_ident),
       MemberProp::Computed(ComputedPropName {
         span: DUMMY_SP,
         expr: ast_create_expr_ident(JINGE_IMPORT_CONTEXT.local()),
@@ -68,12 +95,10 @@ impl TemplateParser {
     let has_named_slots = slots.len() > 1;
     if has_named_slots {
       let mut slots_arg: Vec<_> = vec![];
-      slots.into_iter().enumerate().for_each(|(i, mut s)| {
+      slots.into_iter().enumerate().for_each(|(i, s)| {
         if s.expressions.is_empty() {
           return;
         }
-        let mut params = vec![Pat::Ident(BindingIdent::from(JINGE_HOST_IDENT.clone()))];
-        params.append(&mut s.params);
         slots_arg.push((
           if i == 0 {
             // 第 0 个是默认 slot
@@ -84,13 +109,7 @@ impl TemplateParser {
           } else {
             PropName::Str(Str::from(s.name))
           },
-          ast_create_expr_arrow_fn(
-            params,
-            Box::new(BlockStmtOrExpr::Expr(Box::new(Expr::Array(ArrayLit {
-              span: DUMMY_SP,
-              elems: s.expressions.into_iter().map(|e| Some(e)).collect(),
-            })))),
-          ),
+          slot_to_expr(s.params, s.stmts, s.expressions),
         ))
       });
 
@@ -106,20 +125,12 @@ impl TemplateParser {
         }))));
       }
     } else {
-      let mut default_slot = slots.pop().unwrap();
+      let default_slot = slots.pop().unwrap();
       if !default_slot.expressions.is_empty() {
-        let mut params = vec![Pat::Ident(BindingIdent::from(JINGE_HOST_IDENT.clone()))];
-        params.append(&mut default_slot.params);
-        args.push(ast_create_arg_expr(ast_create_expr_arrow_fn(
-          params,
-          Box::new(BlockStmtOrExpr::Expr(Box::new(Expr::Array(ArrayLit {
-            span: DUMMY_SP,
-            elems: default_slot
-              .expressions
-              .into_iter()
-              .map(|e| Some(e))
-              .collect(),
-          })))),
+        args.push(ast_create_arg_expr(slot_to_expr(
+          default_slot.params,
+          default_slot.stmts,
+          default_slot.expressions,
         )))
       }
     }
@@ -137,7 +148,7 @@ impl TemplateParser {
     ));
     stmts.push(Stmt::Expr(ExprStmt {
       span: DUMMY_SP,
-      expr: tpl_push_el_code(self.context.is_parent_component(), root_container),
+      expr: tpl_push_el_code(self.context.is_parent_component(), host_ident),
     }));
     if let Some(c) = set_ref_code {
       stmts.push(Stmt::Expr(ExprStmt {

@@ -4,15 +4,14 @@ use swc_ecma_visit::{VisitMut, VisitMutWith};
 
 use crate::{
   ast::{ast_create_expr_ident, ast_create_expr_lit_str},
-  common::{emit_warn, JINGE_IMPORT_KEY_DATA, JINGE_IMPORT_KEY_INDEX, JINGE_KEY},
+  common::{JINGE_IMPORT_KEY_DATA, JINGE_IMPORT_KEY_INDEX, JINGE_KEY, emit_warn},
   parser::JINGE_LOOP_EACH_DATA,
 };
 
 use super::{
-  emit_error,
+  JINGE_IMPORT_FOR, JINGE_LOOP, JINGE_LOOP_EACH_IDENTS, JINGE_LOOP_EACH_INDEX, JINGE_MAP,
+  TemplateParser, emit_error,
   map_key::{MapKey, MapKeyFindVisitor},
-  TemplateParser, JINGE_IMPORT_FOR, JINGE_LOOP, JINGE_LOOP_EACH_IDENTS, JINGE_LOOP_EACH_INDEX,
-  JINGE_MAP,
 };
 
 /// map 循环转换成 <For> 组件时，需要把 map 函数的参数，转成 <For> 组件的 Slot 函数的参数。
@@ -161,32 +160,21 @@ fn gen_for_component(looop: &Box<Expr>, key: MapKey, func: ArrowExpr) -> JSXElem
       expr: JSXExpr::Expr(looop.clone()),
     })),
   })];
-  match key {
-    MapKey::Data => attrs.push(JSXAttrOrSpread::JSXAttr(JSXAttr {
+  if let Some(key_attr_value) = match key {
+    MapKey::Data => Some(ast_create_expr_ident(JINGE_IMPORT_KEY_DATA.local())),
+    MapKey::Index => Some(ast_create_expr_ident(JINGE_IMPORT_KEY_INDEX.local())),
+    MapKey::Prop(path) => Some(ast_create_expr_lit_str(path.into())),
+    MapKey::Expr(expr) => Some(expr),
+    _ => None,
+  } {
+    attrs.push(JSXAttrOrSpread::JSXAttr(JSXAttr {
       span: DUMMY_SP,
       name: JSXAttrName::Ident(IdentName::from(JINGE_KEY.clone())),
       value: Some(JSXAttrValue::JSXExprContainer(JSXExprContainer {
         span: DUMMY_SP,
-        expr: JSXExpr::Expr(ast_create_expr_ident(JINGE_IMPORT_KEY_DATA.local())),
+        expr: JSXExpr::Expr(key_attr_value),
       })),
-    })),
-    MapKey::Index => attrs.push(JSXAttrOrSpread::JSXAttr(JSXAttr {
-      span: DUMMY_SP,
-      name: JSXAttrName::Ident(IdentName::from(JINGE_KEY.clone())),
-      value: Some(JSXAttrValue::JSXExprContainer(JSXExprContainer {
-        span: DUMMY_SP,
-        expr: JSXExpr::Expr(ast_create_expr_ident(JINGE_IMPORT_KEY_INDEX.local())),
-      })),
-    })),
-    MapKey::Prop(path) => attrs.push(JSXAttrOrSpread::JSXAttr(JSXAttr {
-      span: DUMMY_SP,
-      name: JSXAttrName::Ident(IdentName::from(JINGE_KEY.clone())),
-      value: Some(JSXAttrValue::JSXExprContainer(JSXExprContainer {
-        span: DUMMY_SP,
-        expr: JSXExpr::Expr(ast_create_expr_lit_str(path.into())),
-      })),
-    })),
-    _ => (),
+    }));
   }
 
   JSXElement {
@@ -270,7 +258,7 @@ impl TemplateParser {
       arg_index,
       // slot_vm_name,
     };
-    let map_key = find_key_visitor.get_key(&func);
+    let map_key = find_key_visitor.get_key(&mut func);
     if map_key.is_none() {
       emit_warn(
         func.span(),

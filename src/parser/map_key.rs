@@ -3,16 +3,16 @@ use swc_core::{atoms::Atom, ecma::ast::*};
 
 use crate::common::emit_warn;
 
-use super::{emit_error, JINGE_KEY};
+use super::{JINGE_KEY, emit_error};
 
-const BAD_KEY_WARNING: &'static str =
-  "已忽略 Key。Key 的表达式必须是 map 函数的参数或参数的属性表达式";
+const BAD_KEY_WARNING: &'static str = "key 不是受支持的表达式，已忽略。";
 
 #[derive(Debug)]
 pub enum MapKey {
   Data,
   Index,
   Prop(String),
+  Expr(Box<Expr>),
   None,
 }
 impl MapKey {
@@ -42,8 +42,8 @@ impl MapKeyFindVisitor {
   //   }
   //   params
   // }
-  fn get_key_from_jsx_element(&self, expr: &JSXElement) -> MapKey {
-    for attr in expr.opening.attrs.iter() {
+  fn get_key_from_jsx_element(&self, attrs: &Vec<JSXAttrOrSpread>) -> (usize, MapKey) {
+    for (index, attr) in attrs.iter().enumerate() {
       let JSXAttrOrSpread::JSXAttr(attr) = attr else {
         continue;
       };
@@ -55,19 +55,30 @@ impl MapKeyFindVisitor {
           attr.span(),
           "map 函数没有指定参数，因此 key 属性无法转换为 <For> 组件的 key 参数。",
         );
-        return MapKey::None;
+        return (0, MapKey::None);
+      }
+      if let Some(JSXAttrValue::Lit(expr)) = &attr.value {
+        match expr {
+          Lit::Str(s) => {
+            return (index, MapKey::Prop(s.value.to_string()));
+          }
+          _ => {
+            emit_error(attr.span(), BAD_KEY_WARNING);
+            return (0, MapKey::None);
+          }
+        }
       }
       let Some(JSXAttrValue::JSXExprContainer(expr)) = &attr.value else {
         emit_error(attr.span(), BAD_KEY_WARNING);
-        return MapKey::None;
+        return (0, MapKey::None);
       };
       let JSXExpr::Expr(expr) = &expr.expr else {
         emit_error(expr.span(), BAD_KEY_WARNING);
-        return MapKey::None;
+        return (0, MapKey::None);
       };
       return match expr.as_ref() {
-        Expr::Member(e) => {
-          let mut root = e;
+        Expr::Member(me) => {
+          let mut root = me;
           let mut path = String::new();
           loop {
             match &root.prop {
@@ -94,12 +105,12 @@ impl MapKeyFindVisitor {
                 }
                 _ => {
                   emit_warn(e.span(), BAD_KEY_WARNING);
-                  return MapKey::None;
+                  return (0, MapKey::None);
                 }
               },
               MemberProp::PrivateName(k) => {
                 emit_warn(k.span(), BAD_KEY_WARNING);
-                return MapKey::None;
+                return (0, MapKey::None);
               }
             }
             match root.obj.as_ref() {
@@ -114,14 +125,15 @@ impl MapKeyFindVisitor {
               .map(|v| id.sym.eq(v))
               .unwrap_or(false)
             {
-              MapKey::Prop(path)
+              (index, MapKey::Prop(path))
             } else {
-              emit_warn(expr.span(), BAD_KEY_WARNING);
-              MapKey::None
+              // emit_warn(expr.span(), BAD_KEY_WARNING);
+              // MapKey::None
+              (index, MapKey::Expr(Box::new(Expr::Member(me.clone()))))
             }
           } else {
-            emit_warn(e.span(), BAD_KEY_WARNING);
-            MapKey::None
+            emit_warn(me.span(), BAD_KEY_WARNING);
+            (0, MapKey::None)
           }
         }
         Expr::Ident(id) => {
@@ -131,36 +143,43 @@ impl MapKeyFindVisitor {
             .map(|v| id.sym.eq(v))
             .unwrap_or(false)
           {
-            MapKey::Data
+            (index, MapKey::Data)
           } else if self
             .arg_index
             .as_ref()
             .map(|v| id.sym.eq(v))
             .unwrap_or(false)
           {
-            MapKey::Index
+            (index, MapKey::Index)
           } else {
-            emit_warn(expr.span(), BAD_KEY_WARNING);
-            MapKey::None
+            (index, MapKey::Expr(Box::new(Expr::Ident(id.clone()))))
           }
         }
+        Expr::Lit(Lit::Str(k)) => (index, MapKey::Prop(k.value.to_string())),
         _ => {
           emit_warn(expr.span(), BAD_KEY_WARNING);
-          MapKey::None
+          (0, MapKey::None)
         }
       };
     }
-    MapKey::None
+    (0, MapKey::None)
   }
 
-  fn get_key_from_jsx_fragment(&self, expr: &JSXFragment) -> MapKey {
-    for child in expr.children.iter() {
+  fn get_key_from_jsx_fragment(&self, expr: &mut JSXFragment) -> MapKey {
+    for child in expr.children.iter_mut() {
       let rtn = match child {
-        JSXElementChild::JSXExprContainer(e) => match &e.expr {
-          JSXExpr::Expr(e) => self.get_key_inner(e.as_ref()),
+        JSXElementChild::JSXExprContainer(e) => match &mut e.expr {
+          JSXExpr::Expr(e) => self.get_key_inner(e.as_mut()),
           JSXExpr::JSXEmptyExpr(_) => MapKey::None,
         },
-        JSXElementChild::JSXElement(e) => self.get_key_from_jsx_element(e.as_ref()),
+        JSXElementChild::JSXElement(e) => {
+          let attrs = &mut e.opening.attrs;
+          let (index, key) = self.get_key_from_jsx_element(attrs);
+          if !key.is_none() {
+            attrs.remove(index);
+          }
+          key
+        }
         JSXElementChild::JSXFragment(fe) => self.get_key_from_jsx_fragment(fe),
         _ => MapKey::None,
       };
@@ -171,17 +190,24 @@ impl MapKeyFindVisitor {
     MapKey::None
   }
 
-  fn get_key_inner(&self, expr: &Expr) -> MapKey {
+  fn get_key_inner(&self, expr: &mut Expr) -> MapKey {
     match expr {
-      Expr::Paren(e) => self.get_key_inner(e.expr.as_ref()),
+      Expr::Paren(e) => self.get_key_inner(e.expr.as_mut()),
       Expr::JSXFragment(fe) => self.get_key_from_jsx_fragment(fe),
-      Expr::JSXElement(e) => self.get_key_from_jsx_element(e.as_ref()),
+      Expr::JSXElement(e) => {
+        let attrs = &mut e.opening.attrs;
+        let (index, key) = self.get_key_from_jsx_element(attrs);
+        if !key.is_none() {
+          attrs.remove(index);
+        }
+        key
+      }
       _ => MapKey::None,
     }
   }
 
-  pub fn get_key(&self, expr: &ArrowExpr) -> MapKey {
-    let BlockStmtOrExpr::Expr(expr) = expr.body.as_ref() else {
+  pub fn get_key(&self, expr: &mut ArrowExpr) -> MapKey {
+    let BlockStmtOrExpr::Expr(expr) = expr.body.as_mut() else {
       // self.parse_component_element 里会约束 Slot 函数只能是箭头函数且箭头函数直接返回 Expr 表达式。
       // 所以如果是 expr.body 是 BlockStmt 则不再需要尝试获取 key 属性。
       return MapKey::None;

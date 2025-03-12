@@ -1,7 +1,7 @@
 use crate::ast::*;
 use crate::common::*;
+use crate::helper::has_jsx;
 use expr::{ExprParseResult, ExprVisitor};
-use helper::has_jsx;
 use swc_core::atoms::Atom;
 use swc_core::common::{DUMMY_SP, Spanned};
 use swc_core::ecma::ast::*;
@@ -12,7 +12,6 @@ mod attrs;
 mod component;
 mod cond;
 mod expr;
-mod helper;
 pub mod intl;
 mod jsx;
 mod map;
@@ -29,7 +28,11 @@ pub enum Parent {
 
 pub struct Slot {
   name: Atom,
+  /// 插槽函数的参数
   params: Vec<Pat>,
+  /// 插槽函数的除 return 之外的语句。
+  stmts: Vec<Stmt>,
+  /// 插槽函数 return 语句转换后的渲染表达式。比如 return <>...</> 里面可能有多个 jsx 元素。
   expressions: Vec<ExprOrSpread>,
 }
 impl Slot {
@@ -37,21 +40,27 @@ impl Slot {
     Self {
       name,
       params: vec![],
+      stmts: vec![],
       expressions: vec![],
     }
   }
 }
 struct Context {
   // container_component_level: usize,
-  root_container: bool,
+  // root_container: bool,
   parent: Parent,
+  host_ident: Option<Ident>,
   slots: Vec<Slot>,
 }
 
 impl Context {
-  fn new(parent: Parent, root_container: bool) -> Self {
+  fn new(parent: Parent) -> Self {
+    Self::new_with_host_ident(parent, None)
+  }
+  fn new_with_host_ident(parent: Parent, host_ident: Option<Ident>) -> Self {
     Self {
-      root_container,
+      host_ident: host_ident,
+      // root_container,
       parent,
       slots: vec![Slot::new(Atom::default())], // 第 0 个 Slot 是默认 DEFAULT_SLOT
     }
@@ -71,22 +80,30 @@ pub struct TemplateParser {
   context: Context,
   stack: Vec<Context>,
   props_arg: Option<Atom>,
+
   map_loop_level: usize,
 }
 
 impl TemplateParser {
-  pub fn new(props_arg: Option<Atom>, intl_type: IntlType) -> Self {
+  pub fn new(props_arg: Option<Atom>, host_ident: Ident, intl_type: IntlType) -> Self {
     Self {
       intl_type,
-      context: Context::new(Parent::Component, true),
-      stack: vec![],
       props_arg,
+      context: Context::new_with_host_ident(Parent::Component, Some(host_ident)),
+      stack: vec![],
       map_loop_level: 0,
     }
   }
-  fn push_context(&mut self, parent: Parent, root_container: bool) {
-    let current_context =
-      std::mem::replace(&mut self.context, Context::new(parent, root_container));
+  pub fn push_context(&mut self, parent: Parent) {
+    let current_context = std::mem::replace(&mut self.context, Context::new(parent));
+    self.stack.push(current_context);
+  }
+  pub fn push_context_inherit_host_ident(&mut self, parent: Parent) {
+    let host_ident = self.context.host_ident.clone();
+    let current_context = std::mem::replace(
+      &mut self.context,
+      Context::new_with_host_ident(parent, host_ident),
+    );
     self.stack.push(current_context);
   }
   fn pop_context(&mut self) -> Context {
@@ -118,11 +135,7 @@ impl TemplateParser {
       });
   }
   pub fn parse(&mut self, expr: &Expr) -> Option<Box<Expr>> {
-    if has_jsx(expr) || matches!(expr, Expr::Lit(_)) {
-      self.visit_expr(expr);
-    } else {
-      return None;
-    }
+    self.visit_expr(expr);
     assert_eq!(self.context.slots.len(), 1);
     let elems: Vec<Option<ExprOrSpread>> = self
       .context
@@ -149,14 +162,14 @@ impl TemplateParser {
       ExprParseResult::None => self.push_expression(tpl_render_const_text(
         Box::new(expr.clone()),
         self.context.is_parent_component(),
-        self.context.root_container,
+        &self.context.host_ident,
       )),
       _ => {
         self.push_expression(tpl_render_expr_text(
           expr_result,
           ast_create_expr_ident(JINGE_V_IDENT.clone()),
           self.context.is_parent_component(),
-          self.context.root_container,
+          &self.context.host_ident,
         ));
       }
     }
@@ -177,6 +190,101 @@ impl TemplateParser {
       // 其它情况当成通用表达式进行转换。
       self.parse_expr(parent_expr);
     }
+  }
+  fn parse_func_function(&mut self, expr: &FnExpr) {
+    let Some(body) = &expr.function.body else {
+      emit_error(expr.function.span(), "插槽函数必须有返回值");
+      return;
+    };
+    let params: Vec<_> = expr.function.params.iter().map(|p| p.pat.clone()).collect();
+    self.parse_func_body(body, &params);
+  }
+  fn parse_func_arrow(&mut self, expr: &ArrowExpr) {
+    match &*expr.body {
+      BlockStmtOrExpr::BlockStmt(b) => {
+        self.parse_func_body(b, &expr.params);
+      }
+      BlockStmtOrExpr::Expr(e) => {
+        self.parse_func_return(e, &expr.params);
+      }
+    }
+  }
+  fn parse_func_body(&mut self, body: &BlockStmt, params: &Vec<Pat>) {
+    const ERR: &str = "插槽函数必须有返回值";
+    let Some(Stmt::Return(r)) = body.stmts.last() else {
+      emit_error(body.span(), ERR);
+      return;
+    };
+    let Some(rtn) = &r.arg else {
+      emit_error(body.span(), ERR);
+      return;
+    };
+    self.parse_func_return(rtn, params);
+
+    let len = body.stmts.len();
+    for stmt in &body.stmts[0..len - 1] {
+      self
+        .context
+        .slots
+        .last_mut()
+        .unwrap()
+        .stmts
+        .push(stmt.clone());
+    }
+  }
+  fn parse_func_return(&mut self, expr: &Box<Expr>, params: &Vec<Pat>) {
+    if !self.context.is_parent_component() {
+      emit_error(expr.span(), "插槽函数不能定义在 html 元素下");
+      return;
+    }
+    if params.len() > 2 {
+      emit_error(
+        params[0].span(),
+        "插槽函数的参数不能超过3个，第一个是 Props 属性，第二个是 Host 组件。",
+      );
+      return;
+    }
+    let props_param;
+    if let Some(p) = params.get(0) {
+      if !matches!(p, Pat::Ident(_)) {
+        emit_error(
+          p.span(),
+          "插槽函数的第一个参数只能是普通 Ident 格式。不要使用解构一类的写法，会导致数据绑定失效。",
+        );
+        return;
+      } else {
+        // slot_params.push(p.clone());
+        props_param = p.clone();
+      }
+    } else {
+      props_param = Pat::Ident(BindingIdent::from(JINGE_ATTR_IDENT.clone()));
+    }
+    let host_param;
+    if let Some(p) = params.get(1) {
+      if let Pat::Ident(id) = p {
+        if !id.id.sym.starts_with("host") {
+          emit_error(
+            id.span(),
+            "插槽函数的第二个参数名必须是 host 或以 host 打头，确保已对第二个参数有充分理解",
+          );
+          return;
+        } else {
+          host_param = id.clone();
+        }
+      } else {
+        emit_error(p.span(), "插槽函数的第二个参数只能是普通 Ident 格式。");
+        return;
+      }
+    } else {
+      host_param = BindingIdent::from(JINGE_HOST_IDENT.clone());
+    }
+
+    let slot = self.context.slots.last_mut().unwrap();
+    let slot_params = &mut slot.params;
+    self.context.host_ident.replace(host_param.id.clone());
+    slot_params.push(props_param);
+    slot_params.push(Pat::Ident(host_param));
+    self.visit_expr(expr);
   }
 }
 
@@ -218,57 +326,11 @@ impl Visit for TemplateParser {
         }
       }
 
-      Expr::Fn(f) => {
-        emit_error(
-          f.span(),
-          "请使用箭头函数定义插槽，且箭头后直接返回 JSX 元素。",
-        );
+      Expr::Fn(expr) => {
+        self.parse_func_function(expr);
       }
       Expr::Arrow(expr) => {
-        if !self.context.is_parent_component() || self.context.root_container {
-          emit_error(expr.span(), "Slot 定义必须位于组件下");
-          return;
-        }
-        if expr.params.len() > 1 {
-          emit_error(
-            expr.span(),
-            "Slot 函数只允许一个参数，该参数应该是一个具备双向绑定能力的 ViewModel",
-          );
-          return;
-        }
-        match &*expr.body {
-          BlockStmtOrExpr::BlockStmt(_) => {
-            emit_error(
-              expr.span(),
-              "使用箭头函数定义 Slot 时必须直接在箭头后返回 JSX 元素",
-            );
-          }
-          BlockStmtOrExpr::Expr(e) => {
-            if !expr.params.is_empty() {
-              expr.params.iter().any(|par| {
-                if !matches!(par, Pat::Ident(_)) {
-                  emit_error(
-                    par.span(),
-                    "警告：插槽函数的参数不要使用解构的写法，会导致数据的绑定失效。",
-                  );
-                  true
-                } else {
-                  false
-                }
-              });
-              self
-                .context
-                .slots
-                .last_mut()
-                .unwrap()
-                .params
-                .append(&mut expr.params.clone());
-            }
-            // println!("{:#?}", e);
-            self.visit_expr(e);
-            // e.as_ref().visit_children_with(self);
-          }
-        }
+        self.parse_func_arrow(expr);
       }
       // Expr::Object(obj) => {
       //   if !self.context.is_parent_component() || self.context.root_container {
@@ -338,7 +400,7 @@ impl Visit for TemplateParser {
     self.push_expression(tpl_render_const_text(
       ast_create_expr_lit_str(text),
       self.context.is_parent_component(),
-      self.context.root_container,
+      &self.context.host_ident,
     ))
   }
   fn visit_lit(&mut self, n: &Lit) {
@@ -348,7 +410,7 @@ impl Visit for TemplateParser {
       self.push_expression(tpl_render_const_text(
         Box::new(Expr::Lit(n.clone())),
         self.context.is_parent_component(),
-        self.context.root_container,
+        &self.context.host_ident,
       ))
     };
   }
