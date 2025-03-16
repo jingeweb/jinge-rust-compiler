@@ -1,6 +1,5 @@
 use crate::ast::*;
 use crate::common::*;
-use crate::helper::has_jsx;
 use expr::{ExprParseResult, ExprVisitor};
 use swc_core::atoms::Atom;
 use swc_core::common::{DUMMY_SP, Spanned};

@@ -11,7 +11,7 @@ use super::TemplateParser;
 lazy_static::lazy_static! {
   static ref EXPECT: IdentName = IdentName::from("expect");
 
-  static ref FALSE: IdentName = IdentName::from("false");
+  static ref ELSE: IdentName = IdentName::from("else");
 }
 
 /// 将形如 `test ? cons : alt` 的二元条件表达式，转换为 `If` 组件： `<If expect={test} slot:true={cons} slot:false={alt} />`
@@ -36,7 +36,7 @@ fn gen_if_component(
       name: JSXAttrName::JSXNamespacedName(JSXNamespacedName {
         span: DUMMY_SP,
         ns: IdentName::from(JINGE_SLOT.clone()),
-        name: IdentName::from(FALSE.clone()),
+        name: IdentName::from(ELSE.clone()),
       }),
       value: Some(JSXAttrValue::JSXExprContainer(JSXExprContainer {
         span: DUMMY_SP,
