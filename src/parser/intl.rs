@@ -114,6 +114,7 @@ impl TemplateParser {
     } else {
       Some(default_text)
     };
+    let host_ident = self.create_host_ident();
 
     let Some(params) = params_arg else {
       self.push_expression(tpl_render_intl_normal_text(
@@ -121,12 +122,11 @@ impl TemplateParser {
         None,
         default_text_param,
         self.context.is_parent_component(),
-        &self.context.host_ident,
+        host_ident.clone(),
       ));
       return true; // 如果没有 params 参数，生成简单的 renderIntlText 函数。
     };
     let is_parent = self.context.is_parent_component();
-    let host_ident = &self.context.host_ident;
     let mut vm = IntlParams {
       is_rich_text: false,
       const_props: vec![],
@@ -141,7 +141,7 @@ impl TemplateParser {
             None,
             default_text_param,
             is_parent,
-            host_ident,
+            host_ident.clone(),
           ));
           return true;
         }
@@ -156,7 +156,7 @@ impl TemplateParser {
               None,
               default_text_param,
               is_parent,
-              host_ident,
+              host_ident.clone(),
             ));
             return true;
           };
@@ -219,7 +219,7 @@ impl TemplateParser {
         },
         default_text_param,
         is_parent,
-        host_ident,
+        host_ident.clone(),
       );
       if vm.is_rich_text {
         self.push_expression_with_spread(expr);
@@ -267,7 +267,7 @@ impl TemplateParser {
         }));
         stmts.push(Stmt::Expr(ExprStmt {
           span: DUMMY_SP,
-          expr: tpl_watch_and_render(set_fn, watch_expr, host_ident),
+          expr: tpl_watch_and_render(set_fn, watch_expr, host_ident.clone()),
         }));
       });
 

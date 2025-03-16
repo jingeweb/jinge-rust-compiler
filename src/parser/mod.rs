@@ -78,22 +78,29 @@ pub struct TemplateParser {
   intl_type: IntlType,
   context: Context,
   stack: Vec<Context>,
+  /// 组件标签元素（非 html 或 svg 元素）的层级深度。默认为0代表最外层的函数组件，每遇到（进入）一个组件标签 +1，退出 -1
+  fc_deep: usize,
+  /// 最外层的函数组件的第一个参数，即 Props 属性参数。
   props_arg: Option<Atom>,
 
   map_loop_level: usize,
 }
 
 impl TemplateParser {
-  pub fn new(props_arg: Option<Atom>, host_ident: Ident, intl_type: IntlType) -> Self {
+  pub fn new(props_arg: Option<Atom>, host_ident: Option<Ident>, intl_type: IntlType) -> Self {
     Self {
       intl_type,
       props_arg,
-      context: Context::new_with_host_ident(Parent::Component, Some(host_ident)),
+      context: Context::new_with_host_ident(Parent::Component, host_ident),
       stack: vec![],
+      fc_deep: 0,
       map_loop_level: 0,
     }
   }
   pub fn push_context(&mut self, parent: Parent) {
+    if matches!(&parent, Parent::Component) {
+      self.fc_deep += 1;
+    }
     let current_context = std::mem::replace(&mut self.context, Context::new(parent));
     self.stack.push(current_context);
   }
@@ -106,8 +113,26 @@ impl TemplateParser {
     self.stack.push(current_context);
   }
   fn pop_context(&mut self) -> Context {
-    std::mem::replace(&mut self.context, self.stack.pop().unwrap())
+    let ctx = std::mem::replace(&mut self.context, self.stack.pop().unwrap());
+    if matches!(&ctx.parent, Parent::Component) {
+      self.fc_deep -= 1;
+    }
+    ctx
   }
+  #[inline]
+  fn create_host_ident(&self) -> Ident {
+    self.context.host_ident.as_ref().map_or_else(
+      || {
+        if self.fc_deep > 0 {
+          JINGE_HOST_IDENT.clone()
+        } else {
+          JINGE_ROOT_HOST_IDENT.clone()
+        }
+      },
+      |id| id.clone(),
+    )
+  }
+
   #[inline]
   /// push expression to last slot
   fn push_expression(&mut self, e: Box<Expr>) {
@@ -156,19 +181,21 @@ impl TemplateParser {
   }
   fn parse_expr(&mut self, expr: &Expr) {
     let expr_result = ExprVisitor::new().parse(expr);
+    let host_ident = self.create_host_ident();
+
     // println!("{:#?}", expr);
     match expr_result {
       ExprParseResult::None => self.push_expression(tpl_render_const_text(
         Box::new(expr.clone()),
         self.context.is_parent_component(),
-        &self.context.host_ident,
+        host_ident,
       )),
       _ => {
         self.push_expression(tpl_render_expr_text(
           expr_result,
           ast_create_expr_ident(JINGE_V_IDENT.clone()),
           self.context.is_parent_component(),
-          &self.context.host_ident,
+          host_ident,
         ));
       }
     }
@@ -331,31 +358,6 @@ impl Visit for TemplateParser {
       Expr::Arrow(expr) => {
         self.parse_func_arrow(expr);
       }
-      // Expr::Object(obj) => {
-      //   if !self.context.is_parent_component() || self.context.root_container {
-      //     emit_error(obj.span(), "Slot 定义必须位于组件下");
-      //     return;
-      //   }
-      //   obj.props.iter().for_each(|prop| match prop {
-      //     PropOrSpread::Spread(e) => {
-      //       emit_error(e.dot3_token.span(), "Slot 定义不支持 ... 的书写方式");
-      //     }
-      //     PropOrSpread::Prop(p) => match p.as_ref() {
-      //       Prop::KeyValue(KeyValueProp { key, value }) => {
-      //         match key {
-      //           PropName::Ident(id) => self.context.slots.push(Slot::new(id.sym.clone())),
-      //           PropName::Str(s) => self.context.slots.push(Slot::new(s.value.clone())),
-      //           _ => {
-      //             emit_error(key.span(), "Slot 定义的名称必须是常量字符串");
-      //             return;
-      //           }
-      //         }
-      //         self.visit_expr(value);
-      //       }
-      //       _ => emit_error(p.span(), "Slot 定义必须是 Key: Value 的形式"),
-      //     },
-      //   })
-      // }
       Expr::Object(obj) => {
         emit_error(
           obj.span(),
@@ -396,20 +398,24 @@ impl Visit for TemplateParser {
     let Some(text) = trim_html_text(text) else {
       return;
     };
+    let host_ident = self.create_host_ident();
+
     self.push_expression(tpl_render_const_text(
       ast_create_expr_lit_str(text),
       self.context.is_parent_component(),
-      &self.context.host_ident,
+      host_ident,
     ))
   }
   fn visit_lit(&mut self, n: &Lit) {
     if let Lit::JSXText(t) = n {
       self.visit_jsx_text(t);
     } else {
+      let host_ident = self.create_host_ident();
+
       self.push_expression(tpl_render_const_text(
         Box::new(Expr::Lit(n.clone())),
         self.context.is_parent_component(),
-        &self.context.host_ident,
+        host_ident,
       ))
     };
   }

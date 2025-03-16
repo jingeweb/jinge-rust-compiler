@@ -35,7 +35,7 @@ async function compileText(
 ) {
   const srcFile = ts.createSourceFile(`${key}.tsx`, `<>${text}</>`, ts.ScriptTarget.Latest);
   function err(e?: unknown): never {
-    throw new Error(`parse failed for ${lang}: ${key} -> ${text}, ${e || 'unexpected grammar.'}`);
+    throw new Error(`parse failed for ${lang}: ${key} -> ${text}, ${e ?? 'unexpected grammar.'}`);
   }
 
   const stmt = srcFile.statements[0];

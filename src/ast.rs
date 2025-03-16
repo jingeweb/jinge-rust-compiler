@@ -3,8 +3,6 @@ use swc_core::{
   ecma::{ast::*, atoms::*},
 };
 
-use crate::common::JINGE_HOST_IDENT;
-
 // #[inline]
 // pub fn ast_create_expr_new(callee: Box<Expr>, args: Option<Vec<ExprOrSpread>>) -> Box<Expr> {
 //   Box::new(Expr::New(NewExpr {
@@ -63,15 +61,6 @@ pub fn ast_create_arg_expr(arg: Box<Expr>) -> ExprOrSpread {
 #[inline]
 pub fn ast_create_expr_ident(id: Ident) -> Box<Expr> {
   Box::new(Expr::Ident(id))
-}
-
-#[inline]
-pub fn ast_create_expr_host_ident(host_ident: &Option<Ident>) -> Box<Expr> {
-  ast_create_expr_ident(
-    host_ident
-      .as_ref()
-      .map_or_else(|| JINGE_HOST_IDENT.clone(), |id| id.clone()),
-  )
 }
 
 #[inline]

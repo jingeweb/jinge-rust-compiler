@@ -49,7 +49,7 @@ impl TemplateParser {
       child.visit_children_with(self);
     });
     let children_context = self.pop_context();
-    let host_ident = &self.context.host_ident;
+    let host_ident = self.create_host_ident();
 
     let mut stmts: Vec<Stmt> = vec![];
 
@@ -73,20 +73,20 @@ impl TemplateParser {
       .for_each(|(attr_name, expr_result)| {
         stmts.push(Stmt::Expr(ExprStmt {
           span: DUMMY_SP,
-          expr: tpl_watch_and_set_component_attr(attr_name, expr_result, host_ident),
+          expr: tpl_watch_and_set_component_attr(attr_name, expr_result, host_ident.clone()),
         }));
       });
 
     let set_ref_code = attrs
       .ref_prop
       .take()
-      .map(|r| tpl_set_ref_code(r, &self.context.host_ident));
+      .map(|r| tpl_set_ref_code(r, host_ident.clone()));
     let mut slots = children_context.slots;
     if !attrs.slot_props.is_empty() {
       slots.append(&mut attrs.slot_props);
     }
     let mut args = vec![ast_create_arg_expr(ast_create_expr_member(
-      ast_create_expr_host_ident(host_ident),
+      ast_create_expr_ident(host_ident.clone()),
       MemberProp::Computed(ComputedPropName {
         span: DUMMY_SP,
         expr: ast_create_expr_ident(JINGE_IMPORT_CONTEXT.local()),

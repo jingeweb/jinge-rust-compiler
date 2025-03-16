@@ -12,6 +12,7 @@ use swc_ecma_visit::Visit;
 
 use crate::{
   ast::*,
+  common::JINGE_ROOT_HOST_IDENT,
   parser::{
     JINGE_ATTR_IDENT, JINGE_IMPORT_VM, JINGE_V_IDENT, expr::ExprVisitor, tpl::tpl_watch_and_render,
   },
@@ -133,34 +134,6 @@ fn parse_slot_arg_prop(vm: &mut SlotVm, prop: &Prop) {
         .push((kv.key.clone(), Box::new(Expr::Lit(val.clone()))));
     }
     Expr::Fn(_) | Expr::Arrow(_) => {
-      // let mut set: HashSet<Atom> = HashSet::new();
-      // match kv.value.as_ref() {
-      //   Expr::Fn(e) => e.function.params.iter().for_each(|p| {
-      //     if let Pat::Ident(id) = &p.pat {
-      //       set.insert(id.sym.clone());
-      //     }
-      //   }),
-      //   Expr::Arrow(e) => e.params.iter().for_each(|p| {
-      //     if let Pat::Ident(id) = p {
-      //       set.insert(id.sym.clone());
-      //     }
-      //   }),
-      //   _ => (),
-      // }
-      // println!("XXXX {:#?}", set);
-      // let r = ExprVisitor::new_with_exclude_roots(if set.is_empty() {
-      //   None
-      // } else {
-      //   Some(Rc::new(set))
-      // })
-      // .parse(kv.value.as_ref());
-      // match r {
-      //   ExprParseResult::None => {
-      //     vm.const_props.push((kv.key.clone(), kv.value.clone()));
-      //   }
-      //   _ => vm.watch_props.push((kv.key.clone(), r)),
-      // }
-      // println!("{:#?}", kv.key);
       if match &kv.key {
         PropName::Str(s) => {
           if s.value.starts_with("on:") {
@@ -262,37 +235,36 @@ fn parse_slot_arg(args: &Vec<ExprOrSpread>) -> SlotVm {
   vm
 }
 
-fn slot_name_to_mem(slot_name: Slot, host_ident: &Option<Ident>) -> Box<Expr> {
-  match slot_name {
-    Slot::Expr(e) => e,
-    Slot::Default => ast_create_expr_member(
-      ast_create_expr_member(
-        ast_create_expr_host_ident(host_ident),
-        MemberProp::Computed(ComputedPropName {
-          span: DUMMY_SP,
-          expr: ast_create_expr_ident(JINGE_IMPORT_SLOTS.local()),
-        }),
-      ),
-      MemberProp::Computed(ComputedPropName {
-        span: DUMMY_SP,
-        expr: ast_create_expr_ident(JINGE_IMPORT_DEFAULT_SLOT.local()),
-      }),
-    ),
-    Slot::Named(n) => ast_create_expr_member(
-      ast_create_expr_member(
-        ast_create_expr_host_ident(host_ident),
-        MemberProp::Computed(ComputedPropName {
-          span: DUMMY_SP,
-          expr: ast_create_expr_ident(JINGE_IMPORT_SLOTS.local()),
-        }),
-      ),
-      MemberProp::Ident(IdentName::from(n)),
-    ),
-    _ => panic!(),
-  }
-}
-
 impl TemplateParser {
+  fn slot_name_to_mem(&self, slot_name: Slot) -> Box<Expr> {
+    match slot_name {
+      Slot::Expr(e) => e,
+      Slot::Default => ast_create_expr_member(
+        ast_create_expr_member(
+          ast_create_expr_ident(JINGE_ROOT_HOST_IDENT.clone()),
+          MemberProp::Computed(ComputedPropName {
+            span: DUMMY_SP,
+            expr: ast_create_expr_ident(JINGE_IMPORT_SLOTS.local()),
+          }),
+        ),
+        MemberProp::Computed(ComputedPropName {
+          span: DUMMY_SP,
+          expr: ast_create_expr_ident(JINGE_IMPORT_DEFAULT_SLOT.local()),
+        }),
+      ),
+      Slot::Named(n) => ast_create_expr_member(
+        ast_create_expr_member(
+          ast_create_expr_ident(JINGE_ROOT_HOST_IDENT.clone()),
+          MemberProp::Computed(ComputedPropName {
+            span: DUMMY_SP,
+            expr: ast_create_expr_ident(JINGE_IMPORT_SLOTS.local()),
+          }),
+        ),
+        MemberProp::Ident(IdentName::from(n)),
+      ),
+      _ => panic!(),
+    }
+  }
   fn transform_slot_to_render_fn(
     &mut self,
     slot_name: Slot,
@@ -303,13 +275,14 @@ impl TemplateParser {
     let slot_vm_id =
       slot_args.and_then(|slot_args| self.transform_slot_args(slot_args, &mut stmts));
 
-    let host_ident = &self.context.host_ident;
+    let host_ident = self.create_host_ident();
+
     stmts.push(ast_create_stmt_decl_const(
       JINGE_EL_IDENT.clone(),
       ast_create_expr_call(
         ast_create_expr_ident(JINGE_IMPORT_NEW_COM_DEFAULT_SLOT.local()),
         vec![ast_create_arg_expr(ast_create_expr_member(
-          ast_create_expr_host_ident(host_ident),
+          ast_create_expr_ident(host_ident.clone()),
           MemberProp::Computed(ComputedPropName {
             span: DUMMY_SP,
             expr: ast_create_expr_ident(JINGE_IMPORT_CONTEXT.local()),
@@ -324,7 +297,7 @@ impl TemplateParser {
 
     let mut args = vec![
       ast_create_arg_expr(ast_create_expr_ident(JINGE_EL_IDENT.clone())),
-      ast_create_arg_expr(slot_name_to_mem(slot_name, &self.context.host_ident)),
+      ast_create_arg_expr(self.slot_name_to_mem(slot_name)),
     ];
     if let Some(id) = slot_vm_id {
       args.push(ast_create_arg_expr(ast_create_expr_ident(id)));
@@ -415,9 +388,10 @@ impl TemplateParser {
           right: ast_create_expr_ident(JINGE_V_IDENT.clone()),
         }));
 
+        let host_ident = self.create_host_ident();
         stmts.push(Stmt::Expr(ExprStmt {
           span: DUMMY_SP,
-          expr: tpl_watch_and_render(set_fn, watch_expr, &self.context.host_ident),
+          expr: tpl_watch_and_render(set_fn, watch_expr, host_ident),
         }));
       });
 
@@ -495,7 +469,7 @@ impl TemplateParser {
     self.push_expression_with_spread(Box::new(Expr::Cond(CondExpr {
       span: DUMMY_SP,
 
-      test: slot_name_to_mem(slot_name, &self.context.host_ident),
+      test: self.slot_name_to_mem(slot_name),
       cons: exprorspread_vec_to_expr(conds_render_fn),
       alt: exprorspread_vec_to_expr(alt_render_fn),
     })));
@@ -510,7 +484,7 @@ impl TemplateParser {
     let render_fn = self.parse_expr_to_render_fn(&expr.right);
     self.push_expression_with_spread(Box::new(Expr::Cond(CondExpr {
       span: DUMMY_SP,
-      test: slot_name_to_mem(slot_name, &self.context.host_ident),
+      test: self.slot_name_to_mem(slot_name),
       cons: exprorspread_vec_to_expr(render_fn),
       alt: Box::new(Expr::Array(ArrayLit {
         span: DUMMY_SP,
@@ -529,7 +503,7 @@ impl TemplateParser {
     let render_fn = self.transform_slot_to_render_fn(slot_name.clone(), None);
     self.push_expression_with_spread(Box::new(Expr::Cond(CondExpr {
       span: DUMMY_SP,
-      test: slot_name_to_mem(slot_name, &self.context.host_ident),
+      test: self.slot_name_to_mem(slot_name),
       cons: render_fn,
       alt: exprorspread_vec_to_expr(default_slot),
     })));

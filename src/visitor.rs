@@ -3,10 +3,12 @@ use swc_core::ecma::ast::*;
 use swc_core::ecma::visit::VisitMut;
 use swc_ecma_visit::VisitMutWith;
 
-use crate::ast::{ast_create_arg_expr, ast_create_expr_ident, ast_create_expr_lit_str};
+use crate::ast::{
+  ast_create_arg_expr, ast_create_expr_ident, ast_create_expr_lit_str, ast_create_stmt_decl_const,
+};
 use crate::common::{
-  IntlType, JINGE_ATTR_IDENT, JINGE_HOST_IDENT, JINGE_IMPORT_MODULE_ITEM, JINGE_T, JINGE_UNDEFINED,
-  emit_error,
+  IntlType, JINGE_ATTR_IDENT, JINGE_HOST_IDENT, JINGE_IMPORT_MODULE_ITEM, JINGE_ROOT_HOST_IDENT,
+  JINGE_T, JINGE_UNDEFINED, emit_error,
 };
 use crate::helper::has_jsx;
 use crate::parser;
@@ -41,6 +43,7 @@ impl<'a> TemplateTransformVisitor<'a> {
     is_slot: bool,
   ) -> bool {
     let mut changed = false;
+    let mut root_host_arg = None;
     for (index, stmt) in body.stmts.iter_mut().rev().enumerate() {
       if index == 0 {
         let Stmt::Return(stmt) = stmt else {
@@ -51,11 +54,29 @@ impl<'a> TemplateTransformVisitor<'a> {
           continue;
         };
         if is_slot || has_jsx(expr.as_ref()) {
-          changed = self.v_return(fn_name, expr, params);
+          if !is_slot {
+            // 如果是最外层的函数组件，当有传递第二个参数 [H] 时，需要在第一行添加 const root_host$jg$ = [H]。
+            // 这样对于 props.children 转成取 SLOTS 时，从 root_host$jg$ 取才不会有问题。
+            match params.get(1) {
+              Some(Pat::Ident(id)) => {
+                root_host_arg.replace(id.id.clone());
+              }
+              _ => (),
+            };
+          }
+          changed = self.v_return(fn_name, expr, params, is_slot);
         }
       } else {
         stmt.visit_mut_children_with(self);
       }
+    }
+    if let Some(rh) = root_host_arg {
+      // 如果是最外层的函数组件，当有传递第二个参数 [H] 时，需要在第一行添加 const root_host$jg$ = [H]。
+      // 这样对于 props.children 转成取 SLOTS 时，从 root_host$jg$ 取才不会有问题。
+      body.stmts.insert(
+        0,
+        ast_create_stmt_decl_const(JINGE_ROOT_HOST_IDENT.clone(), ast_create_expr_ident(rh)),
+      );
     }
     changed
   }
@@ -63,7 +84,7 @@ impl<'a> TemplateTransformVisitor<'a> {
     match expr.body.as_mut() {
       BlockStmtOrExpr::Expr(e) => {
         if is_slot || has_jsx(e.as_ref()) {
-          self.v_return(fn_name, e, &mut expr.params)
+          self.v_return(fn_name, e, &mut expr.params, is_slot)
         } else {
           false
         }
@@ -79,6 +100,7 @@ impl<'a> TemplateTransformVisitor<'a> {
     fn_name: Option<&Ident>,
     expr: &mut Box<Expr>,
     params: &mut Vec<Pat>,
+    is_slot: bool,
   ) -> bool {
     const ERR: &str = "函数组件或 Slot 组件的参数不合法";
     let mut props_arg = None;
@@ -92,7 +114,7 @@ impl<'a> TemplateTransformVisitor<'a> {
     } else {
       params.push(Pat::Ident(BindingIdent::from(JINGE_ATTR_IDENT.clone())));
     }
-    let host_ident;
+    let mut host_ident = None;
     if let Some(p) = params.get(1) {
       if let Pat::Ident(p) = p {
         if !p.sym.starts_with("host") {
@@ -102,14 +124,19 @@ impl<'a> TemplateTransformVisitor<'a> {
           );
           return false;
         }
-        host_ident = Ident::from(p.sym.clone());
+        host_ident.replace(p.sym.clone().into());
       } else {
         emit_error(p.span(), ERR);
         return false;
       }
     } else {
-      host_ident = JINGE_HOST_IDENT.clone();
-      params.push(Pat::Ident(BindingIdent::from(JINGE_HOST_IDENT.clone())));
+      // 如果是函数组件，则第二个参数默认添加 root_host$js$。
+      // 如果是插槽函数，则第二个参数默认添加 host$jg$
+      params.push(Pat::Ident(BindingIdent::from(if is_slot {
+        JINGE_HOST_IDENT.clone()
+      } else {
+        JINGE_ROOT_HOST_IDENT.clone()
+      })));
     }
     // println!("{:#?} {:#?}", props_arg, host_ident);
     let mut visitor = parser::TemplateParser::new(props_arg, host_ident, self.intl_type);

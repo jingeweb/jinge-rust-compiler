@@ -82,6 +82,7 @@ lazy_static::lazy_static! {
   pub static ref JINGE_LOOP_EACH_DATA: Atom = "data".into();
   pub static ref JINGE_LOOP_EACH_INDEX: Atom = "index".into();
   pub static ref JINGE_HOST_IDENT: Ident = "host$jg$".into();
+  pub static ref JINGE_ROOT_HOST_IDENT: Ident = "rthost$jg$".into();
   pub static ref JINGE_V_IDENT: Ident = "v".into();
   pub static ref JINGE_T: Atom = "t".into();
   pub static ref TEXT_CONTENT: Ident = "textContent".into();

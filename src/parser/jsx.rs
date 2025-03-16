@@ -38,12 +38,14 @@ impl TemplateParser {
     let mut args = vec![ast_create_arg_expr(Box::new(Expr::Lit(Lit::Str(
       Str::from(tn.sym.clone()),
     ))))];
+    let host_ident = self.create_host_ident();
+
     let set_ref_code = attrs
       .ref_prop
       .take()
-      .map(|r| tpl_set_ref_code(r, &self.context.host_ident));
+      .map(|r| tpl_set_ref_code(r, host_ident.clone()));
     let push_ele_code = if self.context.is_parent_component() {
-      Some(tpl_push_el_code(true, &self.context.host_ident))
+      Some(tpl_push_el_code(true, host_ident.clone()))
     } else {
       None
     };
@@ -83,7 +85,7 @@ impl TemplateParser {
         .for_each(|(attr_name, watch_expr)| {
           stmts.push(Stmt::Expr(ExprStmt {
             span: DUMMY_SP,
-            expr: tpl_watch_and_set_html_attr(attr_name, watch_expr, &self.context.host_ident),
+            expr: tpl_watch_and_set_html_attr(attr_name, watch_expr, host_ident.clone()),
           }));
         });
       if let Some(c) = set_ref_code {
