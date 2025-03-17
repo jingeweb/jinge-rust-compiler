@@ -59,6 +59,8 @@ impl<'a> TemplateTransformVisitor<'a> {
             };
           }
           changed = self.v_return(fn_name, expr, params, is_slot);
+        } else {
+          expr.visit_mut_children_with(self);
         }
       } else {
         stmt.visit_mut_children_with(self);
@@ -172,6 +174,8 @@ impl VisitMut for TemplateTransformVisitor<'_> {
                 }
               }
               return;
+            } else {
+              kv.visit_mut_children_with(self);
             }
           }
           _ => prop.visit_mut_children_with(self),
@@ -266,10 +270,12 @@ impl VisitMut for TemplateTransformVisitor<'_> {
       node.visit_mut_children_with(self);
       return;
     };
+
     if !matches!(callee.as_ref(), Expr::Ident(name) if JINGE_T.eq(&name.sym)) {
       node.visit_mut_children_with(self);
       return;
     }
+
     parse_intl_call(node, drop_default_text);
   }
 }
