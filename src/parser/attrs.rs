@@ -1,10 +1,13 @@
-use crate::ast::{ast_create_expr_arrow_fn, ast_create_expr_call, ast_create_expr_ident};
-use crate::common::{JINGE_ATTR_IDENT, JINGE_KEY, JINGE_ON, JINGE_SLOT, emit_error};
+use crate::ast::*;
+use crate::common::{
+  IntlType, JINGE_ATTR_IDENT, JINGE_KEY, JINGE_ON, JINGE_SLOT, JINGE_T, emit_error,
+};
+use crate::helper::parse_intl_call;
 use crate::parser::TemplateParser;
 use swc_common::DUMMY_SP;
 use swc_core::ecma::ast::*;
 use swc_core::{atoms::Atom, common::Spanned};
-use swc_ecma_visit::Visit;
+use swc_ecma_visit::{Visit, VisitMut, VisitMutWith};
 
 use super::expr::{ExprParseResult, ExprVisitor};
 use super::{
@@ -215,9 +218,8 @@ impl TemplateParser {
       emit_error(an.span(), "事件属性的属性值必须是函数或表达式");
       return;
     };
-    let event_handler = match val.as_ref() {
-      Expr::Arrow(v) => Box::new(Expr::Arrow(v.clone())),
-      Expr::Fn(v) => Box::new(Expr::Fn(v.clone())),
+    let mut event_handler = match val.as_ref() {
+      Expr::Arrow(_) | Expr::Fn(_) => val.clone(),
       Expr::JSXElement(_)
       | Expr::JSXFragment(_)
       | Expr::Await(_)
@@ -247,6 +249,11 @@ impl TemplateParser {
         )
       }
     };
+
+    if let IntlType::Enabled(drop_default_text) = self.intl_type {
+      let mut intl_parser = EventHandlerIntlParser { drop_default_text };
+      intl_parser.visit_mut_expr(&mut event_handler);
+    }
 
     if is_component {
       attrs
@@ -338,5 +345,23 @@ impl TemplateParser {
       emit_error(id.span(), "解构写法透传属性只能出现一次");
     }
     attrs
+  }
+}
+
+struct EventHandlerIntlParser {
+  drop_default_text: bool,
+}
+
+impl VisitMut for EventHandlerIntlParser {
+  fn visit_mut_call_expr(&mut self, node: &mut CallExpr) {
+    let Callee::Expr(callee) = &node.callee else {
+      node.visit_mut_children_with(self);
+      return;
+    };
+    if !matches!(callee.as_ref(), Expr::Ident(name) if JINGE_T.eq(&name.sym)) {
+      node.visit_mut_children_with(self);
+      return;
+    }
+    parse_intl_call(node, self.drop_default_text);
   }
 }

@@ -16,7 +16,7 @@ function extractSource(file: string) {
   function walk(node: ts.Node) {
     ts.forEachChild(node, walk);
 
-    const km = extractKeyAndMessage(node, 'compile', srcFile);
+    const km = extractKeyAndMessage(filepath, node, 'compile', srcFile);
     if (!km) return;
     src!.set(km.key, km);
   }

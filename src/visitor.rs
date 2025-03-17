@@ -3,16 +3,10 @@ use swc_core::ecma::ast::*;
 use swc_core::ecma::visit::VisitMut;
 use swc_ecma_visit::VisitMutWith;
 
-use crate::ast::{
-  ast_create_arg_expr, ast_create_expr_ident, ast_create_expr_lit_str, ast_create_stmt_decl_const,
-};
-use crate::common::{
-  IntlType, JINGE_ATTR_IDENT, JINGE_HOST_IDENT, JINGE_IMPORT_MODULE_ITEM, JINGE_ROOT_HOST_IDENT,
-  JINGE_T, JINGE_UNDEFINED, emit_error,
-};
-use crate::helper::has_jsx;
+use crate::ast::*;
+use crate::common::*;
+use crate::helper::*;
 use crate::parser;
-use crate::parser::intl::extract_t;
 
 pub struct TemplateTransformVisitor<'a> {
   changed: bool,
@@ -139,7 +133,7 @@ impl<'a> TemplateTransformVisitor<'a> {
       })));
     }
     // println!("{:#?} {:#?}", props_arg, host_ident);
-    let mut visitor = parser::TemplateParser::new(props_arg, host_ident, self.intl_type);
+    let mut visitor = parser::TemplateParser::new(props_arg, host_ident, self.intl_type.clone());
     if let Some(replaced_expr) = visitor.parse(expr.as_mut()) {
       *expr = replaced_expr;
       self.changed = true;
@@ -276,31 +270,6 @@ impl VisitMut for TemplateTransformVisitor<'_> {
       node.visit_mut_children_with(self);
       return;
     }
-    let Some((key, default_text, params)) = extract_t(&node.args) else {
-      return;
-    };
-
-    let mut args = vec![ExprOrSpread {
-      spread: None,
-      expr: ast_create_expr_lit_str(key),
-    }];
-    let mut has_params = false;
-    if let Some(params) = params {
-      has_params = true;
-      args.push(ast_create_arg_expr(Box::new(Expr::Object(params.clone()))));
-    }
-    // println!("OOOO {} {}", self.drop_default_text, default_text);
-    if !drop_default_text {
-      if !has_params {
-        args.push(ast_create_arg_expr(ast_create_expr_ident(
-          JINGE_UNDEFINED.clone().into(),
-        )));
-      }
-      args.push(ast_create_arg_expr(ast_create_expr_lit_str(
-        default_text.clone(),
-      )));
-    }
-
-    node.args = args;
+    parse_intl_call(node, drop_default_text);
   }
 }

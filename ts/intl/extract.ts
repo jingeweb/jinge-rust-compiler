@@ -26,7 +26,7 @@ async function parseFile({ file, filename, dict }: { file: string; filename: str
     ts.forEachChild(node, walk);
 
     hasMessage = true;
-    const km = extractKeyAndMessage(node, 'extract', srcFile);
+    const km = extractKeyAndMessage(filename, node, 'extract', srcFile);
     if (!km) return;
     const { key, defaultMessage } = km;
     hasMessage = true;

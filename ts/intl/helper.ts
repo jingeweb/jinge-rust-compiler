@@ -147,6 +147,7 @@ export interface ExtractMessage {
  * compile 模式用于 intl-compile，提取带有富文本格式的 t() 函数的 defaultMessage 和 params 参数中的富文本组件，计算 key。
  */
 export function extractKeyAndMessage(
+  filename: string,
   node: ts.Node,
   mode: 'extract' | 'compile',
   srcFile: ts.SourceFile,
@@ -196,7 +197,23 @@ export function extractKeyAndMessage(
   }
 
   const defaultText = node.arguments.at(0);
-  if (!defaultText || !ts.isStringLiteral(defaultText)) return null;
+  if (!defaultText || !ts.isStringLiteral(defaultText)) {
+    const { line, character } = ts.getLineAndCharacterOfPosition(srcFile, node.expression.getEnd());
+    console.error(`t函数缺失默认语言文案。\n  --> ${filename}:${line + 1}:${character}`);
+    process.exit(-1);
+  }
+
+  if (mode === 'extract') {
+    if (params) {
+      if (!defaultText.text.includes('{')) {
+        const { line, character } = ts.getLineAndCharacterOfPosition(srcFile, params.pos);
+        console.error(
+          `t函数如果指定了数据参数，则默认文案中必须使用参数。\n  --> ${filename}:${line + 1}:${character}`,
+        );
+        process.exit(-1);
+      }
+    }
+  }
 
   const options = node.arguments.at(2);
   let key = '';
