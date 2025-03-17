@@ -1,12 +1,12 @@
 {
   "name": "jinge-compiler",
-  "version": "4.0.6",
+  "version": "4.0.7",
   "description": "compiler for jinge framework",
   "author": "Yuhang Ge<abeyuhang@gmail.com>",
   "license": "ISC",
   "type": "module",
   "main": "dist/index.js",
-  "types": "ts/index.ts",
+  "types": "types/index.d.ts",
   "bin": {
     "intl-extract": "./dist/cli/intl-extract.js",
     "intl-compile": "./dist/cli/intl-compile.js"
@@ -17,7 +17,7 @@
     "swc"
   ],
   "scripts": {
-    "build-ts": "rm -rf dist && tsup-node ts/index.ts ts/cli/intl-extract.ts ts/cli/intl-compile.ts  --sourcemap --format esm",
+    "build-ts": "rm -rf dist types && tsc -project tsconfig.types.json && tsup-node ts/index.ts ts/cli/intl-extract.ts ts/cli/intl-compile.ts  --sourcemap --format esm",
     "build-cargo-debug": "cargo build && cp target/debug/libjinge_compiler.so index.node 2>/dev/null || : && cp target/debug/libjinge_compiler.dylib index.node 2>/dev/null || :",
     "watch-cargo": "nodemon -e rs --watch src --exec 'pnpm build-cargo-debug'",
     "dev": "concurrently \"pnpm build-ts --watch\" \"pnpm watch-cargo\"",

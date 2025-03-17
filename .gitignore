@@ -4,6 +4,7 @@ target
 node_modules
 /lib
 /dist
+/types
 index.node
 index.debug.node
 /bindings
