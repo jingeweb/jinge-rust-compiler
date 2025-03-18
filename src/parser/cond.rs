@@ -183,6 +183,20 @@ impl TemplateParser {
     true
   }
 
+  pub fn parse_logic_or_expr(&mut self, expr: &BinExpr) -> bool {
+    if self.parse_logic_or_slot(expr) {
+      return true;
+    }
+    if !has_jsx(&expr.right) {
+      return false; // 返回 false，使用 parse_expr 处理。
+    }
+
+    let if_component = gen_if_component(expr.left.clone(), Some(&expr.right), Some(&expr.left));
+    self.parse_component_element(&JINGE_IMPORT_IF.local(), &if_component);
+
+    true
+  }
+
   pub fn parse_nullish_coalescing_expr(&mut self, expr: &BinExpr) -> bool {
     if self.parse_nullish_coalescing_slot(expr) {
       return true;

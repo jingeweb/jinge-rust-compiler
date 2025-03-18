@@ -342,6 +342,10 @@ impl Visit for TemplateParser {
           if !self.parse_logic_and_expr(e) {
             self.parse_expr(expr_node);
           }
+        } else if e.op == BinaryOp::LogicalOr {
+          if !self.parse_logic_or_expr(e) {
+            self.parse_expr(expr_node)
+          }
         } else if e.op == BinaryOp::NullishCoalescing {
           if !self.parse_nullish_coalescing_expr(e) {
             self.parse_expr(expr_node);

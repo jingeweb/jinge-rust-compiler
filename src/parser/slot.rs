@@ -35,13 +35,19 @@ enum Slot {
   Expr(Box<Expr>),
 }
 
-fn get_slot(expr: &MemberExpr, props_arg: &Atom) -> Slot {
+fn get_slot_from_member_expr(expr: &MemberExpr, props_arg: &Option<Atom>) -> Slot {
   match &expr.prop {
     MemberProp::Ident(id) => {
-      if JINGE_CHILDREN.eq(&id.sym)
-        && matches!(expr.obj.as_ref(), Expr::Ident(id) if id.sym.eq(props_arg))
-      {
-        Slot::Default
+      if JINGE_CHILDREN.eq(&id.sym) {
+        if let Some(props_arg) = props_arg {
+          if matches!(expr.obj.as_ref(), Expr::Ident(id) if id.sym.eq(props_arg)) {
+            Slot::Default
+          } else {
+            Slot::None
+          }
+        } else {
+          Slot::None
+        }
       } else {
         Slot::None
       }
@@ -50,15 +56,23 @@ fn get_slot(expr: &MemberExpr, props_arg: &Atom) -> Slot {
       Expr::Lit(id) => match id {
         Lit::Str(id) => {
           if JINGE_CHILDREN.eq(&id.value) {
-            if matches!(expr.obj.as_ref(), Expr::Ident(id) if id.sym.eq(props_arg)) {
-              Slot::Default
+            if let Some(props_arg) = props_arg {
+              if matches!(expr.obj.as_ref(), Expr::Ident(id) if id.sym.eq(props_arg)) {
+                Slot::Default
+              } else {
+                Slot::None
+              }
             } else {
               Slot::None
             }
           } else if id.value.starts_with("slot:") {
             let name = id.value[5..].into();
-            if matches!(expr.obj.as_ref(), Expr::Ident(id) if id.sym.eq(props_arg)) {
-              Slot::Named(name)
+            if let Some(props_arg) = props_arg {
+              if matches!(expr.obj.as_ref(), Expr::Ident(id) if id.sym.eq(props_arg)) {
+                Slot::Named(name)
+              } else {
+                Slot::Expr(Box::new(Expr::Member(expr.clone())))
+              }
             } else {
               Slot::Expr(Box::new(Expr::Member(expr.clone())))
             }
@@ -70,6 +84,21 @@ fn get_slot(expr: &MemberExpr, props_arg: &Atom) -> Slot {
       },
       _ => Slot::None,
     },
+    _ => Slot::None,
+  }
+}
+
+#[inline]
+fn get_slot_from_callee(callee: &Expr, props_arg: &Option<Atom>) -> Slot {
+  match callee {
+    Expr::Member(e) => get_slot_from_member_expr(e, props_arg),
+    Expr::OptChain(oc) => {
+      if let OptChainBase::Member(m) = oc.base.as_ref() {
+        get_slot_from_member_expr(m, props_arg)
+      } else {
+        Slot::None
+      }
+    }
     _ => Slot::None,
   }
 }
@@ -406,10 +435,7 @@ impl TemplateParser {
     expr: &MemberExpr,
     slot_args: Option<&Vec<ExprOrSpread>>,
   ) -> bool {
-    let Some(props_arg) = &self.props_arg else {
-      return false;
-    };
-    let slot_name = get_slot(expr, props_arg);
+    let slot_name = get_slot_from_member_expr(expr, &self.props_arg);
     if matches!(slot_name, Slot::None) {
       return false;
     }
@@ -417,22 +443,7 @@ impl TemplateParser {
     true
   }
   pub fn parse_slot_call_expr(&mut self, callee: &Expr, args: &Vec<ExprOrSpread>) -> bool {
-    let Some(props_arg) = &self.props_arg else {
-      return false;
-    };
-
-    let maybe_slot_expr = match callee {
-      Expr::Member(e) => e,
-      Expr::OptChain(oc) => {
-        if let OptChainBase::Member(m) = oc.base.as_ref() {
-          m
-        } else {
-          return false;
-        }
-      }
-      _ => return false,
-    };
-    let slot_name = get_slot(maybe_slot_expr, props_arg);
+    let slot_name = get_slot_from_callee(callee, &self.props_arg);
     if matches!(slot_name, Slot::None) {
       return false;
     }
@@ -441,14 +452,11 @@ impl TemplateParser {
   }
 
   fn get_bin_expr_slot_name(&self, expr: &Expr) -> Slot {
-    let Some(props_arg) = &self.props_arg else {
-      return Slot::None;
-    };
     let Expr::Member(mem) = expr else {
       return Slot::None;
     };
 
-    get_slot(mem, props_arg)
+    get_slot_from_member_expr(mem, &self.props_arg)
   }
   fn parse_expr_to_render_fn(&mut self, expr: &Expr) -> Vec<ExprOrSpread> {
     self.push_context(self.context.parent);
@@ -494,13 +502,50 @@ impl TemplateParser {
     true
   }
 
+  /// 解析由通过逻辑或指定默认插槽的表达式。
+  /// 例如 `<>{props.children || <div>default</div>}</>`
+  /// 本质上和 `<>{props.children ?? <div>default</div>}` 完全一致，因为插槽表达式如果判定为[假]，则只可能是 undefined。
+  pub fn parse_logic_or_slot(&mut self, expr: &BinExpr) -> bool {
+    self.parse_nullish_coalescing_slot(expr)
+  }
+
+  /// 解析通过 ?? 指定默认插槽的表达式。例如：
+  /// ```
+  /// <>{props.children ?? <div>default</div>}</>
+  /// <>{props['slot:xx'] ?? <div>default</div>}</>
+  /// <>{props.children?.() ?? <div>default</div>}</>
+  /// ```
+  /// 其中最后一种类型比较特殊，`??` 运算符本来应该是判定插槽函数执行后的结果，
+  /// 但因为插槽函数是特殊的写法，并不会真执行函数也没有返回值，所以实际仍然是判定函数本身是否存在，
+  /// 即判定插槽是否存在，这种情况本质等价于：
+  /// ```
+  /// <>{props.children ? props.children() : <div>default</div>}</>
+  /// ```
   pub fn parse_nullish_coalescing_slot(&mut self, expr: &BinExpr) -> bool {
-    let slot_name = self.get_bin_expr_slot_name(&expr.left);
-    if matches!(slot_name, Slot::None) {
-      return false;
-    }
+    let mut slot_name = self.get_bin_expr_slot_name(&expr.left);
+    let render_fn = if matches!(slot_name, Slot::None) {
+      // 如果 ?? 左边不是简单的 member 表达式插槽，即不是 `props.children ?? 'default'` 这种表达式。
+      // 则继续看是否是 `props.children?.() ?? 'default'` 这样的表达式。
+      match expr.left.as_ref() {
+        Expr::OptChain(opt) => match opt.base.as_ref() {
+          OptChainBase::Call(c) => {
+            slot_name = get_slot_from_callee(&c.callee, &self.props_arg);
+            if matches!(slot_name, Slot::None) {
+              return false;
+            }
+            self.transform_slot_to_render_fn(slot_name.clone(), Some(&c.args))
+          }
+          _ => return false,
+        },
+        _ => {
+          return false;
+        }
+      }
+    } else {
+      self.transform_slot_to_render_fn(slot_name.clone(), None)
+    };
+
     let default_slot = self.parse_expr_to_render_fn(&expr.right);
-    let render_fn = self.transform_slot_to_render_fn(slot_name.clone(), None);
     self.push_expression_with_spread(Box::new(Expr::Cond(CondExpr {
       span: DUMMY_SP,
       test: self.slot_name_to_mem(slot_name),
