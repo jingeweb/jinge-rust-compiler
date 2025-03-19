@@ -10,6 +10,7 @@ use swc_core::{atoms::Atom, common::Spanned};
 use swc_ecma_visit::{Visit, VisitMut, VisitMutWith};
 
 use super::expr::{ExprParseResult, ExprVisitor};
+use super::slot::{SlotName, get_slot_name_from_member_expr, slot_name_to_callee_expr};
 use super::{
   JINGE_CHILDREN, JINGE_CLASS, JINGE_CLASSNAME, JINGE_FOR, JINGE_HTML_FOR, JINGE_REF, Parent, Slot,
 };
@@ -193,6 +194,27 @@ impl TemplateParser {
           Expr::Arrow(expr) => {
             self.meet_slot(attrs, an);
             self.parse_func_arrow(expr);
+          }
+          Expr::Member(mem_expr) => {
+            // 如果 slot: 类型的属性，值是 member 表达式，则有可能是二次传递插槽。
+            // 比如 <B slot:x={props.children} /> 或 <B slot:x={a.b['slot:k']} />
+            let slot_name = get_slot_name_from_member_expr(mem_expr, &self.props_arg);
+            match slot_name {
+              SlotName::None => {
+                self.meet_slot(attrs, an);
+                self.visit_expr(expr);
+              }
+              _ => {
+                self.meet_slot(attrs, an);
+                self
+                  .context
+                  .slots
+                  .last_mut()
+                  .unwrap()
+                  .pass_by
+                  .replace(slot_name_to_callee_expr(slot_name));
+              }
+            }
           }
           _ => {
             self.meet_slot(attrs, an);

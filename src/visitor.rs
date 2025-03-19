@@ -98,6 +98,24 @@ impl<'a> TemplateTransformVisitor<'a> {
     params: &mut Vec<Pat>,
     is_slot: bool,
   ) -> bool {
+    if let Some(replaced_expr) = self.v_return_parse(expr, params, is_slot) {
+      *expr = replaced_expr;
+      self.changed = true;
+      if let Some(fn_name) = fn_name {
+        self.parsed_components.push(fn_name.sym.to_string());
+      }
+      true
+    } else {
+      false
+    }
+  }
+
+  fn v_return_parse(
+    &mut self,
+    expr: &mut Box<Expr>,
+    params: &mut Vec<Pat>,
+    is_slot: bool,
+  ) -> Option<Box<Expr>> {
     const ERR: &str = "函数组件或 Slot 组件的参数不合法";
     let mut props_arg = None;
     if let Some(p) = params.get(0) {
@@ -105,7 +123,7 @@ impl<'a> TemplateTransformVisitor<'a> {
         props_arg.replace(p.sym.clone());
       } else {
         emit_error(p.span(), ERR);
-        return false;
+        return None;
       }
     } else {
       params.push(Pat::Ident(BindingIdent::from(JINGE_ATTR_IDENT.clone())));
@@ -118,12 +136,12 @@ impl<'a> TemplateTransformVisitor<'a> {
             p.span(),
             "函数组件的第二个参数必须是 host 或以 host 打头，确保已对第二个参数有充分理解",
           );
-          return false;
+          return None;
         }
         host_ident.replace(p.sym.clone().into());
       } else {
         emit_error(p.span(), ERR);
-        return false;
+        return None;
       }
     } else {
       // 如果是函数组件，则第二个参数默认添加 root_host$js$。
@@ -135,17 +153,12 @@ impl<'a> TemplateTransformVisitor<'a> {
       })));
     }
     // println!("{:#?} {:#?}", props_arg, host_ident);
-    let mut visitor = parser::TemplateParser::new(props_arg, host_ident, self.intl_type.clone());
-    if let Some(replaced_expr) = visitor.parse(expr.as_mut()) {
-      *expr = replaced_expr;
-      self.changed = true;
-      if let Some(fn_name) = fn_name {
-        self.parsed_components.push(fn_name.sym.to_string());
-      }
-      true
-    } else {
-      false
+    let mut visitor =
+      parser::TemplateParser::new(props_arg, host_ident.clone(), self.intl_type.clone());
+    if is_slot {
+      visitor.push_context_with_host_ident(parser::Parent::Component, host_ident);
     }
+    visitor.parse(expr.as_mut())
   }
 }
 impl VisitMut for TemplateTransformVisitor<'_> {
@@ -161,7 +174,8 @@ impl VisitMut for TemplateTransformVisitor<'_> {
         Prop::KeyValue(kv) => match &mut kv.key {
           PropName::Str(s) => {
             if s.value.starts_with("slot:") {
-              match kv.value.as_mut() {
+              let expr = &mut kv.value;
+              match expr.as_mut() {
                 Expr::Fn(expr) => {
                   self.v_func(None, &mut expr.function, true);
                 }
@@ -169,7 +183,14 @@ impl VisitMut for TemplateTransformVisitor<'_> {
                   self.v_arrow(None, expr, true);
                 }
                 _ => {
-                  emit_error(s.span(), "slot:打头的属性代表插槽函数，属性值必须是函数");
+                  // emit_error(s.span(), "slot:打头的属性代表插槽函数，属性值必须是函数");
+                  let mut params = vec![];
+                  if let Some(parsed_expr) = self.v_return_parse(expr, &mut params, true) {
+                    *expr = ast_create_expr_arrow_fn(
+                      params,
+                      Box::new(BlockStmtOrExpr::Expr(parsed_expr)),
+                    );
+                  }
                   return;
                 }
               }

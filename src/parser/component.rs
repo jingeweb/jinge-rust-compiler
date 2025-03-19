@@ -1,3 +1,4 @@
+use super::slot::{SlotName, get_slot_name_from_member_expr, slot_name_to_callee_expr};
 use super::tpl::{
   tpl_lit_obj, tpl_push_el_code, tpl_set_ref_code, tpl_watch_and_set_component_attr,
 };
@@ -40,14 +41,53 @@ fn slot_to_expr(
 }
 
 impl TemplateParser {
+  fn parse_slot_pass_by(&mut self, n: &JSXElement) -> bool {
+    if n.children.len() != 1 {
+      return false;
+    }
+    let expr = &n.children[0];
+    match expr {
+      JSXElementChild::JSXExprContainer(e) => match &e.expr {
+        JSXExpr::Expr(e) => match e.as_ref() {
+          Expr::Member(mem_expr) => {
+            let slot_name = get_slot_name_from_member_expr(mem_expr, &self.props_arg);
+            match slot_name {
+              SlotName::None => (),
+              _ => {
+                self
+                  .context
+                  .slots
+                  .last_mut()
+                  .unwrap()
+                  .pass_by
+                  .replace(slot_name_to_callee_expr(slot_name));
+                return true;
+              }
+            }
+          }
+          _ => (),
+        },
+        _ => (),
+      },
+      _ => (),
+    }
+    false
+  }
   pub fn parse_component_element(&mut self, tn: &Ident, n: &JSXElement) {
     let mut attrs = self.parse_attrs(n, true);
     let is_attrs_empty = attrs.const_props.is_empty() && attrs.watch_props.is_empty();
     self.push_context(Parent::Component);
-    // 此处不能直接用 n.visit_children_with(self)，会再次 visit attributes
-    n.children.iter().for_each(|child| {
-      child.visit_children_with(self);
-    });
+
+    // 如果是 <B>{props.children}</B> 这种写法，说明是透传插槽，可特别处理，直接传递。
+    if !self.parse_slot_pass_by(n) {
+      // 其它写法，比如 <B>hello: {props.children}</B> 这种需要转换成渲染模板。
+
+      // 此处不能直接用 n.visit_children_with(self)，会再次 visit attributes
+      n.children.iter().for_each(|child| {
+        child.visit_children_with(self);
+      });
+    }
+
     let children_context = self.pop_context();
     let host_ident = self.create_host_ident();
 
@@ -96,7 +136,7 @@ impl TemplateParser {
     if has_named_slots {
       let mut slots_arg: Vec<_> = vec![];
       slots.into_iter().enumerate().for_each(|(i, s)| {
-        if s.expressions.is_empty() {
+        if s.expressions.is_empty() && s.pass_by.is_none() {
           return;
         }
         slots_arg.push((
@@ -109,7 +149,11 @@ impl TemplateParser {
           } else {
             PropName::Str(Str::from(s.name))
           },
-          slot_to_expr(s.params, s.stmts, s.expressions),
+          if let Some(pass_by) = s.pass_by {
+            pass_by
+          } else {
+            slot_to_expr(s.params, s.stmts, s.expressions)
+          },
         ))
       });
 

@@ -33,6 +33,8 @@ pub struct Slot {
   stmts: Vec<Stmt>,
   /// 插槽函数 return 语句转换后的渲染表达式。比如 return <>...</> 里面可能有多个 jsx 元素。
   expressions: Vec<ExprOrSpread>,
+  /// 透传插槽。如果不为 None，则表示透传。比如 <B slot:a={props.children} /> 这种写法。
+  pass_by: Option<Box<Expr>>,
 }
 impl Slot {
   fn new(name: Atom) -> Self {
@@ -41,6 +43,7 @@ impl Slot {
       params: vec![],
       stmts: vec![],
       expressions: vec![],
+      pass_by: None,
     }
   }
 }
@@ -103,6 +106,12 @@ impl TemplateParser {
     }
     let current_context = std::mem::replace(&mut self.context, Context::new(parent));
     self.stack.push(current_context);
+  }
+  pub fn push_context_with_host_ident(&mut self, parent: Parent, host_ident: Option<Ident>) {
+    self.push_context(parent);
+    if let Some(host_ident) = host_ident {
+      self.context.host_ident.replace(host_ident);
+    }
   }
   pub fn push_context_inherit_host_ident(&mut self, parent: Parent) {
     let host_ident = self.context.host_ident.clone();
