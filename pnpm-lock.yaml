@@ -12,20 +12,20 @@ importers:
         specifier: ^5.6.0
         version: 5.6.0
       jinge-compiler-core-linux-aarch64:
-        specifier: 4.0.9
-        version: 4.0.9
+        specifier: 4.0.11
+        version: 4.0.11
       jinge-compiler-core-linux-x86_64:
-        specifier: 4.0.9
-        version: 4.0.9
+        specifier: 4.0.11
+        version: 4.0.11
       jinge-compiler-core-macos-aarch64:
-        specifier: 4.0.9
-        version: 4.0.9
+        specifier: 4.0.11
+        version: 4.0.11
       jinge-compiler-core-macos-x86_64:
-        specifier: 4.0.9
-        version: 4.0.9
+        specifier: 4.0.11
+        version: 4.0.11
       jinge-compiler-core-windows-x86_64:
-        specifier: 4.0.9
-        version: 4.0.9
+        specifier: 4.0.11
+        version: 4.0.11
       typescript:
         specifier: ^5.8.2
         version: 5.8.2
@@ -46,8 +46,8 @@ importers:
         specifier: ^10.1.1
         version: 10.1.1(eslint@9.22.0)
       eslint-plugin-import-x:
-        specifier: ^4.8.0
-        version: 4.8.0(eslint@9.22.0)(typescript@5.8.2)
+        specifier: ^4.9.0
+        version: 4.9.0(eslint@9.22.0)(typescript@5.8.2)
       husky:
         specifier: ^9.1.7
         version: 9.1.7
@@ -760,8 +760,8 @@ packages:
   eslint-import-resolver-node@0.3.9:
     resolution: {integrity: sha512-WFj2isz22JahUv+B788TlO3N6zL3nNJGU8CcZbPZvVEkBPaJdCV4vy5wyghty5ROFbCRnm132v8BScu5/1BQ8g==}
 
-  eslint-plugin-import-x@4.8.0:
-    resolution: {integrity: sha512-rCZftKo2QvFfV62MomJuIog74NrsfdEriJZxcNPEnjwrHpfHge6ZfUe+Pp2f4pqZe+ArtH8RapwqxLc1O+KJYw==}
+  eslint-plugin-import-x@4.9.0:
+    resolution: {integrity: sha512-qdrsei0heLV8z9QpY2/PHF/r/3fF15w3JeVXqWlLzPMiiwYx0VAwIjxN6SzdaPVuGeIMAbQHHS1Wwdn1/bsCgw==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
     peerDependencies:
       eslint: ^8.57.0 || ^9.0.0
@@ -982,20 +982,20 @@ packages:
   jackspeak@3.4.3:
     resolution: {integrity: sha512-OGlZQpz2yfahA/Rd1Y8Cd9SIEsqvXkLVoSw/cgwhnhFMDbsQFeZYoJJ7bIZBS9BcamUW96asq/npPWugM+RQBw==}
 
-  jinge-compiler-core-linux-aarch64@4.0.9:
-    resolution: {integrity: sha512-8wHqKgd01Xa3+uoY+1cm64XNCXdOQ+IxGW/EBIVXOPryWj9SeyWIQKAmn3J85WZyDaJpwUbPlTHTOFzPDhOD0w==}
+  jinge-compiler-core-linux-aarch64@4.0.11:
+    resolution: {integrity: sha512-QUHPDY/p03DwXLudUWDU3/7aGhXk7EAFAk2gr0Z9+Iy5oqSfl9wZ95UdW8WbENXuKhIMXbb43osS/o7HU/dG5Q==}
 
-  jinge-compiler-core-linux-x86_64@4.0.9:
-    resolution: {integrity: sha512-pHHylUfuyzmxceQzkibjb/I7KS7R6duDhzMQpmjFrKQvsyYqgcf6fGmEJju5hF/ceOC8IcI5zJ8zRCefHgjCwg==}
+  jinge-compiler-core-linux-x86_64@4.0.11:
+    resolution: {integrity: sha512-76xBk63krMt4c3QNCeOiAi3AI5VYEljvVlkZIa9b/+qzhL5+85D9CW0Uu1KLx2ZQmURPD63MpRgqXInXKbeGQA==}
 
-  jinge-compiler-core-macos-aarch64@4.0.9:
-    resolution: {integrity: sha512-Tsh1n7Rb5MPO2kyCm5g9yR76ra2KCD/LFRq56tQL/KDHOHd/YIm+FCUArTHRyhEBPRcmUZIsg4YHgecvsOOVGw==}
+  jinge-compiler-core-macos-aarch64@4.0.11:
+    resolution: {integrity: sha512-h0UkuRSo2NACxo6sLYqgktYRhNxa0urO/2EjSR7nTdN9DFIec63NYpKP4B+ex10c6d7CYXjHIJXYWZ3fB3J9iA==}
 
-  jinge-compiler-core-macos-x86_64@4.0.9:
-    resolution: {integrity: sha512-7zLo/EAoHSrfROTmnupZAyg212Yy+hztT5Lu/2wQmFHzqWoLXSdHzlhY2hP2A8w9NFbzeZ76+92RfhghPLPWtA==}
+  jinge-compiler-core-macos-x86_64@4.0.11:
+    resolution: {integrity: sha512-uafetaJ0cR2ss2PM+NofkH0IRKYQxEgyi+j2mksNT1UMI1PHq4h+GJrArKgarZavs3cI++gy9bU0ziXs209a9w==}
 
-  jinge-compiler-core-windows-x86_64@4.0.9:
-    resolution: {integrity: sha512-80WNLJ7A51d04QbgKnzpyKEzTAK8WhsBs62aoqm4K3A9fL8d74+O77jVfbhv+OM1W+02730VtptEe+JseBcMUg==}
+  jinge-compiler-core-windows-x86_64@4.0.11:
+    resolution: {integrity: sha512-BiSWqaw8IRl81Q4SuraQf29JJj/FUhUIVGzqeMX/YM/9G6Y0tFUlBmvZ6xypEnlYmCrESw34bv89RGIbt1mlnw==}
 
   joycon@3.1.1:
     resolution: {integrity: sha512-34wB/Y7MW7bzjKRjUKTa46I2Z7eV62Rkhva+KkopW7Qvv/OSWBqvkSY7vusOPrNuZcUG3tApvdVgNB8POj3SPw==}
@@ -1097,8 +1097,8 @@ packages:
   mz@2.7.0:
     resolution: {integrity: sha512-z81GNO7nnYMEhrGh9LeymoE4+Yr0Wn5McHIZMK5cfQCl+NDX08sCZgUc9/6MHni9IWuFLm1Z3HTCXu2z9fN62Q==}
 
-  nanoid@3.3.10:
-    resolution: {integrity: sha512-vSJJTG+t/dIKAUhUDw/dLdZ9s//5OxcHqLaDWWrW4Cdq7o6tdLIczUkMXt2MBNmk6sJRZBZRXVixs7URY1CmIg==}
+  nanoid@3.3.11:
+    resolution: {integrity: sha512-N8SpfPUnUp1bK+PMYW8qSWdl9U+wwNWI4QKxOYDy9JAro3WMX7p2OeVRF9v+347pnakNevPmiHhNmZ2HbFA76w==}
     engines: {node: ^10 || ^12 || ^13.7 || ^14 || >=15.0.1}
     hasBin: true
 
@@ -2143,7 +2143,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  eslint-plugin-import-x@4.8.0(eslint@9.22.0)(typescript@5.8.2):
+  eslint-plugin-import-x@4.9.0(eslint@9.22.0)(typescript@5.8.2):
     dependencies:
       '@types/doctrine': 0.0.9
       '@typescript-eslint/utils': 8.26.1(eslint@9.22.0)(typescript@5.8.2)
@@ -2382,15 +2382,15 @@ snapshots:
     optionalDependencies:
       '@pkgjs/parseargs': 0.11.0
 
-  jinge-compiler-core-linux-aarch64@4.0.9: {}
+  jinge-compiler-core-linux-aarch64@4.0.11: {}
 
-  jinge-compiler-core-linux-x86_64@4.0.9: {}
+  jinge-compiler-core-linux-x86_64@4.0.11: {}
 
-  jinge-compiler-core-macos-aarch64@4.0.9: {}
+  jinge-compiler-core-macos-aarch64@4.0.11: {}
 
-  jinge-compiler-core-macos-x86_64@4.0.9: {}
+  jinge-compiler-core-macos-x86_64@4.0.11: {}
 
-  jinge-compiler-core-windows-x86_64@4.0.9: {}
+  jinge-compiler-core-windows-x86_64@4.0.11: {}
 
   joycon@3.1.1: {}
 
@@ -2494,7 +2494,7 @@ snapshots:
       object-assign: 4.1.1
       thenify-all: 1.6.0
 
-  nanoid@3.3.10: {}
+  nanoid@3.3.11: {}
 
   natural-compare@1.4.0: {}
 
@@ -2583,7 +2583,7 @@ snapshots:
 
   postcss@8.5.3:
     dependencies:
-      nanoid: 3.3.10
+      nanoid: 3.3.11
       picocolors: 1.1.1
       source-map-js: 1.2.1
 
