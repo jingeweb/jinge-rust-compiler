@@ -1,4 +1,4 @@
-use super::slot::{SlotName, get_slot_name_from_member_expr, slot_name_to_callee_expr};
+use super::slot::get_slot_name_from_member_expr;
 use super::tpl::{
   tpl_lit_obj, tpl_push_el_code, tpl_set_ref_code, tpl_watch_and_set_component_attr,
 };
@@ -50,19 +50,15 @@ impl TemplateParser {
       JSXElementChild::JSXExprContainer(e) => match &e.expr {
         JSXExpr::Expr(e) => match e.as_ref() {
           Expr::Member(mem_expr) => {
-            let slot_name = get_slot_name_from_member_expr(mem_expr, &self.props_arg);
-            match slot_name {
-              SlotName::None => (),
-              _ => {
-                self
-                  .context
-                  .slots
-                  .last_mut()
-                  .unwrap()
-                  .pass_by
-                  .replace(slot_name_to_callee_expr(slot_name));
-                return true;
-              }
+            if let Some(slot_name) = get_slot_name_from_member_expr(mem_expr, &self.props_arg) {
+              self
+                .context
+                .slots
+                .last_mut()
+                .unwrap()
+                .pass_by
+                .replace(slot_name);
+              return true;
             }
           }
           _ => (),
@@ -75,7 +71,7 @@ impl TemplateParser {
   }
   pub fn parse_component_element(&mut self, tn: &Ident, n: &JSXElement) {
     let mut attrs = self.parse_attrs(n, true);
-    let is_attrs_empty = attrs.const_props.is_empty() && attrs.watch_props.is_empty();
+    // let is_attrs_empty = attrs.const_props.is_empty() && attrs.watch_props.is_empty();
     self.push_context(Parent::Component);
 
     // 如果是 <B>{props.children}</B> 这种写法，说明是透传插槽，可特别处理，直接传递。
@@ -93,19 +89,42 @@ impl TemplateParser {
 
     let mut stmts: Vec<Stmt> = vec![];
 
-    if !is_attrs_empty {
-      stmts.push(ast_create_stmt_decl_const(
-        JINGE_ATTR_IDENT.clone(),
-        if !attrs.watch_props.is_empty() {
-          ast_create_expr_call(
-            ast_create_expr_ident(JINGE_IMPORT_VM.local()),
-            vec![ast_create_arg_expr(tpl_lit_obj(attrs.const_props))],
-          )
-        } else {
-          tpl_lit_obj(attrs.const_props)
-        },
-      ));
+    let mut const_props = attrs.const_props;
+    let mut slots = children_context.slots;
+    if !attrs.slot_props.is_empty() {
+      slots.append(&mut attrs.slot_props);
     }
+
+    slots.into_iter().enumerate().for_each(|(i, s)| {
+      if s.expressions.is_empty() && s.pass_by.is_none() {
+        return;
+      }
+      const_props.push((
+        if i == 0 {
+          // 第 0 个是默认 slot
+          IdentName::from(JINGE_SLOT_DEFAULT.clone())
+        } else {
+          IdentName::from(format!("slot:{}", s.name))
+        },
+        if let Some(pass_by) = s.pass_by {
+          pass_by
+        } else {
+          slot_to_expr(s.params, s.stmts, s.expressions)
+        },
+      ))
+    });
+
+    stmts.push(ast_create_stmt_decl_const(
+      JINGE_ATTR_IDENT.clone(),
+      if !attrs.watch_props.is_empty() {
+        ast_create_expr_call(
+          ast_create_expr_ident(JINGE_IMPORT_VM.local()),
+          vec![ast_create_arg_expr(tpl_lit_obj(const_props))],
+        )
+      } else {
+        tpl_lit_obj(const_props)
+      },
+    ));
 
     attrs
       .watch_props
@@ -121,74 +140,22 @@ impl TemplateParser {
       .ref_prop
       .take()
       .map(|r| tpl_set_ref_code(r, host_ident.clone()));
-    let mut slots = children_context.slots;
-    if !attrs.slot_props.is_empty() {
-      slots.append(&mut attrs.slot_props);
-    }
-    let mut args = vec![ast_create_arg_expr(ast_create_expr_member(
-      ast_create_expr_ident(host_ident.clone()),
-      MemberProp::Computed(ComputedPropName {
-        span: DUMMY_SP,
-        expr: ast_create_expr_ident(JINGE_IMPORT_CONTEXT.local()),
-      }),
-    ))];
-    let has_named_slots = slots.len() > 1;
-    if has_named_slots {
-      let mut slots_arg: Vec<_> = vec![];
-      slots.into_iter().enumerate().for_each(|(i, s)| {
-        if s.expressions.is_empty() && s.pass_by.is_none() {
-          return;
-        }
-        slots_arg.push((
-          if i == 0 {
-            // 第 0 个是默认 slot
-            PropName::Computed(ComputedPropName {
-              span: DUMMY_SP,
-              expr: ast_create_expr_ident(JINGE_IMPORT_DEFAULT_SLOT.local()),
-            })
-          } else {
-            PropName::Str(Str::from(s.name))
-          },
-          if let Some(pass_by) = s.pass_by {
-            pass_by
-          } else {
-            slot_to_expr(s.params, s.stmts, s.expressions)
-          },
-        ))
-      });
-
-      if !slots_arg.is_empty() {
-        args.push(ast_create_arg_expr(Box::new(Expr::Object(ObjectLit {
-          span: DUMMY_SP,
-          props: slots_arg
-            .into_iter()
-            .map(|(prop, value)| {
-              PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp { key: prop, value })))
-            })
-            .collect(),
-        }))));
-      }
-    } else {
-      let default_slot = slots.pop().unwrap();
-      if !default_slot.expressions.is_empty() {
-        args.push(ast_create_arg_expr(slot_to_expr(
-          default_slot.params,
-          default_slot.stmts,
-          default_slot.expressions,
-        )))
-      }
-    }
 
     stmts.push(ast_create_stmt_decl_const(
       JINGE_EL_IDENT.clone(),
-      ast_create_expr_call(
-        ast_create_expr_ident(if has_named_slots {
-          JINGE_IMPORT_NEW_COM_SLOTS.local()
-        } else {
-          JINGE_IMPORT_NEW_COM_DEFAULT_SLOT.local()
-        }),
-        args,
-      ),
+      Box::new(Expr::New(NewExpr {
+        span: DUMMY_SP,
+        ctxt: SyntaxContext::default(),
+        callee: ast_create_expr_ident(JINGE_IMPORT_COMPONENT_HOST.local()),
+        args: Some(vec![ast_create_arg_expr(ast_create_expr_member(
+          ast_create_expr_ident(host_ident.clone()),
+          MemberProp::Computed(ComputedPropName {
+            span: DUMMY_SP,
+            expr: ast_create_expr_ident(JINGE_IMPORT_CONTEXT.local()),
+          }),
+        ))]),
+        type_args: None,
+      })),
     ));
     stmts.push(Stmt::Expr(ExprStmt {
       span: DUMMY_SP,
@@ -205,12 +172,12 @@ impl TemplateParser {
       ast_create_arg_expr(ast_create_expr_ident(JINGE_EL_IDENT.clone())),
       ast_create_arg_expr(ast_create_expr_ident(Ident::from(tn.sym.clone()))),
     ];
-    if !is_attrs_empty {
+    if let Some(id) = attrs.spread_prop.take() {
+      render_fc_args.push(ast_create_arg_expr(ast_create_expr_ident(id)));
+    } else {
       render_fc_args.push(ast_create_arg_expr(ast_create_expr_ident(
         JINGE_ATTR_IDENT.clone(),
       )));
-    } else if let Some(id) = attrs.spread_prop.take() {
-      render_fc_args.push(ast_create_arg_expr(ast_create_expr_ident(id)));
     }
 
     stmts.push(Stmt::Return(ReturnStmt {

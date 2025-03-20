@@ -7,9 +7,7 @@ use crate::ast::*;
 use crate::common::*;
 use crate::helper::*;
 use crate::parser;
-use crate::parser::slot::SlotName;
 use crate::parser::slot::get_slot_name_from_member_expr;
-use crate::parser::slot::slot_name_to_callee_expr;
 
 pub struct TemplateTransformVisitor<'a> {
   changed: bool,
@@ -69,14 +67,14 @@ impl<'a> TemplateTransformVisitor<'a> {
         stmt.visit_mut_children_with(self);
       }
     }
-    if let Some(rh) = root_host_arg {
-      // 如果是最外层的函数组件，当有传递第二个参数 [H] 时，需要在第一行添加 const root_host$jg$ = [H]。
-      // 这样对于 props.children 转成取 SLOTS 时，从 root_host$jg$ 取才不会有问题。
-      body.stmts.insert(
-        0,
-        ast_create_stmt_decl_const(JINGE_ROOT_HOST_IDENT.clone(), ast_create_expr_ident(rh)),
-      );
-    }
+    // if let Some(rh) = root_host_arg {
+    //   // 如果是最外层的函数组件，当有传递第二个参数 [H] 时，需要在第一行添加 const root_host$jg$ = [H]。
+    //   // 这样对于 props.children 转成取 SLOTS 时，从 root_host$jg$ 取才不会有问题。
+    //   body.stmts.insert(
+    //     0,
+    //     ast_create_stmt_decl_const(JINGE_ROOT_HOST_IDENT.clone(), ast_create_expr_ident(rh)),
+    //   );
+    // }
     changed
   }
   fn v_arrow(&mut self, fn_name: Option<&Ident>, expr: &mut ArrowExpr, is_slot: bool) -> bool {
@@ -190,14 +188,11 @@ impl VisitMut for TemplateTransformVisitor<'_> {
                 Expr::Member(mem_expr) => {
                   // 如果 slot: 类型的属性，值是 member 表达式，则有可能是二次传递插槽。
                   // 比如 { 'slot:a': someVar['slot:b'] }
-                  let slot_name = get_slot_name_from_member_expr(mem_expr, &None);
-                  match slot_name {
-                    SlotName::None => (),
-                    _ => {
-                      let pass_by = slot_name_to_callee_expr(slot_name);
-                      *expr = pass_by;
-                      return;
-                    }
+                  if let Some(slot_name) = get_slot_name_from_member_expr(mem_expr, &None) {
+                    self.changed = true;
+                    let pass_by = slot_name;
+                    *expr = pass_by;
+                    return;
                   }
                 }
                 Expr::OptChain(_) => todo!("支持 optional-chain"),
