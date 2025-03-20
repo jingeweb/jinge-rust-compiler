@@ -7,6 +7,9 @@ use crate::ast::*;
 use crate::common::*;
 use crate::helper::*;
 use crate::parser;
+use crate::parser::slot::SlotName;
+use crate::parser::slot::get_slot_name_from_member_expr;
+use crate::parser::slot::slot_name_to_callee_expr;
 
 pub struct TemplateTransformVisitor<'a> {
   changed: bool,
@@ -178,21 +181,33 @@ impl VisitMut for TemplateTransformVisitor<'_> {
               match expr.as_mut() {
                 Expr::Fn(expr) => {
                   self.v_func(None, &mut expr.function, true);
+                  return;
                 }
                 Expr::Arrow(expr) => {
                   self.v_arrow(None, expr, true);
-                }
-                _ => {
-                  // emit_error(s.span(), "slot:打头的属性代表插槽函数，属性值必须是函数");
-                  let mut params = vec![];
-                  if let Some(parsed_expr) = self.v_return_parse(expr, &mut params, true) {
-                    *expr = ast_create_expr_arrow_fn(
-                      params,
-                      Box::new(BlockStmtOrExpr::Expr(parsed_expr)),
-                    );
-                  }
                   return;
                 }
+                Expr::Member(mem_expr) => {
+                  // 如果 slot: 类型的属性，值是 member 表达式，则有可能是二次传递插槽。
+                  // 比如 { 'slot:a': someVar['slot:b'] }
+                  let slot_name = get_slot_name_from_member_expr(mem_expr, &None);
+                  match slot_name {
+                    SlotName::None => (),
+                    _ => {
+                      let pass_by = slot_name_to_callee_expr(slot_name);
+                      *expr = pass_by;
+                      return;
+                    }
+                  }
+                }
+                Expr::OptChain(_) => todo!("支持 optional-chain"),
+                _ => (),
+              }
+              // emit_error(s.span(), "slot:打头的属性代表插槽函数，属性值必须是函数");
+              let mut params = vec![];
+              if let Some(parsed_expr) = self.v_return_parse(expr, &mut params, true) {
+                *expr =
+                  ast_create_expr_arrow_fn(params, Box::new(BlockStmtOrExpr::Expr(parsed_expr)));
               }
               return;
             } else {

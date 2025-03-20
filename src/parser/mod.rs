@@ -15,7 +15,7 @@ pub mod intl;
 mod jsx;
 mod map;
 mod map_key;
-mod slot;
+pub mod slot;
 pub mod tpl;
 
 #[derive(Debug, Clone, Copy)]
