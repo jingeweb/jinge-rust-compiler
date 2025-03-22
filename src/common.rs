@@ -61,16 +61,14 @@ lazy_static::lazy_static! {
   pub static ref JINGE_IMPORT_WATCH_FOR_RENDER: JingeImport = x!("watchForRender");
   pub static ref JINGE_IMPORT_WATCH_PATH_FOR_RENDER_2: JingeImport = x!("watchPathForRender2");
   pub static ref JINGE_IMPORT_WATCH_PATH_FOR_RENDER: JingeImport = x!("watchPathForRender");
+  pub static ref JINGE_IMPORT_WATCH_FOR_DOM_EVENT_BIND: JingeImport = x!("watchForDOMEventBind");
+  pub static ref JINGE_IMPORT_WATCH_PATH_FOR_DOM_EVENT_BIND: JingeImport = x!("watchPathForDOMEventBind");
   pub static ref JINGE_IMPORT_CONTEXT: JingeImport = x!("CONTEXT");
 
   pub static ref JINGE_IMPORT_VM: JingeImport = x!("vm");
   pub static ref JINGE_IMPORT_SET_REF: JingeImport = x!("setRefForComponent");
   pub static ref JINGE_IMPORT_ROOT_NODES: JingeImport = x!("ROOT_NODES");
   pub static ref JINGE_IMPORT_COMPONENT_HOST: JingeImport = x!("ComponentHost");
-  // pub static ref JINGE_IMPORT_SLOTS: JingeImport = x!("SLOTS");
-  // pub static ref JINGE_IMPORT_DEFAULT_SLOT: JingeImport = x!("DEFAULT_SLOT");
-  // pub static ref JINGE_IMPORT_NEW_COM_SLOTS: JingeImport = x!("newComponentWithSlots");
-  // pub static ref JINGE_IMPORT_NEW_COM_DEFAULT_SLOT: JingeImport = x!("newComponentWithDefaultSlot");
   pub static ref JINGE_IMPORT_RENDER_SLOT: JingeImport = x!("renderSlotFunction");
   pub static ref JINGE_IMPORT_RENDER_FC: JingeImport = x!("renderFunctionComponent");
   pub static ref JINGE_IMPORT_NON_ROOT_COMPONENT_NODES: JingeImport = x!("NON_ROOT_COMPONENT_NODES");
@@ -95,7 +93,6 @@ lazy_static::lazy_static! {
   pub static ref JINGE_ON: Atom = "on".into();
   pub static ref JINGE_SLOT: Atom = "slot".into();
   pub static ref JINGE_SLOT_DEFAULT: Atom = "slot:default".into();
-  // pub static ref JINGE_SLOTS: Atom = "slots".into();
   pub static ref JINGE_CLASSNAME: Atom = "className".into();
   pub static ref JINGE_HTML_FOR: Atom = "htmlFor".into();
   pub static ref JINGE_CLASS: Atom = "class".into();
@@ -116,7 +113,7 @@ lazy_static::lazy_static! {
 }
 
 fn gen_import_jinge() -> ModuleItem {
-  let imports: [&'static JingeImport; 30] = [
+  let imports: [&'static JingeImport; 32] = [
     &JINGE_IMPORT_TEXT_RENDER_FN,
     &JINGE_IMPORT_RENDER_INTL_TEXT,
     &JINGE_IMPORT_RENDER_INTL_TEXT_WITH_PARAMS,
@@ -134,11 +131,9 @@ fn gen_import_jinge() -> ModuleItem {
     &JINGE_IMPORT_SET_REF,
     &JINGE_IMPORT_ROOT_NODES,
     &JINGE_IMPORT_COMPONENT_HOST,
-    // &JINGE_IMPORT_SLOTS,
-    // &JINGE_IMPORT_DEFAULT_SLOT,
+    &JINGE_IMPORT_WATCH_FOR_DOM_EVENT_BIND,
+    &JINGE_IMPORT_WATCH_PATH_FOR_DOM_EVENT_BIND,
     &JINGE_IMPORT_NON_ROOT_COMPONENT_NODES,
-    // &JINGE_IMPORT_NEW_COM_SLOTS,
-    // &JINGE_IMPORT_NEW_COM_DEFAULT_SLOT,
     &JINGE_IMPORT_RENDER_SLOT,
     &JINGE_IMPORT_RENDER_FC,
     &JINGE_IMPORT_PATH_WATCHER,

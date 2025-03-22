@@ -58,17 +58,18 @@ impl TemplateParser {
 
     let output = if set_ref_code.is_some()
       || push_ele_code.is_some()
-      || !attrs.evt_props.is_empty()
+      || !attrs.dom_const_events.is_empty()
+      || !attrs.dom_watch_events.is_empty()
       || !attrs.watch_props.is_empty()
     {
       let mut stmts: Vec<Stmt> = vec![ast_create_stmt_decl_const(
         JINGE_EL_IDENT.clone(),
         ast_create_expr_call(ast_create_expr_ident(callee_ident), args),
       )];
-      attrs.evt_props.into_iter().for_each(|evt| {
+      attrs.dom_const_events.into_iter().for_each(|evt| {
         let mut args = vec![
           ast_create_arg_expr(ast_create_expr_ident(JINGE_EL_IDENT.clone())),
-          ast_create_arg_expr(ast_create_expr_lit_str(evt.event_name)),
+          ast_create_arg_expr(ast_create_expr_lit_str(evt.event_name.sym)),
           ast_create_arg_expr(evt.event_handler),
         ];
         if evt.capture {
@@ -78,6 +79,17 @@ impl TemplateParser {
           span: DUMMY_SP,
           expr: ast_create_expr_call(ast_create_expr_ident(JINGE_IMPORT_ADD_EVENT.local()), args),
         }))
+      });
+      attrs.dom_watch_events.into_iter().for_each(|evt| {
+        stmts.push(Stmt::Expr(ExprStmt {
+          span: DUMMY_SP,
+          expr: tpl_watch_and_bind_html_event(
+            evt.event_name,
+            evt.event_handler,
+            host_ident.clone(),
+            evt.capture,
+          ),
+        }));
       });
       attrs
         .watch_props

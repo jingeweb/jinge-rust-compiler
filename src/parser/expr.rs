@@ -180,10 +180,6 @@ impl Visit for ExprVisitor {
     let mut args: Vec<ExprOrSpread> = Vec::with_capacity(mem_parser.path.len() + 2);
     // let mut is_this = false;
     let target = match mem_parser.root {
-      // Root::This => {
-      //   is_this = true;
-      //   ast_create_expr_this()
-      // }
       Root::Id(id) => Box::new(Expr::Ident(Ident::from(id))),
       Root::None => unreachable!(),
     };

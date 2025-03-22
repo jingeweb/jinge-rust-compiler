@@ -268,6 +268,46 @@ pub fn tpl_watch_and_set_html_attr(
   tpl_watch_and_render(set_fn, expr_result, host_ident)
 }
 
+pub fn tpl_watch_and_bind_html_event(
+  event_name: IdentName,
+  event_handler: ExprParseResult,
+  host_ident: Ident,
+  capture: bool,
+) -> Box<Expr> {
+  match event_handler {
+    ExprParseResult::None => unreachable!(),
+    ExprParseResult::Complex(watch_expr) => {
+      let args = vec![
+        ast_create_arg_expr(watch_expr),
+        ast_create_arg_expr(ast_create_expr_ident(JINGE_EL_IDENT.clone())),
+        ast_create_arg_expr(ast_create_expr_lit_str(event_name.sym)),
+        ast_create_arg_expr(ast_create_expr_lit_bool(capture)),
+        // 复杂表达式，会有 PathWatcher/ExprWatcher 等的封装，统一加到 [HOST_WATCH] 中，在 host component 销毁时卸载。
+        ast_create_arg_expr(ast_create_expr_ident(host_ident.clone())),
+      ];
+      ast_create_expr_call(
+        ast_create_expr_ident(JINGE_IMPORT_WATCH_FOR_DOM_EVENT_BIND.local()),
+        args,
+      )
+    }
+    ExprParseResult::Simple(sr) => {
+      let args = vec![
+        ast_create_arg_expr(sr.vm),
+        ast_create_arg_expr(sr.path),
+        ast_create_arg_expr(ast_create_expr_ident(JINGE_EL_IDENT.clone())),
+        ast_create_arg_expr(ast_create_expr_lit_str(event_name.sym)),
+        ast_create_arg_expr(ast_create_expr_lit_bool(capture)),
+        ast_create_arg_expr(ast_create_expr_ident(host_ident.clone())),
+      ];
+
+      ast_create_expr_call(
+        ast_create_expr_ident(JINGE_IMPORT_WATCH_PATH_FOR_DOM_EVENT_BIND.local()),
+        args,
+      )
+    }
+  }
+}
+
 pub fn tpl_watch_and_set_component_attr(
   attr_name: IdentName,
   expr_result: ExprParseResult,
