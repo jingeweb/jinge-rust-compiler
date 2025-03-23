@@ -6,8 +6,7 @@
 
 ## Todo
 
-- 支持比如 `<p>{a?.b?['slot:x']}</p>` 的 Optional-Chain 写法的插槽渲染，以及透传。
-- 插槽也通过 props 参数传递，不用在 host 上通过 `SLOTS` 和 `DEFAULT_SLOTS` 这种 symbol 传递。
+- 插槽也可以 watch 监听，从而支持动态插槽。
 - 支持嵌套属性，比如:
   ```tsx
   <Table pagination={{ pageSize: state.pageSize }}>
