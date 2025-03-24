@@ -6,7 +6,7 @@ use swc_core::{
 
 use crate::{ast::*, common::*};
 
-use super::expr::ExprParseResult;
+use super::{attrs::AttrWatchPropName, expr::ExprParseResult};
 
 pub fn tpl_set_ref_code(r: Box<Expr>, host_ident: Ident) -> Box<Expr> {
   let args = vec![
@@ -248,20 +248,20 @@ pub fn tpl_watch_and_render(
 }
 
 pub fn tpl_watch_and_set_html_attr(
-  attr_name: IdentName,
+  attr_name: Atom,
   expr_result: ExprParseResult,
   host_ident: Ident,
 ) -> Box<Expr> {
-  let set_fn = if IDL_ATTRIBUTE_SET.binary_search(&attr_name.sym).is_ok() {
+  let set_fn = if IDL_ATTRIBUTE_SET.binary_search(&attr_name).is_ok() {
     ast_create_expr_assign_mem(
       ast_create_expr_ident(JINGE_EL_IDENT.clone()),
-      attr_name.sym,
+      attr_name,
       ast_create_expr_ident(JINGE_V_IDENT.clone()),
     )
   } else {
     tpl_set_attribute(
       ast_create_expr_ident(JINGE_EL_IDENT.clone()),
-      attr_name.sym,
+      attr_name,
       ast_create_expr_ident(JINGE_V_IDENT.clone()),
     )
   };
@@ -309,14 +309,26 @@ pub fn tpl_watch_and_bind_html_event(
 }
 
 pub fn tpl_watch_and_set_component_attr(
-  attr_name: IdentName,
+  attr_name: AttrWatchPropName,
   expr_result: ExprParseResult,
   host_ident: Ident,
 ) -> Box<Expr> {
-  let set_fn = ast_create_expr_assign_mem(
-    ast_create_expr_ident(JINGE_ATTR_IDENT.clone()),
-    attr_name.sym,
-    ast_create_expr_ident(JINGE_V_IDENT.clone()),
-  );
+  let set_fn = Box::new(Expr::Assign(AssignExpr {
+    span: DUMMY_SP,
+    op: AssignOp::Assign,
+    left: AssignTarget::Simple(SimpleAssignTarget::Member(MemberExpr {
+      span: DUMMY_SP,
+      obj: ast_create_expr_ident(JINGE_ATTR_IDENT.clone()),
+      prop: match attr_name {
+        AttrWatchPropName::Id(attr_name) => MemberProp::Ident(IdentName::from(attr_name)),
+        AttrWatchPropName::Str(attr_name) => MemberProp::Computed(ComputedPropName {
+          span: DUMMY_SP,
+          expr: ast_create_expr_lit_str(attr_name),
+        }),
+      },
+    })),
+    right: ast_create_expr_ident(JINGE_V_IDENT.clone()),
+  }));
+
   tpl_watch_and_render(set_fn, expr_result, host_ident)
 }

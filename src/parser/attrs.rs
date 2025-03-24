@@ -1,6 +1,7 @@
 use crate::common::{JINGE_KEY, JINGE_ON, JINGE_SLOT, emit_error};
 use crate::parser::TemplateParser;
 use crate::visitor::TemplateTransformVisitor;
+use swc_core::atoms::Atom;
 use swc_core::common::Spanned;
 use swc_core::ecma::ast::*;
 use swc_ecma_visit::{Visit, VisitMut};
@@ -21,6 +22,11 @@ pub struct AttrDOMWatchEvt {
   pub event_handler: ExprParseResult,
   pub capture: bool,
 }
+
+pub enum AttrWatchPropName {
+  Id(Atom),
+  Str(Atom),
+}
 pub struct AttrStore {
   /// ref 属性，例如 `<div ref="some"></div>`
   pub ref_prop: Option<Box<Expr>>,
@@ -32,7 +38,9 @@ pub struct AttrStore {
   /// 不需要 watch 监听的表达式属性，例如 `<div a={45 + "hello"} b={o} c="hello" d={true} disabled ></div>`，也包括组件的常量事件属性和插槽属性。
   pub const_props: Vec<(IdentName, Box<Expr>)>,
   /// 需要 watch 监听的表达式属性，例如 `<div a={state.a}>`，也包括组件的需要监听的表达式事件属性。
-  pub watch_props: Vec<(IdentName, ExprParseResult)>,
+  /// 组件的属性有个特殊性，需要识别到 'on:' 打头的事件属性，在转成渲染的更新值的代码时，须转成 `attrs['on:xx'] = ?` 的方式。这种存储为 AttrWatchPropName:Str。
+  /// 其它情况下，存储为 AttrWatchPropName:Id，转成 `attrs.xx = ?` 的更新代码，或是 `{ 'on:xx': xx }` 这种不需要更新的常量表达式。
+  pub watch_props: Vec<(AttrWatchPropName, ExprParseResult)>,
   /// ... 解构写法透传的属性，例如 `<A {...state} />` 本质上就是把 state 作为 A 组件的 props 参数直接传递。
   /// 这种写法的情况下，不能再有其它 const 或 watch 属性，并且只能出现一次。
   pub spread_prop: Option<Ident>,
@@ -153,7 +161,9 @@ impl TemplateParser {
               ExprParseResult::None => {
                 attrs.const_props.push((attr_name, expr.clone()));
               }
-              _ => attrs.watch_props.push((attr_name, r)),
+              _ => attrs
+                .watch_props
+                .push((AttrWatchPropName::Id(attr_name.sym), r)),
             }
           }
         },
@@ -301,9 +311,10 @@ impl TemplateParser {
             if is_component {
               // 如果是需要 watch 的表达式，但属于组件的属性，则当成普通的 watch_props 添加即可。
               // 对组件来说，没有特别的事件属性的说法，事件属性和普通属性本质上是完全相同的。
-              attrs
-                .watch_props
-                .push((IdentName::from(an.sym.clone()), result));
+              attrs.watch_props.push((
+                AttrWatchPropName::Str(format!("on:{}", an.sym).into()),
+                result,
+              ));
             } else {
               let (event_name, capture) = get_html_event_name(an);
               if matches!(&result, ExprParseResult::Simple(s) if s.not_op > 0) {

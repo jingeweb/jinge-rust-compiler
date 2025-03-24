@@ -2,7 +2,10 @@ use swc_common::{Spanned, SyntaxContext};
 use swc_core::ecma::ast::*;
 use swc_ecma_visit::VisitWith;
 
-use crate::{ast::*, parser::*};
+use crate::{
+  ast::*,
+  parser::{attrs::AttrWatchPropName, *},
+};
 
 use super::{TemplateParser, emit_error};
 
@@ -97,7 +100,14 @@ impl TemplateParser {
         .for_each(|(attr_name, watch_expr)| {
           stmts.push(Stmt::Expr(ExprStmt {
             span: DUMMY_SP,
-            expr: tpl_watch_and_set_html_attr(attr_name, watch_expr, host_ident.clone()),
+            expr: tpl_watch_and_set_html_attr(
+              match attr_name {
+                AttrWatchPropName::Id(attr_name) => attr_name,
+                _ => unreachable!(),
+              },
+              watch_expr,
+              host_ident.clone(),
+            ),
           }));
         });
       if let Some(c) = set_ref_code {
