@@ -2,10 +2,10 @@ use swc_common::{DUMMY_SP, Spanned, SyntaxContext};
 use swc_core::{
   atoms::Atom,
   ecma::ast::{
-    ArrayLit, AssignExpr, AssignOp, AssignTarget, BinExpr, BlockStmt, BlockStmtOrExpr,
+    ArrayLit, AssignExpr, AssignOp, AssignTarget, BinExpr, BlockStmt, BlockStmtOrExpr, Callee,
     ComputedPropName, CondExpr, Expr, ExprOrSpread, ExprStmt, Ident, KeyValueProp, Lit, MemberExpr,
-    MemberProp, NewExpr, Null, ObjectLit, OptChainBase, Prop, PropName, PropOrSpread, ReturnStmt,
-    SimpleAssignTarget, Stmt,
+    MemberProp, NewExpr, Null, ObjectLit, OptChainBase, OptChainExpr, Prop, PropName, PropOrSpread,
+    ReturnStmt, SimpleAssignTarget, Stmt,
   },
 };
 use swc_ecma_visit::Visit;
@@ -24,34 +24,36 @@ use super::{
 };
 
 #[inline]
-fn get_default_slot_name(props_arg: &Atom) -> Option<Box<Expr>> {
-  Some(ast_create_expr_member(
-    ast_create_expr_ident(props_arg.clone().into()),
-    MemberProp::Computed(ComputedPropName {
+fn get_default_slot_name(props_arg: &Atom) -> MemberExpr {
+  MemberExpr {
+    span: DUMMY_SP,
+    obj: ast_create_expr_ident(props_arg.clone().into()),
+    prop: MemberProp::Computed(ComputedPropName {
       span: DUMMY_SP,
       expr: ast_create_expr_lit_str(JINGE_SLOT_DEFAULT.clone()),
     }),
-  ))
+  }
 }
 
-pub fn get_slot_name_from_member_expr(
+enum SlotNameType {
+  Default,
+  Expr,
+  None,
+}
+
+fn get_slot_name_type_from_member_epxr(
   expr: &MemberExpr,
   props_arg: &Option<Atom>,
-) -> Option<Box<Expr>> {
+) -> SlotNameType {
   match &expr.prop {
     MemberProp::Ident(id) => {
-      if JINGE_CHILDREN.eq(&id.sym) {
-        if let Some(props_arg) = props_arg {
-          if matches!(expr.obj.as_ref(), Expr::Ident(id) if id.sym.eq(props_arg)) {
-            get_default_slot_name(props_arg)
-          } else {
-            None
-          }
-        } else {
-          None
-        }
-      } else {
-        None
+      let Some(props_arg) = props_arg else {
+        return SlotNameType::None;
+      };
+      if JINGE_CHILDREN.eq(&id.sym)
+        && matches!(expr.obj.as_ref(), Expr::Ident(id) if id.sym.eq(props_arg))
+      {
+        return SlotNameType::Default;
       }
     }
     MemberProp::Computed(e) => match e.expr.as_ref() {
@@ -60,24 +62,83 @@ pub fn get_slot_name_from_member_expr(
           if JINGE_CHILDREN.eq(&id.value) {
             if let Some(props_arg) = props_arg {
               if matches!(expr.obj.as_ref(), Expr::Ident(id) if id.sym.eq(props_arg)) {
-                get_default_slot_name(props_arg)
-              } else {
-                None
+                return SlotNameType::Default;
               }
-            } else {
-              None
             }
           } else if id.value.starts_with("slot:") {
-            Some(Box::new(Expr::Member(expr.clone())))
-          } else {
-            None
+            return SlotNameType::Expr;
           }
         }
-        _ => None,
+        _ => (),
       },
-      _ => None,
+      _ => (),
     },
-    _ => None,
+    _ => (),
+  }
+  SlotNameType::None
+}
+
+fn get_slot_name_type_from_optchain_expr<'a>(
+  expr: &'a OptChainExpr,
+  props_arg: &Option<Atom>,
+) -> (SlotNameType, Option<&'a Vec<ExprOrSpread>>) {
+  match expr.base.as_ref() {
+    OptChainBase::Member(m) => (get_slot_name_type_from_member_epxr(m, props_arg), None),
+    OptChainBase::Call(c) => {
+      println!("XXX");
+      match c.callee.as_ref() {
+        Expr::Member(mem) => (
+          get_slot_name_type_from_member_epxr(mem, props_arg),
+          Some(&c.args),
+        ),
+        Expr::OptChain(opt) => match opt.base.as_ref() {
+          OptChainBase::Member(m) => (
+            get_slot_name_type_from_member_epxr(m, props_arg),
+            Some(&c.args),
+          ),
+          _ => (SlotNameType::None, None),
+        },
+        _ => (SlotNameType::None, None),
+      }
+    }
+  }
+}
+
+#[inline]
+pub fn get_slot_name_from_member_expr(
+  expr: &MemberExpr,
+  props_arg: &Option<Atom>,
+) -> Option<Box<Expr>> {
+  match get_slot_name_type_from_member_epxr(expr, props_arg) {
+    SlotNameType::None => None,
+    SlotNameType::Default => Some(Box::new(Expr::Member(get_default_slot_name(
+      props_arg.as_ref().unwrap(),
+    )))),
+    SlotNameType::Expr => Some(Box::new(Expr::Member(expr.clone()))),
+  }
+}
+
+#[inline]
+fn get_slot_name_from_optchain_expr<'a>(
+  expr: &'a OptChainExpr,
+  props_arg: &Option<Atom>,
+) -> Option<(Box<Expr>, Option<&'a Vec<ExprOrSpread>>)> {
+  match get_slot_name_type_from_optchain_expr(expr, props_arg) {
+    (SlotNameType::None, _) => None,
+    (SlotNameType::Default, args) => Some((
+      Box::new(Expr::OptChain(OptChainExpr {
+        span: DUMMY_SP,
+        optional: true,
+        base: Box::new(OptChainBase::Member(get_default_slot_name(
+          props_arg.as_ref().unwrap(),
+        ))),
+      })),
+      args,
+    )),
+    (SlotNameType::Expr, args) => match expr.base.as_ref() {
+      OptChainBase::Call(call) => Some((call.callee.clone(), args)),
+      OptChainBase::Member(mem) => Some((Box::new(Expr::Member(mem.clone())), args)),
+    },
   }
 }
 
@@ -131,7 +192,7 @@ fn parse_slot_arg_prop(vm: &mut SlotVm, prop: &Prop) {
       let e = Box::new(Expr::Ident(k.clone()));
       let r = ExprVisitor::new().parse(&e);
       match r {
-        ExprParseResult::None => (), // 这种简写不可能是 ExprParseResult::None
+        ExprParseResult::None => vm.const_props.push((PropName::Ident(k.clone().into()), e)), // 这种简写不可能是 ExprParseResult::None
         _ => vm.watch_props.push((PropName::Ident(k.clone().into()), r)),
       }
       return;
@@ -257,6 +318,23 @@ fn parse_slot_arg(args: &Vec<ExprOrSpread>) -> SlotVm {
   vm
 }
 
+fn get_bin_expr_slot_name<'a>(
+  expr: &'a Expr,
+  props_arg: &Option<Atom>,
+) -> Option<(Box<Expr>, Option<&'a Vec<ExprOrSpread>>)> {
+  match expr {
+    Expr::Member(mem) => {
+      get_slot_name_from_member_expr(mem, props_arg).map(|slot_name| (slot_name, None))
+    }
+    Expr::OptChain(opt) => get_slot_name_from_optchain_expr(opt, props_arg),
+    Expr::Call(call) => match &call.callee {
+      Callee::Expr(callee) => get_slot_name_from_callee(callee.as_ref(), props_arg)
+        .map(|slot_name| (slot_name, Some(&call.args))),
+      _ => None,
+    },
+    _ => None,
+  }
+}
 impl TemplateParser {
   fn transform_slot_to_render_fn(
     &mut self,
@@ -267,7 +345,6 @@ impl TemplateParser {
 
     let slot_vm_id =
       slot_args.and_then(|slot_args| self.transform_slot_args(slot_args, &mut stmts));
-
     let host_ident = self.create_host_ident();
 
     stmts.push(ast_create_stmt_decl_const(
@@ -417,14 +494,15 @@ impl TemplateParser {
       return false;
     }
   }
-
-  fn get_bin_expr_slot_name(&self, expr: &Expr) -> Option<Box<Expr>> {
-    let Expr::Member(mem) = expr else {
-      return None;
-    };
-
-    get_slot_name_from_member_expr(mem, &self.props_arg)
+  pub fn parse_slot_optchain_expr(&mut self, expr: &OptChainExpr) -> bool {
+    if let Some((slot_name, slot_args)) = get_slot_name_from_optchain_expr(expr, &self.props_arg) {
+      self.transform_slot(slot_name, slot_args);
+      true
+    } else {
+      false
+    }
   }
+
   fn parse_expr_to_render_fn(&mut self, expr: &Expr) -> Vec<ExprOrSpread> {
     self.push_context(self.context.parent);
     self.visit_expr(expr);
@@ -435,9 +513,12 @@ impl TemplateParser {
     s.expressions
   }
   pub fn parse_cond_slot(&mut self, expr: &CondExpr) -> bool {
-    let Some(slot_name) = self.get_bin_expr_slot_name(&expr.test) else {
+    let Some((slot_name, slot_args)) = get_bin_expr_slot_name(&expr.test, &self.props_arg) else {
       return false;
     };
+    if slot_args.is_some() {
+      emit_error(expr.span(), "? : 表达式中的插槽错误。");
+    }
     let conds_render_fn = self.parse_expr_to_render_fn(&expr.cons);
     let alt_render_fn = self.parse_expr_to_render_fn(&expr.alt);
     self.push_expression_with_spread(Box::new(Expr::Cond(CondExpr {
@@ -450,9 +531,12 @@ impl TemplateParser {
   }
 
   pub fn parse_logic_and_slot(&mut self, expr: &BinExpr) -> bool {
-    let Some(slot_name) = self.get_bin_expr_slot_name(&expr.left) else {
+    let Some((slot_name, slot_args)) = get_bin_expr_slot_name(&expr.left, &self.props_arg) else {
       return false;
     };
+    if slot_args.is_some() {
+      emit_error(expr.span(), "&& 表达式中的插槽错误。");
+    }
     let render_fn = self.parse_expr_to_render_fn(&expr.right);
     self.push_expression_with_spread(Box::new(Expr::Cond(CondExpr {
       span: DUMMY_SP,
@@ -486,32 +570,11 @@ impl TemplateParser {
   /// <>{props.children ? props.children() : <div>default</div>}</>
   /// ```
   pub fn parse_nullish_coalescing_slot(&mut self, expr: &BinExpr) -> bool {
-    let slot_name;
-    if let Some(sn) = self.get_bin_expr_slot_name(&expr.left) {
-      slot_name = sn;
-    } else {
-      // 如果 ?? 左边不是简单的 member 表达式插槽，即不是 `props.children ?? 'default'` 这种表达式。
-      // 则继续看是否是 `props.children?.() ?? 'default'` 这样的表达式。
-      match expr.left.as_ref() {
-        Expr::OptChain(opt) => match opt.base.as_ref() {
-          OptChainBase::Call(c) => {
-            if let Some(sn) = get_slot_name_from_callee(&c.callee, &self.props_arg) {
-              slot_name = sn.clone();
-              self.transform_slot_to_render_fn(sn, Some(&c.args));
-            } else {
-              return false;
-            }
-          }
-          _ => return false,
-        },
-        _ => {
-          return false;
-        }
-      }
-    }
-
-    let render_fn = self.transform_slot_to_render_fn(slot_name.clone(), None);
-
+    let Some((slot_name, slot_args)) = get_bin_expr_slot_name(&expr.left, &self.props_arg) else {
+      return false;
+    };
+    // println!("OOO {:#?}", slot_name);
+    let render_fn = self.transform_slot_to_render_fn(slot_name.clone(), slot_args);
     let default_slot = self.parse_expr_to_render_fn(&expr.right);
     self.push_expression_with_spread(Box::new(Expr::Cond(CondExpr {
       span: DUMMY_SP,

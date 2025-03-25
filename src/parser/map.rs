@@ -130,23 +130,59 @@ impl VisitMut for ReplaceVisitor {
     self.stack.pop();
   }
   fn visit_mut_expr(&mut self, e: &mut Expr) {
-    if let Expr::Ident(id) = e {
-      let overrided: &(bool, bool) = self.stack.last().unwrap();
-      if !overrided.0 && matches!(self.arg_data, Some(ref a) if a.eq(&id.sym)) {
-        *e = Expr::Member(MemberExpr {
-          span: DUMMY_SP,
-          obj: ast_create_expr_ident(Ident::from(self.slot_vm_name.clone())),
-          prop: MemberProp::Ident(IdentName::from(JINGE_LOOP_EACH_DATA.clone())),
-        });
-      } else if !overrided.1 && matches!(self.arg_index, Some(ref a) if a.eq(&id.sym)) {
-        *e = Expr::Member(MemberExpr {
-          span: DUMMY_SP,
-          obj: ast_create_expr_ident(Ident::from(self.slot_vm_name.clone())),
-          prop: MemberProp::Ident(IdentName::from(JINGE_LOOP_EACH_INDEX.clone())),
-        });
+    match e {
+      Expr::Ident(id) => {
+        let overrided: &(bool, bool) = self.stack.last().unwrap();
+        if !overrided.0 && matches!(self.arg_data, Some(ref a) if a.eq(&id.sym)) {
+          *e = Expr::Member(MemberExpr {
+            span: DUMMY_SP,
+            obj: ast_create_expr_ident(Ident::from(self.slot_vm_name.clone())),
+            prop: MemberProp::Ident(IdentName::from(JINGE_LOOP_EACH_DATA.clone())),
+          });
+        } else if !overrided.1 && matches!(self.arg_index, Some(ref a) if a.eq(&id.sym)) {
+          *e = Expr::Member(MemberExpr {
+            span: DUMMY_SP,
+            obj: ast_create_expr_ident(Ident::from(self.slot_vm_name.clone())),
+            prop: MemberProp::Ident(IdentName::from(JINGE_LOOP_EACH_INDEX.clone())),
+          });
+        }
       }
-    } else {
-      e.visit_mut_children_with(self);
+      Expr::Object(obj) => {
+        // 如果是 `{ index }` 这种写法，也要转成 `{ index: slot_vm_name[JINGE_LOOP_EACH_INDEX] }`
+        for prop in obj.props.iter_mut() {
+          match prop {
+            PropOrSpread::Spread(x) => {
+              x.visit_mut_children_with(self);
+            }
+            PropOrSpread::Prop(p) => match p.as_mut() {
+              Prop::Shorthand(s) => {
+                let overrided: &(bool, bool) = self.stack.last().unwrap();
+                if !overrided.0 && matches!(self.arg_data, Some(ref a) if a.eq(&s.sym)) {
+                  *p = Box::new(Prop::KeyValue(KeyValueProp {
+                    key: PropName::Ident(IdentName::from(s.sym.clone())),
+                    value: Box::new(Expr::Member(MemberExpr {
+                      span: DUMMY_SP,
+                      obj: ast_create_expr_ident(Ident::from(self.slot_vm_name.clone())),
+                      prop: MemberProp::Ident(IdentName::from(JINGE_LOOP_EACH_DATA.clone())),
+                    })),
+                  }));
+                } else if !overrided.1 && matches!(self.arg_index, Some(ref a) if a.eq(&s.sym)) {
+                  *p = Box::new(Prop::KeyValue(KeyValueProp {
+                    key: PropName::Ident(IdentName::from(s.sym.clone())),
+                    value: Box::new(Expr::Member(MemberExpr {
+                      span: DUMMY_SP,
+                      obj: ast_create_expr_ident(Ident::from(self.slot_vm_name.clone())),
+                      prop: MemberProp::Ident(IdentName::from(JINGE_LOOP_EACH_INDEX.clone())),
+                    })),
+                  }))
+                }
+              }
+              _ => p.visit_mut_children_with(self),
+            },
+          }
+        }
+      }
+      _ => e.visit_mut_children_with(self),
     }
   }
 }

@@ -67,11 +67,14 @@ export function jingeVitePlugin(options?: JingeVitePluginOptions): PluginOption 
   let intlOpts: { dropDefaultText?: boolean } | null = null;
   let sourcemapEnabled = true;
   let base = '';
-  function transform(code: string, id: string) {
+  function transform(code: string, id: string, build: boolean) {
     const qi = id.lastIndexOf('?');
     if (qi > 0) id = id.slice(0, qi);
     const type = id.endsWith('.tsx') ? 2 : id.endsWith('.ts') ? 1 : 0;
     if (type === 0) return;
+    // build 模式下，如果没有开启国际化，则不需要解析 .ts 文件，会有 esbuild 兜底。
+    // serve 模式下为了加速，在 config 中禁用了 esbuild（通常情况下没必要 swc parse 之后 esbuild 再 parse 一次），因此也需要解析 .ts 文件。
+    if (build && !intlOpts && type === 1) return;
     const binding = loadBinding(options?.loadDebugNativeBinding);
     const result = binding.transform(
       id,
@@ -101,7 +104,7 @@ export function jingeVitePlugin(options?: JingeVitePluginOptions): PluginOption 
         return getAliasConfig(options?.importAlias);
       },
       transform(code: string, id: string) {
-        return transform(code, id);
+        return transform(code, id, true);
       },
     },
     {
@@ -139,7 +142,7 @@ export function jingeVitePlugin(options?: JingeVitePluginOptions): PluginOption 
         },
       ],
       transform(code: string, id: string) {
-        const result = transform(code, id);
+        const result = transform(code, id, false);
         if (!result || !hmrEnabled || !result.parsedComponents) return result;
         const parsedComponents = result.parsedComponents.split(',');
         // console.log(parsedComponents);
