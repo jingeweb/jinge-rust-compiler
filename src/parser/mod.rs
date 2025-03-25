@@ -214,6 +214,14 @@ impl TemplateParser {
       self.parse_expr(parent_expr);
     }
   }
+  fn parse_optchain(&mut self, parent_expr: &Expr, expr: &OptChainExpr) {
+    if !self.parse_slot_optchain_expr(expr) {
+      match expr.base.as_ref() {
+        OptChainBase::Call(ce) => self.parse_call(parent_expr, ce.callee.as_ref(), &ce.args),
+        _ => self.parse_expr(parent_expr),
+      }
+    }
+  }
   fn parse_call(&mut self, parent_expr: &Expr, callee: &Expr, args: &Vec<ExprOrSpread>) {
     if matches!(self.intl_type, IntlType::Enabled(_)) && self.parse_intl_t(callee, args) {
       // 如果是 t 函数，则转换为国际化组件。
@@ -389,12 +397,7 @@ impl Visit for TemplateParser {
         }
       }
       Expr::Member(e) => self.parse_mem(expr_node, e),
-      Expr::OptChain(opt) => match opt.base.as_ref() {
-        OptChainBase::Member(e) => self.parse_mem(expr_node, e),
-        OptChainBase::Call(c) => {
-          self.parse_call(expr_node, c.callee.as_ref(), &c.args);
-        }
-      },
+      Expr::OptChain(opt) => self.parse_optchain(expr_node, opt),
       _ => self.parse_expr(expr_node),
     }
   }
