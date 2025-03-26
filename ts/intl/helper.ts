@@ -171,7 +171,7 @@ export function extractKeyAndMessage(
       if (!ts.isIdentifier(prop.name)) continue;
       const expr = prop.initializer;
       if (ts.isJsxSelfClosingElement(expr) || ts.isJsxElement(expr) || ts.isJsxFragment(expr)) {
-        if (!richComps) richComps = new Map();
+        richComps ??= new Map();
         richComps.set(prop.name.text, {
           type: 'jsx',
           expr: `return ${expr.getFullText(srcFile).trim()}`,
@@ -189,7 +189,7 @@ export function extractKeyAndMessage(
             code = `return ${code}`;
           }
         }
-        if (!richComps) richComps = new Map();
+        richComps ??= new Map();
         richComps.set(prop.name.text, { type, expr: code });
       }
     }

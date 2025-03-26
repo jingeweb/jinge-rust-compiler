@@ -83,7 +83,7 @@ export function jingeVitePlugin(options?: JingeVitePluginOptions): PluginOption 
       sourcemapEnabled,
       intlOpts ? (intlOpts.dropDefaultText ? 2 : 1) : 0,
     );
-    if (!result.map) result.map = null; // 空字符串转成 null
+    if (result.map === '') result.map = null; // 空字符串转成 null
     return result;
   }
 
