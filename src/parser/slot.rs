@@ -84,23 +84,20 @@ fn get_slot_name_type_from_optchain_expr<'a>(
 ) -> (SlotNameType, Option<&'a Vec<ExprOrSpread>>) {
   match expr.base.as_ref() {
     OptChainBase::Member(m) => (get_slot_name_type_from_member_epxr(m, props_arg), None),
-    OptChainBase::Call(c) => {
-      println!("XXX");
-      match c.callee.as_ref() {
-        Expr::Member(mem) => (
-          get_slot_name_type_from_member_epxr(mem, props_arg),
+    OptChainBase::Call(c) => match c.callee.as_ref() {
+      Expr::Member(mem) => (
+        get_slot_name_type_from_member_epxr(mem, props_arg),
+        Some(&c.args),
+      ),
+      Expr::OptChain(opt) => match opt.base.as_ref() {
+        OptChainBase::Member(m) => (
+          get_slot_name_type_from_member_epxr(m, props_arg),
           Some(&c.args),
         ),
-        Expr::OptChain(opt) => match opt.base.as_ref() {
-          OptChainBase::Member(m) => (
-            get_slot_name_type_from_member_epxr(m, props_arg),
-            Some(&c.args),
-          ),
-          _ => (SlotNameType::None, None),
-        },
         _ => (SlotNameType::None, None),
-      }
-    }
+      },
+      _ => (SlotNameType::None, None),
+    },
   }
 }
 
