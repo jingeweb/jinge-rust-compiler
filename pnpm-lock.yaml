@@ -12,20 +12,20 @@ importers:
         specifier: ^5.6.0
         version: 5.6.0
       jinge-compiler-core-linux-aarch64:
-        specifier: 4.1.6
-        version: 4.1.6
+        specifier: 4.1.7
+        version: 4.1.7
       jinge-compiler-core-linux-x86_64:
-        specifier: 4.1.6
-        version: 4.1.6
+        specifier: 4.1.7
+        version: 4.1.7
       jinge-compiler-core-macos-aarch64:
-        specifier: 4.1.6
-        version: 4.1.6
+        specifier: 4.1.7
+        version: 4.1.7
       jinge-compiler-core-macos-x86_64:
-        specifier: 4.1.6
-        version: 4.1.6
+        specifier: 4.1.7
+        version: 4.1.7
       jinge-compiler-core-windows-x86_64:
-        specifier: 4.1.6
-        version: 4.1.6
+        specifier: 4.1.7
+        version: 4.1.7
       typescript:
         specifier: ^5.8.3
         version: 5.8.3
@@ -1018,20 +1018,20 @@ packages:
   jackspeak@3.4.3:
     resolution: {integrity: sha512-OGlZQpz2yfahA/Rd1Y8Cd9SIEsqvXkLVoSw/cgwhnhFMDbsQFeZYoJJ7bIZBS9BcamUW96asq/npPWugM+RQBw==}
 
-  jinge-compiler-core-linux-aarch64@4.1.6:
-    resolution: {integrity: sha512-vkp/uEDuCsGHQgd07iqPDJ8k2peVWT0BhgnQlA9f4FSngDPuww6E3lNkl0e9RoA5tqmGeDBf9BCDXuvVYaZw/g==}
+  jinge-compiler-core-linux-aarch64@4.1.7:
+    resolution: {integrity: sha512-ufUXjIN7dbEZvy1Q625DYbpp1knxpRYlUvR0Vv4Q7KyDdS9dPz5HJq3Adb+G6dXlgpSZa6LFVZ5Y2qbgp7jWmQ==}
 
-  jinge-compiler-core-linux-x86_64@4.1.6:
-    resolution: {integrity: sha512-qGwrFbx2HLJghVaH+l/iqKBbb3Z+9TGdK06LO+0nhtPe6+rVsNSE5baF5o8hFIDEIzgoQW1agdSchDMA33GNSg==}
+  jinge-compiler-core-linux-x86_64@4.1.7:
+    resolution: {integrity: sha512-bhX6buOZ/KD2H8O33T7Jubvbp8/MXm2bE8zqq1XL17X2uja4NcaqDdg0Q57luEValFgL0D/X3Rn0ZYbcEVt7Pw==}
 
-  jinge-compiler-core-macos-aarch64@4.1.6:
-    resolution: {integrity: sha512-gJuBu6izjxmS+A0TZhklvYE6kOm6p8VvTtPt4anKo8CWtHvyMeYVunUtvv/xjcHHs9gjuL6SYgfvXZP6sI4MYw==}
+  jinge-compiler-core-macos-aarch64@4.1.7:
+    resolution: {integrity: sha512-usJhcFGgei5pMumC4NHhQ+gdn2lIvO/gzS4rcfaViYRlr3c/EXLifUmR4bfCA2X2V3+qS6L4RnuprPe9M7oV3Q==}
 
-  jinge-compiler-core-macos-x86_64@4.1.6:
-    resolution: {integrity: sha512-nZ+x7YmKXbo2Aziwdt80iLYtWiippPnB/Yxm2Rg3/ky7w8iHA740UfxLXOYH1E8JFZ54IO7D3yylDdT4Zti0IQ==}
+  jinge-compiler-core-macos-x86_64@4.1.7:
+    resolution: {integrity: sha512-XgOQK6+9lu7ca9vp0egr40KqCexi0pgx06jYQ3mD4HXO7+7xf8YQ0MN/Tt4Nppk7MpbglZ3Z2DfeKyZd2IZegQ==}
 
-  jinge-compiler-core-windows-x86_64@4.1.6:
-    resolution: {integrity: sha512-0VFfGIHj893C+HG0tY/SL8w0p44q2vOjlQMBiJPHdesSsa3XDppHp14+WfOtLzTHAZxGeVFaBZVvptQUWLrD/w==}
+  jinge-compiler-core-windows-x86_64@4.1.7:
+    resolution: {integrity: sha512-Nc3+xbi18oGuxvhG8+1Z+gKTyWOpsS+LMDv1WtwJ/YEfq2GTJ9wl4m+J6tT/ZafpFfBr7npnkKWwqIeK+YXbtA==}
 
   joycon@3.1.1:
     resolution: {integrity: sha512-34wB/Y7MW7bzjKRjUKTa46I2Z7eV62Rkhva+KkopW7Qvv/OSWBqvkSY7vusOPrNuZcUG3tApvdVgNB8POj3SPw==}
@@ -2445,15 +2445,15 @@ snapshots:
     optionalDependencies:
       '@pkgjs/parseargs': 0.11.0
 
-  jinge-compiler-core-linux-aarch64@4.1.6: {}
+  jinge-compiler-core-linux-aarch64@4.1.7: {}
 
-  jinge-compiler-core-linux-x86_64@4.1.6: {}
+  jinge-compiler-core-linux-x86_64@4.1.7: {}
 
-  jinge-compiler-core-macos-aarch64@4.1.6: {}
+  jinge-compiler-core-macos-aarch64@4.1.7: {}
 
-  jinge-compiler-core-macos-x86_64@4.1.6: {}
+  jinge-compiler-core-macos-x86_64@4.1.7: {}
 
-  jinge-compiler-core-windows-x86_64@4.1.6: {}
+  jinge-compiler-core-windows-x86_64@4.1.7: {}
 
   joycon@3.1.1: {}
 
