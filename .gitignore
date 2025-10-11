@@ -11,3 +11,4 @@ index.debug.node
 .idea
 .vscode
 !.vscode/settings.json
+!.vscode/extensitions.json

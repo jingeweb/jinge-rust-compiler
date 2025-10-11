@@ -62,7 +62,9 @@ function getAliasConfig(importAlias?: 'source' | 'dev') {
     },
   };
 }
-export function jingeVitePlugin(options?: JingeVitePluginOptions): PluginOption {
+export function jingeVitePlugin(
+  options?: JingeVitePluginOptions,
+): PluginOption {
   let hmrEnabled = false;
   let intlOpts: { dropDefaultText?: boolean } | null = null;
   let sourcemapEnabled = true;
@@ -94,11 +96,12 @@ export function jingeVitePlugin(options?: JingeVitePluginOptions): PluginOption 
       enforce: 'pre',
       configResolved(config) {
         if (config.build?.sourcemap) sourcemapEnabled = true;
-        options?.intl &&
-          (intlOpts = {
+        if (options?.intl) {
+          intlOpts = {
             dropDefaultText: true,
             ...(typeof options?.intl === 'object' ? options.intl : null),
-          });
+          };
+        }
       },
       config() {
         return getAliasConfig(options?.importAlias);
@@ -119,11 +122,12 @@ export function jingeVitePlugin(options?: JingeVitePluginOptions): PluginOption 
       apply: 'serve',
       configResolved(config) {
         if (config.server.hmr !== false) hmrEnabled = true;
-        options?.intl &&
-          (intlOpts = {
+        if (options?.intl) {
+          intlOpts = {
             dropDefaultText: false,
             ...(typeof options?.intl === 'object' ? options.intl : null),
-          });
+          };
+        }
         base = config.base ?? '';
         if (base === '/') base = '';
         else if (base.endsWith('/')) base = base.slice(0, base.length - 1);
@@ -151,10 +155,17 @@ export function jingeVitePlugin(options?: JingeVitePluginOptions): PluginOption 
         const injectCode2: string[] = [];
         parsedComponents.forEach((pc) => {
           const hmrId = JSON.stringify(`${id}::${pc}`);
-          injectCode.push(`window.__JINGE_HMR__?.registerFunctionComponent(${pc}, ${hmrId})`);
-          injectCode2.push(`  window.__JINGE_HMR__?.replaceComponentInstance(${pc});`);
+          injectCode.push(
+            `window.__JINGE_HMR__?.registerFunctionComponent(${pc}, ${hmrId})`,
+          );
+          injectCode2.push(
+            `  window.__JINGE_HMR__?.replaceComponentInstance(${pc});`,
+          );
         });
-        result.code += HMR_INJECT_CODE(injectCode.join('\n'), injectCode2.join('\n'));
+        result.code += HMR_INJECT_CODE(
+          injectCode.join('\n'),
+          injectCode2.join('\n'),
+        );
         return result;
       },
     },

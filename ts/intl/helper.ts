@@ -1,9 +1,9 @@
+import { type Options, parse } from 'csv-parse/sync';
+
 import { createHash } from 'node:crypto';
-import path from 'node:path';
 import { promises as fs } from 'node:fs';
+import path from 'node:path';
 import ts from 'typescript';
-import type { Options } from 'csv-parse/sync';
-import { parse } from 'csv-parse/sync';
 
 /**
  * 计算文本的 hash。需要和 packages/swc-plugin/intl.rs 中使用算法一致，当前统一为 sha512().toBase64().slice(0,6)。
@@ -22,7 +22,7 @@ export function calcIntlTextKey(defaultMessage: string, filename?: string) {
 export async function loopReadDir(dir: string) {
   const files = await fs.readdir(dir);
   const result: string[] = [];
-  for await (const f of files) {
+  for (const f of files) {
     const p = path.join(dir, f);
     const st = await fs.stat(p);
     if (st.isDirectory()) {
@@ -42,7 +42,11 @@ export async function parseCsv(file: string, opts: Options = {}) {
   });
 }
 
-export async function writeCsv(head: string[], rows: Record<string, string>[], file: string) {
+export async function writeCsv(
+  head: string[],
+  rows: Record<string, string>[],
+  file: string,
+) {
   const lines = [
     head.join(','),
     ...rows.map((row) => {
@@ -170,7 +174,11 @@ export function extractKeyAndMessage(
       if (!ts.isPropertyAssignment(prop)) continue;
       if (!ts.isIdentifier(prop.name)) continue;
       const expr = prop.initializer;
-      if (ts.isJsxSelfClosingElement(expr) || ts.isJsxElement(expr) || ts.isJsxFragment(expr)) {
+      if (
+        ts.isJsxSelfClosingElement(expr) ||
+        ts.isJsxElement(expr) ||
+        ts.isJsxFragment(expr)
+      ) {
         richComps ??= new Map();
         richComps.set(prop.name.text, {
           type: 'jsx',
@@ -182,7 +190,10 @@ export function extractKeyAndMessage(
         const arg0 = expr.parameters.at(0);
         if (arg0 && ts.isIdentifier(arg0.name)) {
           type = 'fc_with_props';
-          code = code.replace(new RegExp(`\\b${arg0.name.text}\\b`, 'g'), 'props.children');
+          code = code.replace(
+            new RegExp(`\\b${arg0.name.text}\\b`, 'g'),
+            'props.children',
+          );
         }
         if (ts.isArrowFunction(expr)) {
           if (ts.isExpression(expr.body)) {
@@ -198,15 +209,23 @@ export function extractKeyAndMessage(
 
   const defaultText = node.arguments.at(0);
   if (!defaultText || !ts.isStringLiteral(defaultText)) {
-    const { line, character } = ts.getLineAndCharacterOfPosition(srcFile, node.expression.getEnd());
-    console.error(`t函数缺失默认语言文案。\n  --> ${filename}:${line + 1}:${character}`);
+    const { line, character } = ts.getLineAndCharacterOfPosition(
+      srcFile,
+      node.expression.getEnd(),
+    );
+    console.error(
+      `t函数缺失默认语言文案。\n  --> ${filename}:${line + 1}:${character}`,
+    );
     process.exit(-1);
   }
 
   if (mode === 'extract') {
     if (params) {
       if (!defaultText.text.includes('{')) {
-        const { line, character } = ts.getLineAndCharacterOfPosition(srcFile, params.pos);
+        const { line, character } = ts.getLineAndCharacterOfPosition(
+          srcFile,
+          params.pos,
+        );
         console.error(
           `t函数如果指定了数据参数，则默认文案中必须使用参数。\n  --> ${filename}:${line + 1}:${character}`,
         );

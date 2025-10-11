@@ -1,7 +1,6 @@
-import type { JingeCompiler } from './binding.js';
-import { loadBinding } from './binding.js';
+import { type JingeCompiler, loadBinding } from './binding';
 
-export * from './vite-plugin.js';
+export * from './vite-plugin';
 
 export interface JingeCompilerOptions {
   /**

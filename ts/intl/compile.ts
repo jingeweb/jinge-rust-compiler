@@ -1,7 +1,8 @@
+import { type ExtractMessage, extractKeyAndMessage, parseCsv } from './helper';
 import { promises as fs, readFileSync } from 'node:fs';
+
 import path from 'node:path';
 import ts from 'typescript';
-import { type ExtractMessage, extractKeyAndMessage, parseCsv } from './helper';
 const CWD = process.cwd();
 
 const sourceCache = new Map<string, Map<string, ExtractMessage>>();
@@ -33,9 +34,15 @@ async function compileText(
   text: string,
   flag: { needImportJNode: boolean; richComponents: string[] },
 ) {
-  const srcFile = ts.createSourceFile(`${key}.tsx`, `<>${text}</>`, ts.ScriptTarget.Latest);
+  const srcFile = ts.createSourceFile(
+    `${key}.tsx`,
+    `<>${text}</>`,
+    ts.ScriptTarget.Latest,
+  );
   function err(e?: unknown): never {
-    throw new Error(`parse failed for ${lang}: ${key} -> ${text}, ${e ?? 'unexpected grammar.'}`);
+    throw new Error(
+      `parse failed for ${lang}: ${key} -> ${text}, ${e ? (e as { toString: () => string }).toString() : 'unexpected grammar.'}`,
+    );
   }
 
   const stmt = srcFile.statements[0];
@@ -64,10 +71,12 @@ async function compileText(
 
     const srcFile = extractSource(file);
     const keyMsg = srcFile.get(key);
-    if (!keyMsg) err(`message not found in source file, ${key}: ${text}, ${file}`);
+    if (!keyMsg)
+      err(`message not found in source file, ${key}: ${text}, ${file}`);
     // console.log(keyMsg);
     const comp = keyMsg.richComps?.get(tag);
-    if (!comp) err(`rich component not found: ${key}: ${text}, ${file}, ${tag}`);
+    if (!comp)
+      err(`rich component not found: ${key}: ${text}, ${file}, ${tag}`);
     const compName = `T_${key}_${tag}`;
     if (comp.type === 'fc_with_props') {
       flag.needImportJNode = true;
@@ -116,8 +125,7 @@ async function compileText(
     return `(props: Record<string, unknown>) => \`${stack.join('')}\``;
   } else {
     flag.richComponents.push(...tags.values());
-    flag.richComponents
-      .push(`function T_${key}(${vars.size ? 'props: Record<string, JNode>' : ''}) {
+    flag.richComponents.push(`function T_${key}(${vars.size ? 'props: Record<string, JNode>' : ''}) {
   return <>${stack.join('')}</>;
 }`);
     return `T_${key}`;
@@ -130,12 +138,17 @@ export async function intlCompile({
   outputDir: string;
   translateCsvFile: string;
 }) {
-  const trans = (await parseCsv(translateCsvFile)) as Record<string, string>[];
+  const trans = (await parseCsv(translateCsvFile)) as unknown as Record<
+    string,
+    string
+  >[];
   if (!trans.length) {
     console.warn('Nothing to compile.');
     return;
   }
-  const languages = Object.keys(trans[0]).filter((v) => v !== 'id' && v !== 'orig' && v !== 'file');
+  const languages = Object.keys(trans[0]).filter(
+    (v) => v !== 'id' && v !== 'orig' && v !== 'file',
+  );
   console.info('Will compile languages:', languages, '...');
 
   const outputs = Object.fromEntries(
@@ -152,7 +165,7 @@ export async function intlCompile({
   await Promise.all(
     languages.map(async (lang) => {
       const loc = outputs[lang];
-      for await (const row of trans) {
+      for (const row of trans) {
         const v = row[lang];
         if (!v) continue;
         const result = await compileText(lang, row.file, row.id, v, loc);
@@ -161,7 +174,7 @@ export async function intlCompile({
     }),
   );
 
-  for await (const lang of languages) {
+  for (const lang of languages) {
     const loc = outputs[lang];
     const cnt = `${loc.needImportJNode ? 'import type { JNode } from "jinge";\n' : ''}${loc.richComponents.length ? `${loc.richComponents.join('\n')}\n` : ''}export default {\n${loc.rows.join(',\n')}\n}`;
 

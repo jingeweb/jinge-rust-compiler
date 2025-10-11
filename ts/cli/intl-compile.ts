@@ -1,5 +1,6 @@
-import { intlCompile } from '../intl/compile';
 import { loopMkdir, parseCompileArgvs } from '../intl/helper';
+
+import { intlCompile } from '../intl/compile';
 
 (async function () {
   const argv = parseCompileArgvs();

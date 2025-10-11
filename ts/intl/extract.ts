@@ -1,7 +1,13 @@
+import {
+  extractKeyAndMessage,
+  loopReadDir,
+  parseCsv,
+  writeCsv,
+} from './helper';
+
 import { promises as fs } from 'node:fs';
-import ts from 'typescript';
-import { extractKeyAndMessage, loopReadDir, parseCsv, writeCsv } from './helper';
 import path from 'node:path';
+import ts from 'typescript';
 
 type Dict = Record<
   string,
@@ -13,7 +19,15 @@ type Dict = Record<
 
 const CWD = process.cwd();
 
-async function parseFile({ file, filename, dict }: { file: string; filename: string; dict: Dict }) {
+async function parseFile({
+  file,
+  filename,
+  dict,
+}: {
+  file: string;
+  filename: string;
+  dict: Dict;
+}) {
   const srcFile = ts.createSourceFile(
     file,
     await fs.readFile(file, 'utf-8'),
@@ -52,7 +66,7 @@ export async function intlExtract({
   console.info('Start Extract...\n');
   const dict: Dict = {};
   const cwd = process.cwd();
-  for await (const srcDir of srcDirs) {
+  for (const srcDir of srcDirs) {
     try {
       const st = await fs.stat(srcDir);
       if (!st.isDirectory()) {
@@ -68,7 +82,7 @@ export async function intlExtract({
       }
     }
     const files = await loopReadDir(srcDir);
-    for await (const file of files) {
+    for (const file of files) {
       const filename = path.relative(cwd, file);
       if (
         await parseFile({
@@ -82,13 +96,20 @@ export async function intlExtract({
     }
   }
 
-  const trans = (await parseCsv(translateFilePath)) as Record<string, string>[];
+  const trans = (await parseCsv(translateFilePath)) as unknown as Record<
+    string,
+    string
+  >[];
   const transDict = Object.fromEntries(trans.map((t) => [t.id, t]));
   const rows: Record<string, string>[] = [];
 
   Object.entries(dict).forEach(([id, v]) => {
     const fp = path.relative(CWD, v.file);
-    const row: Record<string, string> = { id, file: fp, orig: v.defaultMessage };
+    const row: Record<string, string> = {
+      id,
+      file: fp,
+      orig: v.defaultMessage,
+    };
     const transRow = transDict[id];
     if (transRow) {
       languages.forEach((l) => {

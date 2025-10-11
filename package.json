@@ -23,15 +23,15 @@
     "dev": "concurrently \"pnpm build-ts --watch\" \"pnpm watch-cargo\"",
     "build": "pnpm lint && pnpm build-ts --silent && echo 'Build ts done. Use github actions to build and release rust core!!'",
     "patch-version": "tsx scripts/version.ts",
-    "lint-fix": "eslint '**/*.{js,mjs,ts}' --fix && prettier --log-level=warn --write . !*.yaml",
-    "lint": "tsc --noEmit && eslint '**/*.{js,mjs,ts}' && prettier --check . !*.yaml",
+    "lint-fix": "oxlint --type-aware --fix && biome format --fix",
+    "lint": "tsc --noEmit && oxlint --type-aware && biome format",
     "lint-staged": "lint-staged",
     "prepare": "husky"
   },
   "lint-staged": {
     "*.{js,ts}": [
-      "eslint --fix",
-      "prettier --write"
+      "oxlint --type-aware --fix",
+      "biome format --fix"
     ]
   },
   "files": [
@@ -43,28 +43,25 @@
     "types"
   ],
   "devDependencies": {
-    "@eslint/js": "^9.24.0",
-    "@types/node": "^22.14.0",
-    "concurrently": "^9.1.2",
-    "eslint": "^9.24.0",
-    "eslint-config-prettier": "^10.1.1",
-    "eslint-plugin-import-x": "^4.10.2",
+    "@biomejs/biome": "^2.2.5",
+    "@types/node": "^24.7.1",
+    "concurrently": "^9.2.1",
     "husky": "^9.1.7",
-    "lint-staged": "^15.5.0",
-    "nodemon": "^3.1.9",
-    "prettier": "^3.5.3",
-    "tsup": "^8.4.0",
-    "tsx": "^4.19.3",
-    "typescript-eslint": "^8.29.1",
-    "vite": "^6.2.5"
+    "lint-staged": "^16.2.4",
+    "nodemon": "^3.1.10",
+    "oxlint": "^1.22.0",
+    "oxlint-tsgolint": "^0.2.0",
+    "tsup": "^8.5.0",
+    "tsx": "^4.20.6",
+    "vite": "^7.1.9"
   },
   "dependencies": {
-    "csv-parse": "^5.6.0",
+    "csv-parse": "^6.1.0",
     "jinge-compiler-core-linux-aarch64": "4.1.7",
     "jinge-compiler-core-linux-x86_64": "4.1.7",
     "jinge-compiler-core-macos-aarch64": "4.1.7",
     "jinge-compiler-core-macos-x86_64": "4.1.7",
     "jinge-compiler-core-windows-x86_64": "4.1.7",
-    "typescript": "^5.8.3"
+    "typescript": "^5.9.3"
   }
 }
