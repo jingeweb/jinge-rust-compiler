@@ -77,6 +77,7 @@ export function jingeVitePlugin(
     // build 模式下，如果没有开启国际化，则不需要解析 .ts 文件，会有 esbuild 兜底。
     // serve 模式下为了加速，在 config 中禁用了 esbuild（通常情况下没必要 swc parse 之后 esbuild 再 parse 一次），因此也需要解析 .ts 文件。
     if (build && !intlOpts && type === 1) return;
+
     const binding = loadBinding(options?.loadDebugNativeBinding);
     const result = binding.transform(
       id,

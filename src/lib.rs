@@ -11,6 +11,7 @@ use common::IntlType;
 use neon::prelude::*;
 
 use swc_common::input::SourceFileInput;
+use swc_common::source_map::DefaultSourceMapGenConfig;
 use swc_common::{
   FileName, GLOBALS, Globals, Mark, SourceMap,
   errors::{ColorConfig, HANDLER, Handler},
@@ -56,7 +57,7 @@ fn print(
     String::from_utf8(buf).expect("codegen generated non-utf8 output")
   };
   let map = if sourcemap_enabled {
-    let map = cm.build_source_map(&src_map_buf);
+    let map = cm.build_source_map(&src_map_buf, None, DefaultSourceMapGenConfig);
     let mut buf = Vec::new();
 
     map

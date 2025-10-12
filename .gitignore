@@ -9,6 +9,3 @@ index.node
 index.debug.node
 /bindings
 .idea
-.vscode
-!.vscode/settings.json
-!.vscode/extensitions.json
