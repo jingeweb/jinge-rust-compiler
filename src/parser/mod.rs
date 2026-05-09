@@ -210,7 +210,7 @@ impl TemplateParser {
     }
   }
   fn parse_mem(&mut self, parent_expr: &Expr, expr: &MemberExpr) {
-    if !self.parse_slot_mem_expr(expr, None) {
+    if !self.parse_slot_mem_expr(expr) {
       self.parse_expr(parent_expr);
     }
   }
@@ -417,7 +417,7 @@ impl Visit for TemplateParser {
     let host_ident = self.create_host_ident();
 
     self.push_expression(tpl_render_const_text(
-      ast_create_expr_lit_str(text),
+      ast_create_expr_lit_str(text.into()),
       self.context.is_parent_component(),
       host_ident,
     ))

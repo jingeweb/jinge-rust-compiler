@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use swc_common::Spanned;
 use swc_core::{atoms::Atom, ecma::ast::*};
 
@@ -57,16 +59,14 @@ impl MapKeyFindVisitor {
         );
         return (0, MapKey::None);
       }
-      if let Some(JSXAttrValue::Lit(expr)) = &attr.value {
-        match expr {
-          Lit::Str(s) => {
-            return (index, MapKey::Prop(s.value.to_string()));
-          }
-          _ => {
-            emit_error(attr.span(), BAD_KEY_WARNING);
-            return (0, MapKey::None);
-          }
-        }
+      if let Some(JSXAttrValue::Str(expr)) = &attr.value {
+        return (
+          index,
+          MapKey::Prop(match expr.value.to_string_lossy() {
+            Cow::Borrowed(v) => v.to_string(),
+            Cow::Owned(v) => v,
+          }),
+        );
       }
       let Some(JSXAttrValue::JSXExprContainer(expr)) = &attr.value else {
         emit_error(attr.span(), BAD_KEY_WARNING);
@@ -92,8 +92,12 @@ impl MapKeyFindVisitor {
               }
               MemberProp::Computed(e) => match e.expr.as_ref() {
                 Expr::Lit(Lit::Str(v)) => {
+                  let Some(p) = v.value.as_str() else {
+                    emit_warn(e.span(), BAD_KEY_WARNING);
+                    return (0, MapKey::None);
+                  };
                   let mut x = "['".to_string();
-                  x.push_str(&v.value.replace('\'', "\\'"));
+                  x.push_str(&p.replace('\'', "\\'"));
                   x.push_str("']");
                   if !path.is_empty() {
                     if !path.starts_with('[') {
@@ -155,7 +159,13 @@ impl MapKeyFindVisitor {
             (index, MapKey::Expr(Box::new(Expr::Ident(id.clone()))))
           }
         }
-        Expr::Lit(Lit::Str(k)) => (index, MapKey::Prop(k.value.to_string())),
+        Expr::Lit(Lit::Str(k)) => {
+          let Some(p) = k.value.as_str() else {
+            emit_warn(expr.span(), BAD_KEY_WARNING);
+            return (0, MapKey::None);
+          };
+          (index, MapKey::Prop(p.to_string()))
+        }
         _ => {
           emit_warn(expr.span(), BAD_KEY_WARNING);
           (0, MapKey::None)

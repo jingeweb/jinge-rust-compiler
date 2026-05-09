@@ -30,7 +30,7 @@ fn get_default_slot_name(props_arg: &Atom) -> MemberExpr {
     obj: ast_create_expr_ident(props_arg.clone().into()),
     prop: MemberProp::Computed(ComputedPropName {
       span: DUMMY_SP,
-      expr: ast_create_expr_lit_str(JINGE_SLOT_DEFAULT.clone()),
+      expr: ast_create_expr_lit_str(JINGE_SLOT_DEFAULT.clone().into()),
     }),
   }
 }
@@ -45,6 +45,8 @@ fn get_slot_name_type_from_member_epxr(
   expr: &MemberExpr,
   props_arg: &Option<Atom>,
 ) -> SlotNameType {
+  println!("detect2 {:#?}", expr.prop);
+
   match &expr.prop {
     MemberProp::Ident(id) => {
       let Some(props_arg) = props_arg else {
@@ -59,7 +61,8 @@ fn get_slot_name_type_from_member_epxr(
     MemberProp::Computed(e) => match e.expr.as_ref() {
       Expr::Lit(id) => match id {
         Lit::Str(id) => {
-          if JINGE_CHILDREN.eq(&id.value) {
+          println!("detect2 {:#?}", id);
+          if id.value.as_atom().map_or(false, |v| JINGE_CHILDREN.eq(v)) {
             if let Some(props_arg) = props_arg {
               if matches!(expr.obj.as_ref(), Expr::Ident(id) if id.sym.eq(props_arg)) {
                 return SlotNameType::Default;
@@ -319,6 +322,7 @@ fn get_bin_expr_slot_name<'a>(
   expr: &'a Expr,
   props_arg: &Option<Atom>,
 ) -> Option<(Box<Expr>, Option<&'a Vec<ExprOrSpread>>)> {
+  println!("detect {:#?}", expr);
   match expr {
     Expr::Member(mem) => {
       get_slot_name_from_member_expr(mem, props_arg).map(|slot_name| (slot_name, None))
@@ -474,10 +478,10 @@ impl TemplateParser {
   pub fn parse_slot_mem_expr(
     &mut self,
     expr: &MemberExpr,
-    slot_args: Option<&Vec<ExprOrSpread>>,
+    // slot_args: Option<&Vec<ExprOrSpread>>,
   ) -> bool {
-    if let Some(slot_name) = get_slot_name_from_member_expr(expr, &self.props_arg) {
-      self.transform_slot(slot_name, slot_args);
+    if let Some(slot_name) = get_slot_name_from_member_expr(expr, &None) {
+      self.transform_slot(slot_name, None);
       true
     } else {
       false

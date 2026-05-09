@@ -1,4 +1,6 @@
-use crate::common::{JINGE_KEY, JINGE_ON, JINGE_SLOT, emit_error};
+use crate::common::{
+  JINGE_DBL_CLICK, JINGE_DOUBLE_CLICK, JINGE_KEY, JINGE_ON, JINGE_SLOT, emit_error,
+};
 use crate::parser::TemplateParser;
 use crate::visitor::TemplateTransformVisitor;
 use swc_core::atoms::Atom;
@@ -51,11 +53,20 @@ pub struct AttrStore {
 
 #[inline]
 fn get_html_event_name(an: &IdentName) -> (IdentName, bool) {
-  if an.sym.ends_with("Capture") {
-    (IdentName::from(&an.sym[..&an.sym.len() - 7]), true)
+  let capture = an.sym.ends_with("Capture");
+  let sym = if capture {
+    &(an.sym.as_str()[..&an.sym.len() - 7]).into()
   } else {
-    (an.clone(), false)
-  }
+    &an.sym
+  };
+  (
+    if JINGE_DOUBLE_CLICK.eq(sym) {
+      JINGE_DBL_CLICK.clone().into()
+    } else {
+      sym.to_ascii_lowercase().into()
+    },
+    capture,
+  )
 }
 
 impl TemplateParser {
@@ -81,8 +92,8 @@ impl TemplateParser {
       return;
     };
 
-    let expr = match val {
-      JSXAttrValue::Lit(Lit::Str(v)) => Box::new(Expr::Lit(Lit::Str(v.clone()))),
+    let expr: Box<Expr> = match val {
+      JSXAttrValue::Str(v) => Box::new(Expr::Lit(Lit::Str(v.clone()))),
       JSXAttrValue::JSXExprContainer(expr) => match &expr.expr {
         JSXExpr::Expr(expr) => expr.clone(),
         JSXExpr::JSXEmptyExpr(_) => {
@@ -125,10 +136,10 @@ impl TemplateParser {
     };
 
     match val {
-      JSXAttrValue::Lit(val) => {
+      JSXAttrValue::Str(val) => {
         attrs
           .const_props
-          .push((attr_name, Box::new(Expr::Lit(val.clone()))));
+          .push((attr_name, Box::new(Expr::Lit(Lit::Str(val.clone())))));
       }
       JSXAttrValue::JSXExprContainer(val) => match &val.expr {
         JSXExpr::JSXEmptyExpr(_) => (),
@@ -186,9 +197,9 @@ impl TemplateParser {
   }
   fn parse_slot_attr(&mut self, attrs: &mut AttrStore, an: &IdentName, av: &JSXAttrValue) {
     match av {
-      JSXAttrValue::Lit(val) => {
+      JSXAttrValue::Str(val) => {
         self.meet_slot(attrs, an);
-        self.visit_lit(val);
+        self.visit_lit(&Lit::Str(val.clone()));
       }
       JSXAttrValue::JSXExprContainer(val) => match &val.expr {
         JSXExpr::JSXEmptyExpr(_) => (),

@@ -5,7 +5,7 @@
     "skipLibCheck": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
-    "target": "ES2022",
+    "target": "es2025",
     "strict": true,
     "noImplicitAny": true,
     "noImplicitReturns": true,

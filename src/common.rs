@@ -102,6 +102,8 @@ lazy_static::lazy_static! {
   pub static ref JINGE_LOOP: Atom = "loop".into();
   pub static ref JINGE_KEY: Atom = "key".into();
   pub static ref JINGE_EMPTY_STR: Atom = "".into();
+  pub static ref JINGE_DOUBLE_CLICK: Atom = "doubleClick".into();
+  pub static ref JINGE_DBL_CLICK: Atom = "dblclick".into();
 
   pub static ref IDL_ATTRIBUTE_SET: Vec<Atom> = {
     let mut attrs = vec!["disabled", "readOnly", "value", "autoFocus", "autoComplete", "autoPlay", "controls", "required", "checked", "selected", "multiple", "muted", "draggable"];

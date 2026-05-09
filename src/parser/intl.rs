@@ -1,7 +1,7 @@
 use base64ct::{Base64, Encoding};
 use sha2::{Digest, Sha512};
 use swc_common::{DUMMY_SP, Spanned, SyntaxContext};
-use swc_core::{atoms::Atom, ecma::ast::*};
+use swc_core::{atoms::Wtf8Atom, ecma::ast::*};
 
 use super::{
   IntlType, JINGE_ATTR_IDENT, JINGE_IMPORT_VM, JINGE_KEY, JINGE_T, JINGE_V_IDENT, TemplateParser,
@@ -36,22 +36,21 @@ struct IntlParams {
 
 pub fn extract_t<'a>(
   args: &'a Vec<ExprOrSpread>,
-) -> Option<(Atom, &'a Atom, Option<&'a ObjectLit>)> {
+) -> Option<(Wtf8Atom, &'a Wtf8Atom, Option<&'a ObjectLit>)> {
   let Some(default_text) = args.get(0) else {
     return None;
   };
   if default_text.spread.is_some() {
     return None;
   }
+  let default_text_span = default_text.span();
   let Expr::Lit(Lit::Str(default_text)) = default_text.expr.as_ref() else {
     emit_error(
-      default_text.span(),
+      default_text_span,
       "t 函数的第一个参数必须是字符串常量，代表默认文本",
     );
     return None;
   };
-
-  let default_text = &default_text.value;
 
   let mut key = None;
   // let mut isolate = false;
@@ -91,10 +90,14 @@ pub fn extract_t<'a>(
   });
 
   if key.is_none() {
-    key = Some(calc_intl_key(default_text.as_str(), None).into());
+    let Some(v) = default_text.value.as_str() else {
+      emit_error(default_text_span, "t 函数的默认文本解析异常");
+      return None;
+    };
+    key = Some(calc_intl_key(v, None).into());
   }
 
-  Some((key.unwrap(), default_text, params_arg))
+  Some((key.unwrap(), &default_text.value, params_arg))
 }
 impl TemplateParser {
   /// 将国际化多语言的 t 函数转换为相应的组件或渲染。这里采用了极简单的粗糙方法，仅通过函数名为 t 来判定。

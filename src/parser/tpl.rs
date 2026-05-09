@@ -1,5 +1,5 @@
 use swc_core::{
-  atoms::Atom,
+  atoms::{Atom, Wtf8Atom},
   common::{DUMMY_SP, SyntaxContext},
   ecma::ast::*,
 };
@@ -90,9 +90,9 @@ pub fn tpl_render_const_text(
 
 pub fn tpl_render_intl_text(
   is_rich: bool,
-  key: Atom,
+  key: Wtf8Atom,
   params: Option<ExprOrSpread>,
-  default_text: Option<&Atom>,
+  default_text: Option<&Wtf8Atom>,
   is_parent_component: bool,
   host_ident: Ident,
 ) -> Box<Expr> {
@@ -128,9 +128,9 @@ pub fn tpl_render_intl_text(
 /// 生成不带富文本格式的 renderIntlText 渲染函数。
 /// 如果 params 参数不为空，则一定是全常量无需监听变更的 object。
 pub fn tpl_render_intl_normal_text(
-  key: Atom,
+  key: Wtf8Atom,
   params: Option<ExprOrSpread>,
-  default_text: Option<&Atom>,
+  default_text: Option<&Wtf8Atom>,
   is_parent_component: bool,
   host_ident: Ident,
 ) -> Box<Expr> {
@@ -164,7 +164,7 @@ pub fn tpl_render_expr_text(
       ast_create_expr_call(
         ast_create_expr_ident(Ident::from(JINGE_IMPORT_CREATE_TEXT_NODE.local())),
         vec![ast_create_arg_expr(ast_create_expr_lit_str(
-          JINGE_EMPTY_STR.clone(),
+          JINGE_EMPTY_STR.clone().into(),
         ))],
       ),
     ),
@@ -280,7 +280,7 @@ pub fn tpl_watch_and_bind_html_event(
       let args = vec![
         ast_create_arg_expr(watch_expr),
         ast_create_arg_expr(ast_create_expr_ident(JINGE_EL_IDENT.clone())),
-        ast_create_arg_expr(ast_create_expr_lit_str(event_name.sym)),
+        ast_create_arg_expr(ast_create_expr_lit_str(event_name.sym.into())),
         ast_create_arg_expr(ast_create_expr_lit_bool(capture)),
         // 复杂表达式，会有 PathWatcher/ExprWatcher 等的封装，统一加到 [HOST_WATCH] 中，在 host component 销毁时卸载。
         ast_create_arg_expr(ast_create_expr_ident(host_ident.clone())),
@@ -295,7 +295,7 @@ pub fn tpl_watch_and_bind_html_event(
         ast_create_arg_expr(sr.vm),
         ast_create_arg_expr(sr.path),
         ast_create_arg_expr(ast_create_expr_ident(JINGE_EL_IDENT.clone())),
-        ast_create_arg_expr(ast_create_expr_lit_str(event_name.sym)),
+        ast_create_arg_expr(ast_create_expr_lit_str(event_name.sym.into())),
         ast_create_arg_expr(ast_create_expr_lit_bool(capture)),
         ast_create_arg_expr(ast_create_expr_ident(host_ident.clone())),
       ];
@@ -323,7 +323,7 @@ pub fn tpl_watch_and_set_component_attr(
         AttrWatchPropName::Id(attr_name) => MemberProp::Ident(IdentName::from(attr_name)),
         AttrWatchPropName::Str(attr_name) => MemberProp::Computed(ComputedPropName {
           span: DUMMY_SP,
-          expr: ast_create_expr_lit_str(attr_name),
+          expr: ast_create_expr_lit_str(attr_name.into()),
         }),
       },
     })),

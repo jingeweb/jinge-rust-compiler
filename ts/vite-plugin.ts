@@ -1,4 +1,5 @@
 import type { PluginOption } from 'vite';
+
 import { loadBinding } from './binding.js';
 
 export interface JingeVitePluginOptions {
@@ -62,9 +63,7 @@ function getAliasConfig(importAlias?: 'source' | 'dev') {
     },
   };
 }
-export function jingeVitePlugin(
-  options?: JingeVitePluginOptions,
-): PluginOption {
+export function jingeVitePlugin(options?: JingeVitePluginOptions): PluginOption {
   let hmrEnabled = false;
   let intlOpts: { dropDefaultText?: boolean } | null = null;
   let sourcemapEnabled = true;
@@ -137,6 +136,7 @@ export function jingeVitePlugin(
         return {
           ...getAliasConfig(options?.importAlias ?? 'dev'), // serve 模式默认将 import 别名为 dev，即加载 `dist/jinge.dev.js` 而不是 `dist/jinge.prod.js`
           esbuild: false,
+          oxc: false,
         };
       },
       transformIndexHtml: () => [
@@ -156,17 +156,10 @@ export function jingeVitePlugin(
         const injectCode2: string[] = [];
         parsedComponents.forEach((pc) => {
           const hmrId = JSON.stringify(`${id}::${pc}`);
-          injectCode.push(
-            `window.__JINGE_HMR__?.registerFunctionComponent(${pc}, ${hmrId})`,
-          );
-          injectCode2.push(
-            `  window.__JINGE_HMR__?.replaceComponentInstance(${pc});`,
-          );
+          injectCode.push(`window.__JINGE_HMR__?.registerFunctionComponent(${pc}, ${hmrId})`);
+          injectCode2.push(`  window.__JINGE_HMR__?.replaceComponentInstance(${pc});`);
         });
-        result.code += HMR_INJECT_CODE(
-          injectCode.join('\n'),
-          injectCode2.join('\n'),
-        );
+        result.code += HMR_INJECT_CODE(injectCode.join('\n'), injectCode2.join('\n'));
         return result;
       },
     },

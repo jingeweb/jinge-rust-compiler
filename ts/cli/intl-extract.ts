@@ -1,8 +1,8 @@
-import { loopMkdir, parseExtractArgvs } from '../intl/helper';
-
 import { promises as fs } from 'node:fs';
-import { intlExtract } from '../intl/extract';
 import path from 'node:path';
+
+import { intlExtract } from '../intl/extract';
+import { loopMkdir, parseExtractArgvs } from '../intl/helper';
 
 (async function () {
   const argv = parseExtractArgvs();

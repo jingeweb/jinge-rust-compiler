@@ -1,38 +1,17 @@
 {
   "name": "jinge-compiler",
-  "version": "4.1.9",
+  "version": "4.1.10",
   "description": "compiler for jinge framework",
-  "author": "Yuhang Ge<abeyuhang@gmail.com>",
-  "license": "ISC",
-  "type": "module",
-  "main": "dist/index.js",
-  "types": "types/index.d.ts",
-  "bin": {
-    "intl-extract": "./dist/cli/intl-extract.js",
-    "intl-compile": "./dist/cli/intl-compile.js"
-  },
   "keywords": [
-    "jinge",
     "compiler",
+    "jinge",
     "swc"
   ],
-  "scripts": {
-    "build-ts": "rm -rf dist types && tsc -project tsconfig.types.json && tsup-node ts/index.ts ts/cli/intl-extract.ts ts/cli/intl-compile.ts  --sourcemap --format esm",
-    "build-cargo-debug": "cargo build && cp target/debug/libjinge_compiler.so index.node 2>/dev/null || : && cp target/debug/libjinge_compiler.dylib index.node 2>/dev/null || :",
-    "watch-cargo": "nodemon -e rs --watch src --exec 'pnpm build-cargo-debug'",
-    "dev": "concurrently \"pnpm build-ts --watch\" \"pnpm watch-cargo\"",
-    "build": "pnpm lint && pnpm build-ts --silent && echo 'Build ts done. Use github actions to build and release rust core!!'",
-    "patch-version": "tsx scripts/version.ts",
-    "lint-fix": "oxlint --type-aware --fix && biome format --fix",
-    "lint": "tsc --noEmit && oxlint --type-aware && biome format",
-    "lint-staged": "lint-staged",
-    "prepare": "husky"
-  },
-  "lint-staged": {
-    "*.{js,ts}": [
-      "oxlint --type-aware --fix",
-      "biome format --fix"
-    ]
+  "license": "ISC",
+  "author": "Yuhang Ge<abeyuhang@gmail.com>",
+  "bin": {
+    "intl-compile": "./dist/cli/intl-compile.js",
+    "intl-extract": "./dist/cli/intl-extract.js"
   },
   "files": [
     "package.json",
@@ -42,26 +21,50 @@
     "dist",
     "types"
   ],
-  "devDependencies": {
-    "@biomejs/biome": "^2.2.6",
-    "@types/node": "^24.9.1",
-    "concurrently": "^9.2.1",
-    "husky": "^9.1.7",
-    "lint-staged": "^16.2.5",
-    "nodemon": "^3.1.10",
-    "oxlint": "^1.23.0",
-    "oxlint-tsgolint": "^0.2.0",
-    "tsup": "^8.5.0",
-    "tsx": "^4.20.6",
-    "vite": "^7.1.11"
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "types/index.d.ts",
+  "scripts": {
+    "build": "pnpm lint && pnpm build-ts --silent && echo 'Build ts done. Use github actions to build and release rust core!!'",
+    "build-cargo-debug": "cargo build && cp target/debug/libjinge_compiler.so index.node 2>/dev/null || : && cp target/debug/libjinge_compiler.dylib index.node 2>/dev/null || :",
+    "build-ts": "rm -rf dist types && tsc -project tsconfig.types.json && tsup-node ts/index.ts ts/cli/intl-extract.ts ts/cli/intl-compile.ts  --sourcemap --format esm",
+    "dev": "concurrently \"pnpm build-ts --watch\" \"pnpm watch-cargo\"",
+    "lint": "tsgo --noEmit && oxlint --type-aware && oxfmt --check",
+    "lint-fix": "oxlint --type-aware --fix && oxfmt",
+    "lint-staged": "lint-staged",
+    "patch-version": "bun scripts/version.ts",
+    "prepare": "husky",
+    "watch-cargo": "nodemon -e rs --watch src --exec 'pnpm build-cargo-debug'"
   },
   "dependencies": {
-    "csv-parse": "^6.1.0",
+    "csv-parse": "^6.2.1",
     "jinge-compiler-core-linux-aarch64": "4.1.9",
     "jinge-compiler-core-linux-x86_64": "4.1.9",
     "jinge-compiler-core-macos-aarch64": "4.1.9",
     "jinge-compiler-core-macos-x86_64": "4.1.9",
     "jinge-compiler-core-windows-x86_64": "4.1.9",
-    "typescript": "^5.9.3"
+    "typescript": "^6.0.3"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.4.14",
+    "@types/bun": "^1.3.13",
+    "@types/node": "^25.6.2",
+    "@typescript/native-preview": "7.0.0-dev.20260507.1",
+    "bun": "^1.3.13",
+    "concurrently": "^9.2.1",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.0.2",
+    "nodemon": "^3.1.14",
+    "oxfmt": "^0.48.0",
+    "oxlint": "^1.63.0",
+    "oxlint-tsgolint": "^0.22.1",
+    "tsup": "^8.5.1",
+    "vite": "^8.0.11"
+  },
+  "lint-staged": {
+    "*.{js,ts}": [
+      "oxlint --type-aware --fix",
+      "oxfmt"
+    ]
   }
 }

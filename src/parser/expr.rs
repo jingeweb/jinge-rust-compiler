@@ -156,14 +156,13 @@ impl Visit for ExprVisitor {
     if self.no_watch {
       return;
     }
-
     node.visit_children_with(self);
   }
   fn visit_jsx_element(&mut self, node: &JSXElement) {
-    emit_error(node.span(), "表达式中不能有 JSX 元素");
+    emit_error(node.span(), "表达式中不能有 JSX Element 元素");
   }
   fn visit_jsx_fragment(&mut self, node: &JSXFragment) {
-    emit_error(node.span(), "表达式中不能有 JSX 元素");
+    emit_error(node.span(), "表达式中不能有 JSX Fragment 元素");
   }
   fn visit_member_expr(&mut self, node: &MemberExpr) {
     if self.no_watch {

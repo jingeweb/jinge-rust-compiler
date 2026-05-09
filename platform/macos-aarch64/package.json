@@ -2,6 +2,6 @@
   "name": "jinge-compiler-core-macos-aarch64",
   "version": "4.1.9",
   "description": "rust core for jinge-compiler on macos-aarch64",
-  "main": "index.node",
-  "author": "Yuhang Ge<abeyuhang@gmail.com>"
+  "author": "Yuhang Ge<abeyuhang@gmail.com>",
+  "main": "index.node"
 }

@@ -72,7 +72,7 @@ pub fn ast_create_expr_member(obj: Box<Expr>, prop: MemberProp) -> Box<Expr> {
   }))
 }
 #[inline]
-pub fn ast_create_expr_lit_str(v: Atom) -> Box<Expr> {
+pub fn ast_create_expr_lit_str(v: Wtf8Atom) -> Box<Expr> {
   Box::new(Expr::Lit(Lit::Str(Str::from(v))))
 }
 #[inline]

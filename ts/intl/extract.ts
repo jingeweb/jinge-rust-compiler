@@ -1,13 +1,8 @@
-import {
-  extractKeyAndMessage,
-  loopReadDir,
-  parseCsv,
-  writeCsv,
-} from './helper';
-
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import ts from 'typescript';
+
+import { extractKeyAndMessage, loopReadDir, parseCsv, writeCsv } from './helper';
 
 type Dict = Record<
   string,
@@ -19,15 +14,7 @@ type Dict = Record<
 
 const CWD = process.cwd();
 
-async function parseFile({
-  file,
-  filename,
-  dict,
-}: {
-  file: string;
-  filename: string;
-  dict: Dict;
-}) {
+async function parseFile({ file, filename, dict }: { file: string; filename: string; dict: Dict }) {
   const srcFile = ts.createSourceFile(
     file,
     await fs.readFile(file, 'utf-8'),
@@ -96,10 +83,7 @@ export async function intlExtract({
     }
   }
 
-  const trans = (await parseCsv(translateFilePath)) as unknown as Record<
-    string,
-    string
-  >[];
+  const trans = (await parseCsv(translateFilePath)) as unknown as Record<string, string>[];
   const transDict = Object.fromEntries(trans.map((t) => [t.id, t]));
   const rows: Record<string, string>[] = [];
 

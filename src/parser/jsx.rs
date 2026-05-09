@@ -72,7 +72,7 @@ impl TemplateParser {
       attrs.dom_const_events.into_iter().for_each(|evt| {
         let mut args = vec![
           ast_create_arg_expr(ast_create_expr_ident(JINGE_EL_IDENT.clone())),
-          ast_create_arg_expr(ast_create_expr_lit_str(evt.event_name.sym)),
+          ast_create_arg_expr(ast_create_expr_lit_str(evt.event_name.sym.into())),
           ast_create_arg_expr(evt.event_handler),
         ];
         if evt.capture {
