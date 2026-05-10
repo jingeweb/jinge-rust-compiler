@@ -3,7 +3,7 @@ use swc_core::{common::DUMMY_SP, ecma::ast::*};
 
 use crate::{
   common::{JINGE_IMPORT_IF, JINGE_SLOT, JINGE_UNDEFINED},
-  helper::has_jsx,
+  helper::should_render_as_jsx,
 };
 
 use super::TemplateParser;
@@ -91,10 +91,13 @@ impl TemplateParser {
   /// 需要注意的是，jinge 框架对于 null/undefined/false 值会输出 JSON.stringify 后的文本，即不会像 react 框架那样直接忽略；
   /// 但为了尽可能兼容 react 的二元条件表达式的写法，对于在条件表达式中的常量 null/undefined，会被渲染忽略，因为业务场景里这样书写一定是需要忽略。
   pub fn parse_cond_expr(&mut self, expr: &CondExpr) -> bool {
+    println!("xxx 1");
     if self.parse_cond_slot(expr) {
       return true;
     }
-    if !has_jsx(&expr.alt) && !has_jsx(&expr.cons) {
+    if !should_render_as_jsx(&expr.alt, &self.props_arg)
+      && !should_render_as_jsx(&expr.cons, &self.props_arg)
+    {
       // 如果条件表达式两边都不是 jsx 元素，则返回  false，进行后续的 parse_expr
       return false;
     }
@@ -148,7 +151,6 @@ impl TemplateParser {
     //   }
     //   return true; // important to return !!
     // }
-
     // 如果是 alt 和 cons 是非常量的表达式，比如 `this.submitting ? <p>Submitting</p> : <span>SUBMIT</span>`，
     // 转换为 `If` 组件：```<If expect={this.submitting}>{{true: <p>Submitting</p>, false: <span>SUBMIT</p> }}</If>```
     let if_component = gen_if_component(
@@ -173,7 +175,8 @@ impl TemplateParser {
     if self.parse_logic_and_slot(expr) {
       return true;
     }
-    if !has_jsx(&expr.right) {
+
+    if !should_render_as_jsx(&expr.right, &self.props_arg) {
       return false; // 返回 false，使用 parse_expr 处理。
     }
 
@@ -187,7 +190,7 @@ impl TemplateParser {
     if self.parse_logic_or_slot(expr) {
       return true;
     }
-    if !has_jsx(&expr.right) {
+    if !should_render_as_jsx(&expr.right, &self.props_arg) {
       return false; // 返回 false，使用 parse_expr 处理。
     }
 
@@ -201,7 +204,7 @@ impl TemplateParser {
     if self.parse_nullish_coalescing_slot(expr) {
       return true;
     }
-    if !has_jsx(&expr.right) {
+    if !should_render_as_jsx(&expr.right, &self.props_arg) {
       return false; // 返回 false，使用 parse_expr 处理。
     }
     let test = Box::new(Expr::Bin(BinExpr {

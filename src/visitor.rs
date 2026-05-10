@@ -7,6 +7,7 @@ use crate::ast::*;
 use crate::common::*;
 use crate::helper::*;
 use crate::parser;
+use crate::parser::slot::get_bin_expr_slot_name;
 use crate::parser::slot::get_slot_name_from_member_expr;
 
 pub struct TemplateTransformVisitor<'a> {
@@ -48,7 +49,16 @@ impl<'a> TemplateTransformVisitor<'a> {
         let Some(expr) = &mut stmt.arg else {
           continue;
         };
-        if is_slot || has_jsx(expr.as_ref()) {
+        let expr_ref = expr.as_ref();
+        let mut should_parse_jsx = is_slot;
+        if !should_parse_jsx {
+          let props_arg = params.get(0).and_then(|p| match p {
+            Pat::Ident(v) => Some(v.sym.clone()),
+            _ => None,
+          });
+          should_parse_jsx = should_render_as_jsx(expr_ref, &props_arg);
+        }
+        if should_parse_jsx {
           if !is_slot {
             // 如果是最外层的函数组件，当有传递第二个参数 [H] 时，需要在第一行添加 const root_host$jg$ = [H]。
             // 这样对于 props.children 转成取 SLOTS 时，从 root_host$jg$ 取才不会有问题。
@@ -80,8 +90,17 @@ impl<'a> TemplateTransformVisitor<'a> {
   fn v_arrow(&mut self, fn_name: Option<&Ident>, expr: &mut ArrowExpr, is_slot: bool) -> bool {
     match expr.body.as_mut() {
       BlockStmtOrExpr::Expr(e) => {
-        if is_slot || has_jsx(e.as_ref()) {
-          self.v_return(fn_name, e, &mut expr.params, is_slot)
+        let mut should_parse_jsx = is_slot;
+        let params = &mut expr.params;
+        if !should_parse_jsx {
+          let props_arg = params.get(0).and_then(|p| match p {
+            Pat::Ident(v) => Some(v.sym.clone()),
+            _ => None,
+          });
+          should_parse_jsx = should_render_as_jsx(e.as_ref(), &props_arg);
+        }
+        if should_parse_jsx {
+          self.v_return(fn_name, e, params, is_slot)
         } else {
           false
         }

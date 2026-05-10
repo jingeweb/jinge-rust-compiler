@@ -45,8 +45,6 @@ fn get_slot_name_type_from_member_epxr(
   expr: &MemberExpr,
   props_arg: &Option<Atom>,
 ) -> SlotNameType {
-  println!("detect2 {:#?}", expr.prop);
-
   match &expr.prop {
     MemberProp::Ident(id) => {
       let Some(props_arg) = props_arg else {
@@ -61,7 +59,6 @@ fn get_slot_name_type_from_member_epxr(
     MemberProp::Computed(e) => match e.expr.as_ref() {
       Expr::Lit(id) => match id {
         Lit::Str(id) => {
-          println!("detect2 {:#?}", id);
           if id.value.as_atom().map_or(false, |v| JINGE_CHILDREN.eq(v)) {
             if let Some(props_arg) = props_arg {
               if matches!(expr.obj.as_ref(), Expr::Ident(id) if id.sym.eq(props_arg)) {
@@ -118,8 +115,7 @@ pub fn get_slot_name_from_member_expr(
   }
 }
 
-#[inline]
-fn get_slot_name_from_optchain_expr<'a>(
+pub fn get_slot_name_from_optchain_expr<'a>(
   expr: &'a OptChainExpr,
   props_arg: &Option<Atom>,
 ) -> Option<(Box<Expr>, Option<&'a Vec<ExprOrSpread>>)> {
@@ -142,8 +138,7 @@ fn get_slot_name_from_optchain_expr<'a>(
   }
 }
 
-#[inline]
-fn get_slot_name_from_callee(callee: &Expr, props_arg: &Option<Atom>) -> Option<Box<Expr>> {
+pub fn get_slot_name_from_callee(callee: &Expr, props_arg: &Option<Atom>) -> Option<Box<Expr>> {
   match callee {
     Expr::Member(e) => get_slot_name_from_member_expr(e, props_arg),
     Expr::OptChain(oc) => {
@@ -318,11 +313,10 @@ fn parse_slot_arg(args: &Vec<ExprOrSpread>) -> SlotVm {
   vm
 }
 
-fn get_bin_expr_slot_name<'a>(
+pub fn get_bin_expr_slot_name<'a>(
   expr: &'a Expr,
   props_arg: &Option<Atom>,
 ) -> Option<(Box<Expr>, Option<&'a Vec<ExprOrSpread>>)> {
-  println!("detect {:#?}", expr);
   match expr {
     Expr::Member(mem) => {
       get_slot_name_from_member_expr(mem, props_arg).map(|slot_name| (slot_name, None))
