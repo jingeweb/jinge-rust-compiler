@@ -40,13 +40,6 @@
     "csv-parse": "^6.2.1",
     "typescript": "^6.0.3"
   },
-  "optionalDependencies": {
-    "jinge-compiler-core-linux-aarch64": "4.1.10",
-    "jinge-compiler-core-linux-x86_64": "4.1.10",
-    "jinge-compiler-core-macos-aarch64": "4.1.10",
-    "jinge-compiler-core-macos-x86_64": "4.1.10",
-    "jinge-compiler-core-windows-x86_64": "4.1.10"
-  },
   "devDependencies": {
     "@types/bun": "^1.3.13",
     "@types/node": "^25.6.2",
@@ -61,6 +54,13 @@
     "oxlint-tsgolint": "^0.22.1",
     "tsup": "^8.5.1",
     "vite": "^8.0.11"
+  },
+  "optionalDependencies": {
+    "jinge-compiler-darwin-arm64": "4.1.10",
+    "jinge-compiler-darwin-x64": "4.1.10",
+    "jinge-compiler-linux-arm64": "4.1.10",
+    "jinge-compiler-linux-x64": "4.1.10",
+    "jinge-compiler-win32-x64": "4.1.10"
   },
   "lint-staged": {
     "*.{js,ts}": [

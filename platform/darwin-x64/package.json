@@ -1,7 +1,7 @@
 {
-  "name": "jinge-compiler-core-darwin-x64",
+  "name": "jinge-compiler-darwin-x64",
   "version": "4.1.10",
-  "description": "rust core for jinge-compiler on macos-x86_64",
+  "description": "jinge-compiler on macos-x86_64",
   "author": "Yuhang Ge<abeyuhang@gmail.com>",
   "os": [
     "darwin"

@@ -11,21 +11,6 @@ importers:
       csv-parse:
         specifier: ^6.2.1
         version: 6.2.1
-      jinge-compiler-core-linux-aarch64:
-        specifier: 4.1.9
-        version: 4.1.9
-      jinge-compiler-core-linux-x86_64:
-        specifier: 4.1.9
-        version: 4.1.9
-      jinge-compiler-core-macos-aarch64:
-        specifier: 4.1.9
-        version: 4.1.9
-      jinge-compiler-core-macos-x86_64:
-        specifier: 4.1.9
-        version: 4.1.9
-      jinge-compiler-core-windows-x86_64:
-        specifier: 4.1.9
-        version: 4.1.9
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
@@ -986,8 +971,8 @@ packages:
   color-name@1.1.4:
     resolution: {integrity: sha512-dOy+3AuW3a2wNbZHIuMZpTcgjGuLU/uBL/ubcZF9OXbDo8ff4O8yVp5Bf0efS8uEoYo5q4Fx7dY9OgQGXgAsQA==}
 
-  commander@4.0.0:
-    resolution: {integrity: sha512-SEa2abMBTZuEjLVYpNrAFoRgxPwG4rXP3+SGY6CM/HZGeDzIA7Pzp+7H3AHDukKEpyy2SoSGGPShKqqfH9T9AQ==}
+  commander@4.1.1:
+    resolution: {integrity: sha512-NOKm8xhkzAjzFx8B2v5OAHT+u5pRQc2UCa2Vq9jYL/31o2wi9mxBA7LIFs3sV5VSC49z6pEhfbMULvShKj26WA==}
     engines: {node: '>= 6'}
 
   concurrently@9.2.1:
@@ -1112,21 +1097,6 @@ packages:
   is-number@7.0.0:
     resolution: {integrity: sha512-41Cifkg6e8TylSpdtTpeLVMqvSBEVzTttHvERD741+pnZ8ANv0004MRL43QKPDlK9cGvNp6NZWZUBlbGXYxxng==}
     engines: {node: '>=0.12.0'}
-
-  jinge-compiler-core-linux-aarch64@4.1.9:
-    resolution: {integrity: sha512-bZTrzPtQGSiWHM1z0RzpkHKfDPLH5jPShpjPZ7o19Mqq2KCrptAX0k7DH06PNNf/nnb6Fef+3XuM55DG6l7I+w==}
-
-  jinge-compiler-core-linux-x86_64@4.1.9:
-    resolution: {integrity: sha512-4XM9xXmPIhI95RlkG5sz7cSbgT4MKH7zYpHnEdl1dFsGsYFOqoFAIpYHkmPNIMKb2H3C1EyY7nuelcGywNFhiQ==}
-
-  jinge-compiler-core-macos-aarch64@4.1.9:
-    resolution: {integrity: sha512-nw35IhFUH0lU77P2Aa9grMGTXN6b1Q8b1EuzSd1E3MmeRiJ2VjWu2y5VXGye6qfjplYaL6e5eXG/m40Kyx2A2g==}
-
-  jinge-compiler-core-macos-x86_64@4.1.9:
-    resolution: {integrity: sha512-ly7vcvmDwvjlvm26Y0bcx2VDiiRV8SlFt48OnH5z01rGZlYe3x35Y9Xrgh5XQ+eT+ex3JsySq70RoX+Xy3KqnA==}
-
-  jinge-compiler-core-windows-x86_64@4.1.9:
-    resolution: {integrity: sha512-f2u9M9bE3TnPMY0+AJLGDN/3mN8gqt6TgRpXXjBxRQJpqlcEu7ZoDuUd68/4z/yRDGpDz6fjoclXvCrzIESVcw==}
 
   joycon@3.1.1:
     resolution: {integrity: sha512-34wB/Y7MW7bzjKRjUKTa46I2Z7eV62Rkhva+KkopW7Qvv/OSWBqvkSY7vusOPrNuZcUG3tApvdVgNB8POj3SPw==}
@@ -1390,8 +1360,8 @@ packages:
     resolution: {integrity: sha512-a2B9Y0KlNXl9u/vsW6sTIu9vGEpfKu2wRV6l1H3XEas/0gUIzGzBoP/IouTcUQbm9JWZLH3COxyn03TYlFax6w==}
     engines: {node: '>=10'}
 
-  slice-ansi@7.1.0:
-    resolution: {integrity: sha512-bSiSngZ/jWeX93BqeIAbImyTbEihizcwNjFoRUIY/T1wWQsfsm2Vw1agPKylXvQTU7iASGdHhyqRlqQzfz+Htg==}
+  slice-ansi@7.1.2:
+    resolution: {integrity: sha512-iOBWFgUX7caIZiuutICxVgX1SdxwAVFFKwt1EvMYYec/NWO5meOJ6K5uQxhrYBdQJne4KxiqZc+KptFOWFSI9w==}
     engines: {node: '>=18'}
 
   slice-ansi@8.0.0:
@@ -1414,8 +1384,8 @@ packages:
     resolution: {integrity: sha512-wKyQRQpjJ0sIp62ErSZdGsjMJWsap5oRNihHhu6G7JVO/9jIB6UyevL+tXuOqrng8j/cxKTWyWUwvSTriiZz/g==}
     engines: {node: '>=8'}
 
-  string-width@7.0.0:
-    resolution: {integrity: sha512-GPQHj7row82Hjo9hKZieKcHIhaAIKOJvFSIZXuCU9OASVZrMNUaZuz++SPVrBjnLsnk4k+z9f2EIypgxf2vNFw==}
+  string-width@7.2.0:
+    resolution: {integrity: sha512-tsaTIkKW9b4N+AEj+SVA+WhJzV7/zMhcSu78mLKWSk7cXMOSHsBKFWUs0fWwq8QyK3MgJBQRX6Gbi4kYbdvGkQ==}
     engines: {node: '>=18'}
 
   string-width@8.2.1:
@@ -1571,8 +1541,8 @@ packages:
     resolution: {integrity: sha512-YVGIj2kamLSTxw6NsZjoBxfSwsn0ycdesmc4p+Q21c5zPuZ1pl+NfxVdxPtdHvmNVOQ6XSYG4AUtyt/Fi7D16Q==}
     engines: {node: '>=10'}
 
-  wrap-ansi@9.0.0:
-    resolution: {integrity: sha512-G8ura3S+3Z2G+mkgNRq8dqaFZAuxfsxpBB8OCTGRTCtp+l/v9nbFNmCUP1BZMts3G1142MsZfn6eeUKrr4PD1Q==}
+  wrap-ansi@9.0.2:
+    resolution: {integrity: sha512-42AtmgqjV+X1VpdOfyTGOYRi0/zsoLqtXQckTmqTeybT+BDIbM/Guxo7x3pE2vtpr1ok6xRqM9OpBe+Jyoqyww==}
     engines: {node: '>=18'}
 
   y18n@5.0.8:
@@ -2154,7 +2124,7 @@ snapshots:
 
   color-name@1.1.4: {}
 
-  commander@4.0.0: {}
+  commander@4.1.1: {}
 
   concurrently@9.2.1:
     dependencies:
@@ -2269,16 +2239,6 @@ snapshots:
 
   is-number@7.0.0: {}
 
-  jinge-compiler-core-linux-aarch64@4.1.9: {}
-
-  jinge-compiler-core-linux-x86_64@4.1.9: {}
-
-  jinge-compiler-core-macos-aarch64@4.1.9: {}
-
-  jinge-compiler-core-macos-x86_64@4.1.9: {}
-
-  jinge-compiler-core-windows-x86_64@4.1.9: {}
-
   joycon@3.1.1: {}
 
   lightningcss-android-arm64@1.32.0:
@@ -2357,9 +2317,9 @@ snapshots:
     dependencies:
       ansi-escapes: 7.3.0
       cli-cursor: 5.0.0
-      slice-ansi: 7.1.0
+      slice-ansi: 7.1.2
       strip-ansi: 7.2.0
-      wrap-ansi: 9.0.0
+      wrap-ansi: 9.0.2
 
   magic-string@0.30.21:
     dependencies:
@@ -2579,7 +2539,7 @@ snapshots:
     dependencies:
       semver: 7.8.0
 
-  slice-ansi@7.1.0:
+  slice-ansi@7.1.2:
     dependencies:
       ansi-styles: 6.2.3
       is-fullwidth-code-point: 5.1.0
@@ -2601,7 +2561,7 @@ snapshots:
       is-fullwidth-code-point: 3.0.0
       strip-ansi: 6.0.1
 
-  string-width@7.0.0:
+  string-width@7.2.0:
     dependencies:
       emoji-regex: 10.6.0
       get-east-asian-width: 1.6.0
@@ -2623,7 +2583,7 @@ snapshots:
   sucrase@3.35.1:
     dependencies:
       '@jridgewell/gen-mapping': 0.3.13
-      commander: 4.0.0
+      commander: 4.1.1
       lines-and-columns: 1.2.4
       mz: 2.7.0
       pirates: 4.0.7
@@ -2734,10 +2694,10 @@ snapshots:
       string-width: 4.2.3
       strip-ansi: 6.0.1
 
-  wrap-ansi@9.0.0:
+  wrap-ansi@9.0.2:
     dependencies:
       ansi-styles: 6.2.3
-      string-width: 7.0.0
+      string-width: 7.2.0
       strip-ansi: 7.2.0
 
   y18n@5.0.8: {}
