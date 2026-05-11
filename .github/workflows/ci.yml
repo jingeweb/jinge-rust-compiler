@@ -47,6 +47,7 @@ jobs:
           node-version: "24"
       - run: npm -v
       - run: npm install -g npm@latest
+      - run: npm install
       - run: npm ci
       - name: Build binary
         uses: houseabsolute/actions-rust-cross@v1
