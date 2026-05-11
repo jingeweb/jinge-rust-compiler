@@ -6,7 +6,7 @@
     "compiler",
     "jinge"
   ],
-  "homepage": "https://github.com/jingeweb/jinge#readme",
+  "homepage": "https://github.com/jingeweb/jinge-rust-compiler#readme",
   "bugs": {
     "url": "https://github.com/jingeweb/jinge-rust-compiler/issues"
   },
@@ -14,7 +14,7 @@
   "author": "Yuhang Ge <abeyuhang@gmail.com>",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/jingeweb/jinge.git"
+    "url": "git+https://github.com/jingeweb/jinge-rust-compiler.git"
   },
   "bin": {
     "intl-compile": "./dist/cli/intl-compile.js",

@@ -2,7 +2,15 @@
 
 > 使用 rust 编写的 [jinge](https://github.com/jingeweb/jinge) 框架的模板编译器
 
+## About
+
+`jinge` 框架，一个小巧的前端界面框架。这个仓库是该框架的模板的编译器，基于 `swc` 开发。
+
+关于该框架，详见：https://github.com/jingeweb/jinge。
+
 ## Develop
+
+`todo`
 
 ## Todo
 
