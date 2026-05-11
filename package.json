@@ -38,11 +38,11 @@
   },
   "dependencies": {
     "csv-parse": "^6.2.1",
-    "jinge-compiler-core-linux-aarch64": "4.1.9",
-    "jinge-compiler-core-linux-x86_64": "4.1.9",
-    "jinge-compiler-core-macos-aarch64": "4.1.9",
-    "jinge-compiler-core-macos-x86_64": "4.1.9",
-    "jinge-compiler-core-windows-x86_64": "4.1.9",
+    "jinge-compiler-core-linux-aarch64": "4.1.10",
+    "jinge-compiler-core-linux-x86_64": "4.1.10",
+    "jinge-compiler-core-macos-aarch64": "4.1.10",
+    "jinge-compiler-core-macos-x86_64": "4.1.10",
+    "jinge-compiler-core-windows-x86_64": "4.1.10",
     "typescript": "^6.0.3"
   },
   "devDependencies": {

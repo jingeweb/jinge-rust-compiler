@@ -107,6 +107,13 @@ impl TemplateParser {
     let current_context = std::mem::replace(&mut self.context, Context::new(parent));
     self.stack.push(current_context);
   }
+  pub(self) fn push_context_without_inc_deep(&mut self, parent: Parent) {
+    let current_context = std::mem::replace(&mut self.context, Context::new(parent));
+    self.stack.push(current_context);
+  }
+  pub(self) fn pop_context_without_dec_deep(&mut self) -> Context {
+    std::mem::replace(&mut self.context, self.stack.pop().unwrap())
+  }
   pub fn push_context_with_host_ident(&mut self, parent: Parent, host_ident: Option<Ident>) {
     self.push_context(parent);
     if let Some(host_ident) = host_ident {

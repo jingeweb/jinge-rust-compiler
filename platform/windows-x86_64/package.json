@@ -1,6 +1,6 @@
 {
   "name": "jinge-compiler-core-windows-x86_64",
-  "version": "4.1.9",
+  "version": "4.1.10",
   "description": "rust core for jinge-compiler on windows-x86_64",
   "author": "Yuhang Ge<abeyuhang@gmail.com>",
   "main": "index.node"

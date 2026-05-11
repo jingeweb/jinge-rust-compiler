@@ -499,9 +499,9 @@ impl TemplateParser {
   }
 
   fn parse_expr_to_render_fn(&mut self, expr: &Expr) -> Vec<ExprOrSpread> {
-    self.push_context(self.context.parent);
+    self.push_context_without_inc_deep(self.context.parent);
     self.visit_expr(expr);
-    let mut context = self.pop_context();
+    let mut context = self.pop_context_without_dec_deep();
     let Some(s) = context.slots.pop() else {
       return vec![];
     };
