@@ -1,14 +1,21 @@
 {
   "name": "jinge-compiler",
   "version": "4.1.10",
-  "description": "compiler for jinge framework",
+  "description": "Template compiler for jinge framework",
   "keywords": [
     "compiler",
-    "jinge",
-    "swc"
+    "jinge"
   ],
-  "license": "ISC",
-  "author": "Yuhang Ge<abeyuhang@gmail.com>",
+  "homepage": "https://github.com/jingeweb/jinge#readme",
+  "bugs": {
+    "url": "https://github.com/jingeweb/jinge-rust-compiler/issues"
+  },
+  "license": "AGPL-3.0",
+  "author": "Yuhang Ge <abeyuhang@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jingeweb/jinge.git"
+  },
   "bin": {
     "intl-compile": "./dist/cli/intl-compile.js",
     "intl-extract": "./dist/cli/intl-extract.js"

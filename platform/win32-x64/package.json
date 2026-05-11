@@ -2,7 +2,16 @@
   "name": "jinge-compiler-win32-x64",
   "version": "4.1.10",
   "description": "jinge-compiler on windows-x86_64",
-  "author": "Yuhang Ge<abeyuhang@gmail.com>",
+  "homepage": "https://github.com/jingeweb/jinge#readme",
+  "bugs": {
+    "url": "https://github.com/jingeweb/jinge-rust-compiler/issues"
+  },
+  "license": "AGPL-3.0",
+  "author": "Yuhang Ge <abeyuhang@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jingeweb/jinge.git"
+  },
   "os": [
     "win32"
   ],
