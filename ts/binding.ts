@@ -27,5 +27,5 @@ export function loadBinding(debug = false) {
   const require = createRequire(import.meta.url);
   if (debug) return require('../index.node') as JingeCompiler;
   // console.log('will load', getBinding());
-  return require(`jinge-compiler-core-${getBinding()}`) as JingeCompiler;
+  return require(`jinge-compiler-${getBinding()}`) as JingeCompiler;
 }
