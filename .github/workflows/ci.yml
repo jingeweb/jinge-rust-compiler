@@ -17,24 +17,24 @@ jobs:
       fail-fast: false
       matrix:
         platform:
-          - os_name: linux-aarch64
+          - os_name: linux-arm64
             os: ubuntu-latest
             target: aarch64-unknown-linux-gnu
             bin: libjinge_compiler.so
-          - os_name: linux-x86_64
+          - os_name: linux-x64
             os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             bin: libjinge_compiler.so
-          - os_name: windows-x86_64
+          - os_name: win32-x64
             os: windows-latest
             target: x86_64-pc-windows-msvc
             bin: jinge_compiler.dll
             node: x86_64-windows.node
-          - os_name: macos-x86_64
+          - os_name: darwin-x64
             os: macOS-latest
             target: x86_64-apple-darwin
             bin: libjinge_compiler.dylib
-          - os_name: macos-aarch64
+          - os_name: darwin-arm64
             os: macOS-latest
             target: aarch64-apple-darwin
             bin: libjinge_compiler.dylib

@@ -20,17 +20,8 @@ export interface JingeCompiler {
 
 function getBinding() {
   const platform = os.platform();
-
   const arch = os.arch();
-  if (platform === 'darwin') {
-    return arch === 'arm64' ? 'macos-aarch64' : 'macos-x86_64';
-  } else if (platform === 'win32') {
-    if (arch === 'x64') return 'windows-x86_64';
-  } else if (platform === 'linux') {
-    if (arch === 'x64') return 'linux-x86_64';
-    else if (arch === 'arm64') return 'linux-aarch64';
-  }
-  throw new Error(`unsupport platform ${platform}-${arch}`);
+  return `${platform}-${arch}`;
 }
 export function loadBinding(debug = false) {
   const require = createRequire(import.meta.url);
