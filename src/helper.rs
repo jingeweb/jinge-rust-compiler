@@ -1,16 +1,15 @@
 use swc_core::{
   atoms::Atom,
-  ecma::ast::{CallExpr, Callee, Expr, ExprOrSpread},
+  ecma::ast::{BlockStmt, BlockStmtOrExpr, CallExpr, Callee, Expr, ExprOrSpread, MemberProp, Stmt},
 };
 
 use crate::{
   ast::*,
-  common::{JINGE_T, JINGE_UNDEFINED},
+  common::{JINGE_MAP, JINGE_T, JINGE_UNDEFINED},
   parser::{
     intl::extract_t,
     slot::{
-      get_bin_expr_slot_name, get_slot_name_from_callee, get_slot_name_from_member_expr,
-      get_slot_name_from_optchain_expr,
+      get_slot_name_from_callee, get_slot_name_from_member_expr, get_slot_name_from_optchain_expr,
     },
   },
 };
@@ -36,7 +35,19 @@ use crate::{
 //   }
 // }
 
-#[inline]
+fn block_stmts_contains_jsx_return(bs: &BlockStmt, props_arg: &Option<Atom>) -> bool {
+  let Some(st) = bs.stmts.last() else {
+    return false;
+  };
+  let Stmt::Return(st) = st else {
+    return false;
+  };
+  let Some(expr) = &st.arg else {
+    return false;
+  };
+  should_render_as_jsx(&expr, props_arg)
+}
+
 /// 是否是需要 jsx 渲染的表达式。
 /// 比如 `<p>x</p>，<></>, {<p>p</p>}` 这一类的直接有 jsx 元素的，
 /// 或者 `props.children` 或 `props['slot:a']?.()` 等插槽渲染，
@@ -60,6 +71,26 @@ pub fn should_render_as_jsx(expr: &Expr, props_arg: &Option<Atom>) -> bool {
     Expr::Call(call) => match &call.callee {
       Callee::Expr(callee) => match callee.as_ref() {
         Expr::Ident(id) if JINGE_T.eq(&id.sym) => true,
+        Expr::Member(me) if matches!(&me.prop, MemberProp::Ident(id) if JINGE_MAP.eq(&id.sym)) => {
+          let Some(arg_expr) = call.args.first() else {
+            return false;
+          };
+          if arg_expr.spread.is_some() {
+            return false;
+          }
+          let arg_expr = arg_expr.expr.as_ref();
+          match arg_expr {
+            Expr::Arrow(e) => match e.body.as_ref() {
+              BlockStmtOrExpr::Expr(e) => should_render_as_jsx(e.as_ref(), props_arg),
+              BlockStmtOrExpr::BlockStmt(bs) => block_stmts_contains_jsx_return(bs, props_arg),
+            },
+            Expr::Fn(e) => match e.function.body.as_ref() {
+              Some(bs) => block_stmts_contains_jsx_return(bs, props_arg),
+              _ => false,
+            },
+            _ => false,
+          }
+        }
         _ => props_arg.is_some() && get_slot_name_from_callee(callee.as_ref(), props_arg).is_some(),
       },
       _ => false,

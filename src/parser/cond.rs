@@ -91,7 +91,6 @@ impl TemplateParser {
   /// 需要注意的是，jinge 框架对于 null/undefined/false 值会输出 JSON.stringify 后的文本，即不会像 react 框架那样直接忽略；
   /// 但为了尽可能兼容 react 的二元条件表达式的写法，对于在条件表达式中的常量 null/undefined，会被渲染忽略，因为业务场景里这样书写一定是需要忽略。
   pub fn parse_cond_expr(&mut self, expr: &CondExpr) -> bool {
-    println!("xxx 1");
     if self.parse_cond_slot(expr) {
       return true;
     }

@@ -7,7 +7,6 @@ use crate::ast::*;
 use crate::common::*;
 use crate::helper::*;
 use crate::parser;
-use crate::parser::slot::get_bin_expr_slot_name;
 use crate::parser::slot::get_slot_name_from_member_expr;
 
 pub struct TemplateTransformVisitor<'a> {
