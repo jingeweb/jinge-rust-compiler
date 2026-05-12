@@ -1,6 +1,6 @@
 {
   "name": "jinge-compiler-win32-x64",
-  "version": "4.1.10",
+  "version": "4.1.11",
   "description": "jinge-compiler on windows-x86_64",
   "homepage": "https://github.com/jingeweb/jinge-rust-compiler#readme",
   "bugs": {

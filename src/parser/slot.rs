@@ -474,7 +474,7 @@ impl TemplateParser {
     expr: &MemberExpr,
     // slot_args: Option<&Vec<ExprOrSpread>>,
   ) -> bool {
-    if let Some(slot_name) = get_slot_name_from_member_expr(expr, &None) {
+    if let Some(slot_name) = get_slot_name_from_member_expr(expr, &self.props_arg) {
       self.transform_slot(slot_name, None);
       true
     } else {

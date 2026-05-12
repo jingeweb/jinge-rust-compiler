@@ -19,7 +19,7 @@ await writeFile(
 );
 
 const platforms = (await readdir(PLATFORM_DIR)).filter(
-  (d) => d.startsWith('linux') || d.startsWith('macos') || d.startsWith('windows'),
+  (d) => d.startsWith('linux') || d.startsWith('darwin') || d.startsWith('win32'),
 );
 
 for (const platform of platforms) {
