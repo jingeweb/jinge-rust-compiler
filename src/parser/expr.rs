@@ -1,3 +1,5 @@
+use hashbrown::HashSet;
+use swc_common::SyntaxContext;
 use swc_core::{
   atoms::Atom,
   common::{DUMMY_SP, Spanned},
@@ -13,8 +15,10 @@ use crate::{
     ast_create_arg_expr, ast_create_expr_arrow_fn, ast_create_expr_call, ast_create_expr_ident,
   },
   common::{
-    JINGE_IMPORT_DYM_PATH_WATCHER, JINGE_IMPORT_EXPR_WATCHER, JINGE_IMPORT_PATH_WATCHER, emit_error,
+    IntlType, JINGE_IMPORT_DYM_PATH_WATCHER, JINGE_IMPORT_EXPR_WATCHER, JINGE_IMPORT_INTL_WATCHER,
+    JINGE_IMPORT_PATH_WATCHER, JINGE_T, emit_error,
   },
+  helper::parse_intl_call_args,
 };
 
 enum Root {
@@ -44,23 +48,25 @@ pub struct ExprVisitor {
   expressions: Vec<Box<Expr>>,
   level: usize,
   simple_result: Option<SimpleExprParseResult>,
-  // exclude_roots: ExcludeRoots,
+  intl_type: IntlType, // exclude_roots: ExcludeRoots,
+  intl_nodes: HashSet<SyntaxContext>,
 }
 
 impl ExprVisitor {
-  pub fn new() -> Self {
-    Self::new_with_level(0)
+  pub fn new(intl_type: IntlType) -> Self {
+    Self::new_with_level(0, intl_type)
   }
   // pub fn new_with_exclude_roots(exclude_roots: ExcludeRoots) -> Self {
   //   Self::new_with_level(0, exclude_roots)
   // }
-  fn new_with_level(level: usize) -> Self {
+  fn new_with_level(level: usize, intl_type: IntlType) -> Self {
     Self {
       level,
       no_watch: false,
       expressions: vec![],
       simple_result: None,
-      // exclude_roots: watch_exclude_roots,
+      intl_type,
+      intl_nodes: HashSet::new(),
     }
   }
 
@@ -108,7 +114,7 @@ impl ExprVisitor {
   fn covert(&mut self, expr: &Expr) -> Box<Expr> {
     let mut expr = expr.clone();
 
-    let mut rep = MemberExprReplaceVisitor::new();
+    let mut rep = MemberExprReplaceVisitor::new(&self.intl_nodes);
     rep.visit_mut_expr(&mut expr);
     // println!("{:?}", expr);
     if matches!(&expr, Expr::Ident(_)) && self.expressions.len() == 1 {
@@ -168,7 +174,7 @@ impl Visit for ExprVisitor {
     if self.no_watch {
       return;
     }
-    let mut mem_parser = MemberExprVisitor::new(self.level);
+    let mut mem_parser = MemberExprVisitor::new(self.level, self.intl_type);
     mem_parser.visit_member_expr(node);
     if mem_parser.meet_error || mem_parser.path.is_empty() || matches!(&mem_parser.root, Root::None)
     {
@@ -218,17 +224,34 @@ impl Visit for ExprVisitor {
       args,
     ))
   }
+  fn visit_call_expr(&mut self, node: &CallExpr) {
+    if let IntlType::Enabled(drop_default_text) = self.intl_type
+      && matches!(&node.callee, Callee::Expr(callee) if matches!(&**callee, Expr::Ident(name) if JINGE_T.eq(&name.sym)))
+    {
+      // 当前已经配置启用了多语言能力，且 call 表达式是 t() 函数，则转换为多语言。
+      let args = parse_intl_call_args(&node.args, drop_default_text);
+      self.expressions.push(ast_create_expr_call(
+        ast_create_expr_ident(JINGE_IMPORT_INTL_WATCHER.local()),
+        args,
+      ));
+      self.intl_nodes.insert(node.ctxt);
+    } else {
+      node.visit_children_with(self);
+    }
+  }
 }
 
-struct MemberExprReplaceVisitor {
+struct MemberExprReplaceVisitor<'a> {
   count: usize,
   params: Vec<Pat>,
+  intl_nodes: &'a HashSet<SyntaxContext>,
 }
-impl MemberExprReplaceVisitor {
-  fn new() -> Self {
+impl<'a> MemberExprReplaceVisitor<'a> {
+  fn new(intl_nodes: &'a HashSet<SyntaxContext>) -> Self {
     Self {
       count: 0,
       params: vec![],
+      intl_nodes,
     }
   }
   fn get_alias_ident(&mut self) -> Expr {
@@ -242,7 +265,7 @@ impl MemberExprReplaceVisitor {
     Expr::Ident(id)
   }
 }
-impl VisitMut for MemberExprReplaceVisitor {
+impl<'a> VisitMut for MemberExprReplaceVisitor<'a> {
   fn visit_mut_expr(&mut self, node: &mut Expr) {
     match node {
       Expr::OptChain(oc) => {
@@ -253,6 +276,13 @@ impl VisitMut for MemberExprReplaceVisitor {
         }
       }
       Expr::Member(_) => *node = self.get_alias_ident(),
+      Expr::Call(c) => {
+        if self.intl_nodes.contains(&c.ctxt) {
+          *node = self.get_alias_ident();
+        } else {
+          node.visit_mut_children_with(self);
+        }
+      }
       _ => node.visit_mut_children_with(self),
     }
   }
@@ -265,12 +295,13 @@ struct MemberExprVisitor {
   // meet_private: bool,
   level: usize,
   computed: bool,
-  // exclude_roots: ExcludeRoots,
+  intl_type: IntlType, // exclude_roots: ExcludeRoots,
 }
 impl MemberExprVisitor {
-  fn new(level: usize) -> Self {
+  fn new(level: usize, intl_type: IntlType) -> Self {
     Self {
       level,
+      intl_type,
       root: Root::None,
       path: vec![],
       meet_error: false,
@@ -353,7 +384,9 @@ impl Visit for MemberExprVisitor {
           },
 
           _ => {
-            if let Some(result) = ExprVisitor::new_with_level(self.level + 1).inner_parse(expr) {
+            if let Some(result) =
+              ExprVisitor::new_with_level(self.level + 1, self.intl_type).inner_parse(expr)
+            {
               self.computed = true;
               self.path.push(result);
             } else {

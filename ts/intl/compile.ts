@@ -1,6 +1,6 @@
+import ts from '@typescript/typescript6';
 import { promises as fs, readFileSync } from 'node:fs';
 import path from 'node:path';
-import ts from 'typescript';
 
 import { type ExtractMessage, extractKeyAndMessage, parseCsv } from './helper';
 const CWD = process.cwd();
@@ -155,12 +155,18 @@ export async function intlCompile({
   await Promise.all(
     languages.map(async (lang) => {
       const loc = outputs[lang];
+      const outputRows = [];
       for (const row of trans) {
         const v = row[lang];
         if (!v) continue;
         const result = await compileText(lang, row.file, row.id, v, loc);
-        loc.rows.push(`  ${JSON.stringify(row.id)}: ${result}`);
+        outputRows.push({
+          id: row.id,
+          result,
+        });
       }
+      outputRows.sort((a, b) => (a.id > b.id ? 1 : a.id < b.id ? -1 : 0));
+      loc.rows = outputRows.map((row) => `  ${JSON.stringify(row.id)}: ${row.result}`);
     }),
   );
 

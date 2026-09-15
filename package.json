@@ -1,6 +1,6 @@
 {
   "name": "jinge-compiler",
-  "version": "4.1.11",
+  "version": "4.1.12",
   "description": "Template compiler for jinge framework",
   "keywords": [
     "compiler",
@@ -36,7 +36,7 @@
     "build-cargo-debug": "cargo build && cp target/debug/libjinge_compiler.so index.node 2>/dev/null || : && cp target/debug/libjinge_compiler.dylib index.node 2>/dev/null || :",
     "build-ts": "rm -rf dist types && tsc -project tsconfig.types.json && tsup-node ts/index.ts ts/cli/intl-extract.ts ts/cli/intl-compile.ts  --sourcemap --format esm",
     "dev": "concurrently \"pnpm build-ts --watch\" \"pnpm watch-cargo\"",
-    "lint": "tsgo --noEmit && oxlint --type-aware && oxfmt --check",
+    "lint": "tsc --noEmit && oxlint --type-aware && oxfmt --check",
     "lint-fix": "oxlint --type-aware --fix && oxfmt",
     "lint-staged": "lint-staged",
     "patch-version": "bun scripts/version.ts",
@@ -44,23 +44,23 @@
     "watch-cargo": "nodemon -e rs --watch src --exec 'pnpm build-cargo-debug'"
   },
   "dependencies": {
-    "csv-parse": "^6.2.1",
-    "typescript": "^6.0.3"
+    "@typescript/typescript6": "^6.0.2",
+    "csv-parse": "^7.0.2"
   },
   "devDependencies": {
-    "@types/bun": "^1.3.13",
-    "@types/node": "^25.6.2",
-    "@typescript/native-preview": "7.0.0-dev.20260511.1",
-    "bun": "^1.3.13",
-    "concurrently": "^9.2.1",
+    "@types/bun": "^1.4.2",
+    "@types/node": "^26.5.1",
+    "bun": "^1.4.2",
+    "concurrently": "^10.0.5",
     "husky": "^9.1.7",
-    "lint-staged": "^17.0.4",
+    "lint-staged": "^17.5.1",
     "nodemon": "^3.1.14",
-    "oxfmt": "^0.49.0",
-    "oxlint": "^1.63.0",
-    "oxlint-tsgolint": "^0.22.1",
+    "oxfmt": "^0.68.0",
+    "oxlint": "^1.83.0",
+    "oxlint-tsgolint": "^7.0.2001",
     "tsup": "^8.5.1",
-    "vite": "^8.0.11"
+    "typescript": "^7.0.2",
+    "vite": "^8.3.0"
   },
   "optionalDependencies": {
     "jinge-compiler-darwin-arm64": "4.1.11",

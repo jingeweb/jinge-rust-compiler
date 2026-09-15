@@ -325,6 +325,7 @@ impl VisitMut for TemplateTransformVisitor<'_> {
       return;
     }
 
-    parse_intl_call(node, drop_default_text);
+    let args = parse_intl_call_args(&node.args, drop_default_text);
+    node.args = args;
   }
 }

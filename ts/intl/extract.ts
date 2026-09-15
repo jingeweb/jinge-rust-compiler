@@ -1,6 +1,6 @@
+import ts from '@typescript/typescript6';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import ts from 'typescript';
 
 import { extractKeyAndMessage, loopReadDir, parseCsv, writeCsv } from './helper';
 
@@ -106,7 +106,8 @@ export async function intlExtract({
     rows.push(row);
   });
   rows.sort((ra, rb) => {
-    return ra.file > rb.file ? -1 : ra.file < rb.file ? 1 : 0;
+    if (ra.file !== rb.file) return ra.file > rb.file ? 1 : -1;
+    return ra.id > rb.id ? 1 : ra.id < rb.id ? -1 : 0;
   });
   await writeCsv(['id', 'file', 'orig', ...languages], rows, translateFilePath);
   console.info('\nAll Done.');

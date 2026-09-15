@@ -196,7 +196,7 @@ impl TemplateParser {
     }
   }
   fn parse_expr(&mut self, expr: &Expr) {
-    let expr_result = ExprVisitor::new().parse(expr);
+    let expr_result = ExprVisitor::new(self.intl_type).parse(expr);
     let host_ident = self.create_host_ident();
 
     // println!("{:#?}", expr);

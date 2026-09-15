@@ -167,7 +167,7 @@ impl TemplateParser {
             attrs.const_props.push((attr_name, expr.clone()));
           }
           _ => {
-            let r = ExprVisitor::new().parse(expr.as_ref());
+            let r = ExprVisitor::new(self.intl_type).parse(expr.as_ref());
             match r {
               ExprParseResult::None => {
                 attrs.const_props.push((attr_name, expr.clone()));
@@ -312,7 +312,7 @@ impl TemplateParser {
       }
       _ => {
         // 如果是其它类型的值，tsx 的类型会保证这个值的类型一定是函数。模板编译器只需要处理值可能的 watch。
-        let mut parser = ExprVisitor::new();
+        let mut parser = ExprVisitor::new(self.intl_type);
         let result = parser.parse(val.as_ref());
         match result {
           ExprParseResult::None => {

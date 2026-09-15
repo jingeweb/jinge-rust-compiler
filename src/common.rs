@@ -55,6 +55,7 @@ lazy_static::lazy_static! {
   pub static ref JINGE_IMPORT_SET_TEXT_CONTENT: JingeImport = x!("setTextContent");
   pub static ref JINGE_IMPORT_IF: JingeImport = x!("If");
   pub static ref JINGE_IMPORT_FOR: JingeImport = x!("For");
+  pub static ref JINGE_IMPORT_INTL_WATCHER: JingeImport = x!("IntlWatcher");
   pub static ref JINGE_IMPORT_PATH_WATCHER: JingeImport = x!("PathWatcher");
   pub static ref JINGE_IMPORT_DYM_PATH_WATCHER: JingeImport = x!("DymPathWatcher");
   pub static ref JINGE_IMPORT_EXPR_WATCHER: JingeImport = x!("ExprWatcher");
@@ -115,7 +116,7 @@ lazy_static::lazy_static! {
 }
 
 fn gen_import_jinge() -> ModuleItem {
-  let imports: [&'static JingeImport; 32] = [
+  let imports: [&'static JingeImport; 33] = [
     &JINGE_IMPORT_TEXT_RENDER_FN,
     &JINGE_IMPORT_RENDER_INTL_TEXT,
     &JINGE_IMPORT_RENDER_INTL_TEXT_WITH_PARAMS,
@@ -138,6 +139,7 @@ fn gen_import_jinge() -> ModuleItem {
     &JINGE_IMPORT_NON_ROOT_COMPONENT_NODES,
     &JINGE_IMPORT_RENDER_SLOT,
     &JINGE_IMPORT_RENDER_FC,
+    &JINGE_IMPORT_INTL_WATCHER,
     &JINGE_IMPORT_PATH_WATCHER,
     &JINGE_IMPORT_DYM_PATH_WATCHER,
     &JINGE_IMPORT_EXPR_WATCHER,

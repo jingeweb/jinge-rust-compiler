@@ -1,6 +1,6 @@
 use swc_core::{
   atoms::Atom,
-  ecma::ast::{BlockStmt, BlockStmtOrExpr, CallExpr, Callee, Expr, ExprOrSpread, MemberProp, Stmt},
+  ecma::ast::{BlockStmt, BlockStmtOrExpr, Callee, Expr, ExprOrSpread, MemberProp, Stmt},
 };
 
 use crate::{
@@ -101,9 +101,9 @@ pub fn should_render_as_jsx(expr: &Expr, props_arg: &Option<Atom>) -> bool {
 
 /// 将国际化函数转成从字典中取值，例如: t('Hello') 转成 t('[HASH_KEY]')。
 /// 这里的转化不考虑监听语言的变更，即仅用于比如事件处理函数体内部的国际化。
-pub fn parse_intl_call(node: &mut CallExpr, drop_default_text: bool) {
-  let Some((key, default_text, params)) = extract_t(&node.args) else {
-    return;
+pub fn parse_intl_call_args(args: &[ExprOrSpread], drop_default_text: bool) -> Vec<ExprOrSpread> {
+  let Some((key, default_text, params)) = extract_t(args) else {
+    return vec![];
   };
 
   let mut args = vec![ExprOrSpread {
@@ -127,5 +127,7 @@ pub fn parse_intl_call(node: &mut CallExpr, drop_default_text: bool) {
     )));
   }
 
-  node.args = args;
+  args
+
+  // node.args = args;
 }

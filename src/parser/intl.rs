@@ -35,7 +35,7 @@ struct IntlParams {
 }
 
 pub fn extract_t<'a>(
-  args: &'a Vec<ExprOrSpread>,
+  args: &'a [ExprOrSpread],
 ) -> Option<(Wtf8Atom, &'a Wtf8Atom, Option<&'a ObjectLit>)> {
   let Some(default_text) = args.get(0) else {
     return None;
@@ -181,7 +181,7 @@ impl TemplateParser {
             }
 
             _ => {
-              let r = ExprVisitor::new().parse(kv.value.as_ref());
+              let r = ExprVisitor::new(self.intl_type).parse(kv.value.as_ref());
               match r {
                 ExprParseResult::None => {
                   vm.const_props.push((kv.key.clone(), kv.value.clone()));

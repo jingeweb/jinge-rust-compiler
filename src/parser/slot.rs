@@ -12,7 +12,7 @@ use swc_ecma_visit::Visit;
 
 use crate::{
   ast::*,
-  common::{JINGE_IMPORT_COMPONENT_HOST, JINGE_SLOT_DEFAULT},
+  common::{IntlType, JINGE_IMPORT_COMPONENT_HOST, JINGE_SLOT_DEFAULT},
   parser::{
     JINGE_ATTR_IDENT, JINGE_IMPORT_VM, JINGE_V_IDENT, expr::ExprVisitor, tpl::tpl_watch_and_render,
   },
@@ -180,12 +180,12 @@ struct SlotVm {
   pub spread_prop: Option<Ident>,
 }
 
-fn parse_slot_arg_prop(vm: &mut SlotVm, prop: &Prop) {
+fn parse_slot_arg_prop(vm: &mut SlotVm, prop: &Prop, intl_type: IntlType) {
   let kv = match prop {
     Prop::Shorthand(k) => {
       // 形如 { someVar } 这样的简写，等价于 { someVar: someVar }
       let e = Box::new(Expr::Ident(k.clone()));
-      let r = ExprVisitor::new().parse(&e);
+      let r = ExprVisitor::new(intl_type).parse(&e);
       match r {
         ExprParseResult::None => vm.const_props.push((PropName::Ident(k.clone().into()), e)), // 这种简写不可能是 ExprParseResult::None
         _ => vm.watch_props.push((PropName::Ident(k.clone().into()), r)),
@@ -238,7 +238,7 @@ fn parse_slot_arg_prop(vm: &mut SlotVm, prop: &Prop) {
       }
     }
     _ => {
-      let r = ExprVisitor::new().parse(kv.value.as_ref());
+      let r = ExprVisitor::new(intl_type).parse(kv.value.as_ref());
       match r {
         ExprParseResult::None => {
           vm.const_props.push((kv.key.clone(), kv.value.clone()));
@@ -248,7 +248,7 @@ fn parse_slot_arg_prop(vm: &mut SlotVm, prop: &Prop) {
     }
   }
 }
-fn parse_slot_arg(args: &Vec<ExprOrSpread>) -> SlotVm {
+fn parse_slot_arg(args: &Vec<ExprOrSpread>, intl_type: IntlType) -> SlotVm {
   let mut vm = SlotVm {
     const_props: vec![],
     watch_props: vec![],
@@ -300,7 +300,7 @@ fn parse_slot_arg(args: &Vec<ExprOrSpread>) -> SlotVm {
         }
       }
       PropOrSpread::Prop(prop) => {
-        parse_slot_arg_prop(&mut vm, prop.as_ref());
+        parse_slot_arg_prop(&mut vm, prop.as_ref(), intl_type);
       }
     }
   }
@@ -400,7 +400,7 @@ impl TemplateParser {
     args: &Vec<ExprOrSpread>,
     stmts: &mut Vec<Stmt>,
   ) -> Option<Ident> {
-    let mut slot_arg_vm = parse_slot_arg(args);
+    let mut slot_arg_vm = parse_slot_arg(args, self.intl_type);
 
     let has_slot_vm = !slot_arg_vm.const_props.is_empty() || !slot_arg_vm.watch_props.is_empty();
     if has_slot_vm {

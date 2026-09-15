@@ -1,8 +1,8 @@
+import ts from '@typescript/typescript6';
 import { type Options, parse } from 'csv-parse/sync';
 import { createHash } from 'node:crypto';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import ts from 'typescript';
 
 /**
  * 计算文本的 hash。需要和 packages/swc-plugin/intl.rs 中使用算法一致，当前统一为 sha512().toBase64().slice(0,6)。
@@ -49,8 +49,8 @@ export async function writeCsv(head: string[], rows: Record<string, string>[], f
         .map((k) => {
           let v = row[k];
           if (!v) return '';
-          v = v.replaceAll('"', () => '\\"');
-          if (v.includes(',')) v = `"${v}"`;
+          v = v.replaceAll('"', () => '""');
+          if (v.includes(',') || v.includes('"')) v = `"${v}"`;
           return v;
         })
         .join(',');
