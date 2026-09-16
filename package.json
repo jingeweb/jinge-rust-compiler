@@ -63,11 +63,11 @@
     "vite": "^8.3.0"
   },
   "optionalDependencies": {
-    "jinge-compiler-darwin-arm64": "4.1.11",
-    "jinge-compiler-darwin-x64": "4.1.11",
-    "jinge-compiler-linux-arm64": "4.1.11",
-    "jinge-compiler-linux-x64": "4.1.11",
-    "jinge-compiler-win32-x64": "4.1.11"
+    "jinge-compiler-darwin-arm64": "4.1.13",
+    "jinge-compiler-darwin-x64": "4.1.13",
+    "jinge-compiler-linux-arm64": "4.1.13",
+    "jinge-compiler-linux-x64": "4.1.13",
+    "jinge-compiler-win32-x64": "4.1.13"
   },
   "lint-staged": {
     "*.{js,ts}": [

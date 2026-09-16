@@ -54,22 +54,6 @@ importers:
       vite:
         specifier: ^8.3.0
         version: 8.3.0(@types/node@26.5.1)(esbuild@0.27.7)(yaml@2.9.1)
-    optionalDependencies:
-      jinge-compiler-darwin-arm64:
-        specifier: 4.1.11
-        version: 4.1.11
-      jinge-compiler-darwin-x64:
-        specifier: 4.1.11
-        version: 4.1.11
-      jinge-compiler-linux-arm64:
-        specifier: 4.1.11
-        version: 4.1.11
-      jinge-compiler-linux-x64:
-        specifier: 4.1.11
-        version: 4.1.11
-      jinge-compiler-win32-x64:
-        specifier: 4.1.11
-        version: 4.1.11
 
 packages:
 
@@ -1136,31 +1120,6 @@ packages:
     resolution: {integrity: sha512-41Cifkg6e8TylSpdtTpeLVMqvSBEVzTttHvERD741+pnZ8ANv0004MRL43QKPDlK9cGvNp6NZWZUBlbGXYxxng==}
     engines: {node: '>=0.12.0'}
 
-  jinge-compiler-darwin-arm64@4.1.11:
-    resolution: {integrity: sha512-7Hda+O2wnwppcgPp91nAFCSY8epg3JEjjvdWayXY3HRue2gui9w2HF4NpO2KA8xX7T1fQbzksmv9ISZdvGwMkg==}
-    cpu: [arm64]
-    os: [darwin]
-
-  jinge-compiler-darwin-x64@4.1.11:
-    resolution: {integrity: sha512-A1MhwI09xI0Zfozmzrl6fryXxU+cOT7+axaeKxNxEynFh27pxcC5xwIWdXQeE1cE0oqvBb5H87DGCx/1i4RwWA==}
-    cpu: [x64]
-    os: [darwin]
-
-  jinge-compiler-linux-arm64@4.1.11:
-    resolution: {integrity: sha512-qSxUiAnpR2i9fdh8heKYXVqKwvchR5EWAmJTDFWM7g931CEUtdfpnRWkFJA74wmmestCNcqJfx5ue8RCkx2MwA==}
-    cpu: [arm64]
-    os: [linux]
-
-  jinge-compiler-linux-x64@4.1.11:
-    resolution: {integrity: sha512-xs81dvrErf+DwAJD1nYof6k7yh/jVs2UOCfYuF/I/YDwCXtMyYpordbMtTRukEMiGGEUpEWl6bmJXtkjy8gRuw==}
-    cpu: [x64]
-    os: [linux]
-
-  jinge-compiler-win32-x64@4.1.11:
-    resolution: {integrity: sha512-tE2GNCKZyusXf6Ae6GIRHQVwKiDxdRLttsnspIDYSRJVsqCZ9dUPuzIyBAraw+XlzfCSHfd7cuB9UmKsUFSkXA==}
-    cpu: [x64]
-    os: [win32]
-
   joycon@3.1.1:
     resolution: {integrity: sha512-34wB/Y7MW7bzjKRjUKTa46I2Z7eV62Rkhva+KkopW7Qvv/OSWBqvkSY7vusOPrNuZcUG3tApvdVgNB8POj3SPw==}
     engines: {node: '>=10'}
@@ -2216,21 +2175,6 @@ snapshots:
       is-extglob: 2.1.1
 
   is-number@7.0.0: {}
-
-  jinge-compiler-darwin-arm64@4.1.11:
-    optional: true
-
-  jinge-compiler-darwin-x64@4.1.11:
-    optional: true
-
-  jinge-compiler-linux-arm64@4.1.11:
-    optional: true
-
-  jinge-compiler-linux-x64@4.1.11:
-    optional: true
-
-  jinge-compiler-win32-x64@4.1.11:
-    optional: true
 
   joycon@3.1.1: {}
 
