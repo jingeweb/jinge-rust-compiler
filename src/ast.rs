@@ -93,7 +93,7 @@ pub fn ast_create_expr_call(callee: Box<Expr>, args: Vec<ExprOrSpread>) -> Box<E
   }))
 }
 #[inline]
-pub fn ast_create_expr_arrow_fn(params: Vec<Pat>, body: Box<BlockStmtOrExpr>) -> Box<Expr> {
+pub fn ast_create_expr_arrow_fn(params: Vec<Pat>, body: Box<ArrowFunctionBody>) -> Box<Expr> {
   Box::new(Expr::Arrow(ArrowExpr {
     span: DUMMY_SP,
     ctxt: SyntaxContext::empty(),

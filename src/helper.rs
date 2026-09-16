@@ -1,6 +1,6 @@
 use swc_core::{
-  atoms::Atom,
-  ecma::ast::{BlockStmt, BlockStmtOrExpr, Callee, Expr, ExprOrSpread, MemberProp, Stmt},
+  atoms::Wtf8Atom,
+  ecma::ast::{ArrowFunctionBody, Callee, Expr, ExprOrSpread, MemberProp, Stmt},
 };
 
 use crate::{
@@ -35,8 +35,8 @@ use crate::{
 //   }
 // }
 
-fn block_stmts_contains_jsx_return(bs: &BlockStmt, props_arg: &Option<Atom>) -> bool {
-  let Some(st) = bs.stmts.last() else {
+fn block_stmts_contains_jsx_return(stmts: &[Stmt], props_arg: &Option<Wtf8Atom>) -> bool {
+  let Some(st) = stmts.last() else {
     return false;
   };
   let Stmt::Return(st) = st else {
@@ -52,7 +52,7 @@ fn block_stmts_contains_jsx_return(bs: &BlockStmt, props_arg: &Option<Atom>) -> 
 /// 比如 `<p>x</p>，<></>, {<p>p</p>}` 这一类的直接有 jsx 元素的，
 /// 或者 `props.children` 或 `props['slot:a']?.()` 等插槽渲染，
 /// 都满足需要转换为 jsx 渲染。
-pub fn should_render_as_jsx(expr: &Expr, props_arg: &Option<Atom>) -> bool {
+pub fn should_render_as_jsx(expr: &Expr, props_arg: &Option<Wtf8Atom>) -> bool {
   match expr {
     Expr::JSXElement(_) | Expr::JSXFragment(_) => true,
     Expr::Cond(e) => {
@@ -81,11 +81,13 @@ pub fn should_render_as_jsx(expr: &Expr, props_arg: &Option<Atom>) -> bool {
           let arg_expr = arg_expr.expr.as_ref();
           match arg_expr {
             Expr::Arrow(e) => match e.body.as_ref() {
-              BlockStmtOrExpr::Expr(e) => should_render_as_jsx(e.as_ref(), props_arg),
-              BlockStmtOrExpr::BlockStmt(bs) => block_stmts_contains_jsx_return(bs, props_arg),
+              ArrowFunctionBody::Expr(e) => should_render_as_jsx(e.as_ref(), props_arg),
+              ArrowFunctionBody::FunctionBody(bs) => {
+                block_stmts_contains_jsx_return(&bs.stmts, props_arg)
+              }
             },
             Expr::Fn(e) => match e.function.body.as_ref() {
-              Some(bs) => block_stmts_contains_jsx_return(bs, props_arg),
+              Some(bs) => block_stmts_contains_jsx_return(&bs.stmts, props_arg),
               _ => false,
             },
             _ => false,

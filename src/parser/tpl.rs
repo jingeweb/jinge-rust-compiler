@@ -188,9 +188,8 @@ pub fn tpl_render_expr_text(
   ast_create_expr_call(
     ast_create_expr_arrow_fn(
       vec![],
-      Box::new(BlockStmtOrExpr::BlockStmt(BlockStmt {
+      Box::new(ArrowFunctionBody::FunctionBody(FunctionBody {
         span: DUMMY_SP,
-        ctxt: SyntaxContext::empty(),
         stmts,
       })),
     ),
@@ -210,7 +209,7 @@ pub fn tpl_watch_and_render(
         ast_create_arg_expr(watch_expr),
         ast_create_arg_expr(ast_create_expr_arrow_fn(
           vec![Pat::Ident(BindingIdent::from(JINGE_V_IDENT.clone()))],
-          Box::new(BlockStmtOrExpr::Expr(render_fn_body)),
+          Box::new(ArrowFunctionBody::Expr(render_fn_body)),
         )),
         // 复杂表达式，会有 PathWatcher/ExprWatcher 等的封装，统一加到 [HOST_WATCH] 中，在 host component 销毁时卸载。
         ast_create_arg_expr(ast_create_expr_ident(host_ident.clone())),
@@ -226,7 +225,7 @@ pub fn tpl_watch_and_render(
         ast_create_arg_expr(sr.path),
         ast_create_arg_expr(ast_create_expr_arrow_fn(
           vec![Pat::Ident(BindingIdent::from(JINGE_V_IDENT.clone()))],
-          Box::new(BlockStmtOrExpr::Expr(render_fn_body)),
+          Box::new(ArrowFunctionBody::Expr(render_fn_body)),
         )),
       ];
       if sr.not_op > 0 {

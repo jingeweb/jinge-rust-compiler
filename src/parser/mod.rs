@@ -1,7 +1,8 @@
 use crate::ast::*;
 use crate::common::*;
 use expr::{ExprParseResult, ExprVisitor};
-use swc_core::atoms::Atom;
+use swc_common::Span;
+use swc_core::atoms::Wtf8Atom;
 use swc_core::common::{DUMMY_SP, Spanned};
 use swc_core::ecma::ast::*;
 use swc_core::ecma::visit::{Visit, VisitWith};
@@ -26,7 +27,7 @@ pub enum Parent {
 }
 
 pub struct Slot {
-  name: Atom,
+  name: Wtf8Atom,
   /// 插槽函数的参数
   params: Vec<Pat>,
   /// 插槽函数的除 return 之外的语句。
@@ -37,7 +38,7 @@ pub struct Slot {
   pass_by: Option<Box<Expr>>,
 }
 impl Slot {
-  fn new(name: Atom) -> Self {
+  fn new(name: Wtf8Atom) -> Self {
     Self {
       name,
       params: vec![],
@@ -64,7 +65,7 @@ impl Context {
       host_ident,
       // root_container,
       parent,
-      slots: vec![Slot::new(Atom::default())], // 第 0 个 Slot 是默认 DEFAULT_SLOT
+      slots: vec![Slot::new(Wtf8Atom::default())], // 第 0 个 Slot 是默认 DEFAULT_SLOT
     }
   }
   #[inline]
@@ -84,13 +85,13 @@ pub struct TemplateParser {
   /// 组件标签元素（非 html 或 svg 元素）的层级深度。默认为0代表最外层的函数组件，每遇到（进入）一个组件标签 +1，退出 -1
   fc_deep: usize,
   /// 最外层的函数组件的第一个参数，即 Props 属性参数。
-  props_arg: Option<Atom>,
+  props_arg: Option<Wtf8Atom>,
 
   map_loop_level: usize,
 }
 
 impl TemplateParser {
-  pub fn new(props_arg: Option<Atom>, host_ident: Option<Ident>, intl_type: IntlType) -> Self {
+  pub fn new(props_arg: Option<Wtf8Atom>, host_ident: Option<Ident>, intl_type: IntlType) -> Self {
     Self {
       intl_type,
       props_arg,
@@ -247,32 +248,32 @@ impl TemplateParser {
       return;
     };
     let params: Vec<_> = expr.function.params.iter().map(|p| p.pat.clone()).collect();
-    self.parse_func_body(body, &params);
+    self.parse_func_body_stmts(&body.stmts, &params, body.span());
   }
   fn parse_func_arrow(&mut self, expr: &ArrowExpr) {
     match &*expr.body {
-      BlockStmtOrExpr::BlockStmt(b) => {
-        self.parse_func_body(b, &expr.params);
+      ArrowFunctionBody::FunctionBody(b) => {
+        self.parse_func_body_stmts(&b.stmts, &expr.params, b.span());
       }
-      BlockStmtOrExpr::Expr(e) => {
+      ArrowFunctionBody::Expr(e) => {
         self.parse_func_return(e, &expr.params);
       }
     }
   }
-  fn parse_func_body(&mut self, body: &BlockStmt, params: &[Pat]) {
+  fn parse_func_body_stmts(&mut self, stmts: &[Stmt], params: &[Pat], span: Span) {
     const ERR: &str = "插槽函数必须有返回值";
-    let Some(Stmt::Return(r)) = body.stmts.last() else {
-      emit_error(body.span(), ERR);
+    let Some(Stmt::Return(r)) = stmts.last() else {
+      emit_error(span, ERR);
       return;
     };
     let Some(rtn) = &r.arg else {
-      emit_error(body.span(), ERR);
+      emit_error(span, ERR);
       return;
     };
     self.parse_func_return(rtn, params);
 
-    let len = body.stmts.len();
-    for stmt in &body.stmts[0..len - 1] {
+    let len = stmts.len();
+    for stmt in &stmts[0..len - 1] {
       self
         .context
         .slots
@@ -424,7 +425,7 @@ impl Visit for TemplateParser {
     let host_ident = self.create_host_ident();
 
     self.push_expression(tpl_render_const_text(
-      ast_create_expr_lit_str(text.into()),
+      ast_create_expr_lit_str(text),
       self.context.is_parent_component(),
       host_ident,
     ))
@@ -449,7 +450,7 @@ impl Visit for TemplateParser {
  * 首尾的空白，如果包含了 \n，则全部 trim 去除；否则全部保留；
  * 中间的空白，如果包含了 \n，替换为单个空格；否则全部保留。
  */
-fn trim_html_text(text: &Atom) -> Option<Atom> {
+fn trim_html_text(text: &Wtf8Atom) -> Option<Wtf8Atom> {
   let mut result = String::new();
 
   let mut start_i = 0i32;
@@ -458,17 +459,19 @@ fn trim_html_text(text: &Atom) -> Option<Atom> {
   let mut break_line_i = -1i32;
   let mut meet_not_whitespace = false;
 
-  let bytes = text.as_bytes();
-  for (i, &chr) in bytes.iter().enumerate() {
-    if chr == b'\n' {
+  // let bytes = text.as_bytes();
+  let str = text.as_str()?;
+
+  for (i, chr) in str.chars().enumerate() {
+    if chr == '\n' {
       meet_break_line = true;
       break_line_i = i as i32;
       if not_whitespace_i >= 0 {
-        result.push_str(&text[(start_i as usize)..=(not_whitespace_i as usize)]);
+        result.push_str(&str[(start_i as usize)..=(not_whitespace_i as usize)]);
       }
       not_whitespace_i = -1;
       start_i = -1;
-    } else if chr != b' ' && chr != b'\t' {
+    } else if chr != ' ' && chr != '\t' {
       if break_line_i >= 0 {
         if meet_not_whitespace {
           // 位于中间的带 \n 的空白才需要被替换为单个空格。首尾的带 \n 空白直接 trim 去除。
@@ -484,7 +487,7 @@ fn trim_html_text(text: &Atom) -> Option<Atom> {
     }
   }
   if meet_break_line && not_whitespace_i >= 0 {
-    result.push_str(&text[(start_i as usize)..]);
+    result.push_str(&str[(start_i as usize)..]);
   }
 
   if !meet_break_line {
@@ -492,22 +495,22 @@ fn trim_html_text(text: &Atom) -> Option<Atom> {
   } else if result.is_empty() {
     None
   } else {
-    Some(Atom::from(result))
+    Some(Wtf8Atom::from(result))
   }
 }
 
 #[test]
 fn test_trim_html_text() {
-  let mut t = Atom::from("  hello  ");
+  let mut t = Wtf8Atom::from("  hello  ");
   assert_eq!(trim_html_text(&t), Some(t));
-  t = Atom::from("   \n   hello  ");
-  assert_eq!(trim_html_text(&t), Some(Atom::from("hello  ")));
-  t = Atom::from("   \n   he  llo  \n   ");
-  assert_eq!(trim_html_text(&t), Some(Atom::from("he  llo")));
-  t = Atom::from(" he llo \n w \n  orld");
-  assert_eq!(trim_html_text(&t), Some(Atom::from(" he llo w orld")));
-  t = Atom::from("  \n  \n\n  ");
+  t = Wtf8Atom::from("   \n   hello  ");
+  assert_eq!(trim_html_text(&t), Some(Wtf8Atom::from("hello  ")));
+  t = Wtf8Atom::from("   \n   he  llo  \n   ");
+  assert_eq!(trim_html_text(&t), Some(Wtf8Atom::from("he  llo")));
+  t = Wtf8Atom::from(" he llo \n w \n  orld");
+  assert_eq!(trim_html_text(&t), Some(Wtf8Atom::from(" he llo w orld")));
+  t = Wtf8Atom::from("  \n  \n\n  ");
   assert_eq!(trim_html_text(&t), None);
-  t = Atom::from("  a \n\n\n b c \n d ");
-  assert_eq!(trim_html_text(&t), Some(Atom::from("  a b c d ")));
+  t = Wtf8Atom::from("  a \n\n\n b c \n d ");
+  assert_eq!(trim_html_text(&t), Some(Wtf8Atom::from("  a b c d ")));
 }

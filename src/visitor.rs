@@ -1,4 +1,5 @@
 use swc_common::Spanned;
+use swc_core::atoms::Wtf8Atom;
 use swc_core::ecma::ast::*;
 use swc_core::ecma::visit::VisitMut;
 use swc_ecma_visit::VisitMutWith;
@@ -25,21 +26,21 @@ impl<'a> TemplateTransformVisitor<'a> {
   fn v_func(&mut self, fn_name: Option<&Ident>, expr: &mut Function, is_slot: bool) {
     if let Some(body) = &mut expr.body {
       let mut params: Vec<_> = expr.params.iter().map(|p| p.pat.clone()).collect();
-      if self.v_func_body(fn_name, body, &mut params, is_slot) {
+      if self.v_func_body_stmts(fn_name, &mut body.stmts, &mut params, is_slot) {
         expr.params = params.into_iter().map(Param::from).collect();
       }
     };
   }
-  fn v_func_body(
+  fn v_func_body_stmts(
     &mut self,
     fn_name: Option<&Ident>,
-    body: &mut BlockStmt,
+    stmts: &mut [Stmt],
     params: &mut Vec<Pat>,
     is_slot: bool,
   ) -> bool {
     let mut changed = false;
     let mut root_host_arg = None;
-    for (index, stmt) in body.stmts.iter_mut().rev().enumerate() {
+    for (index, stmt) in stmts.iter_mut().rev().enumerate() {
       if index == 0 {
         let Stmt::Return(stmt) = stmt else {
           stmt.visit_mut_children_with(self);
@@ -52,7 +53,7 @@ impl<'a> TemplateTransformVisitor<'a> {
         let mut should_parse_jsx = is_slot;
         if !should_parse_jsx {
           let props_arg = params.first().and_then(|p| match p {
-            Pat::Ident(v) => Some(v.sym.clone()),
+            Pat::Ident(v) => Some(Wtf8Atom::new(v.sym.as_str())),
             _ => None,
           });
           should_parse_jsx = should_render_as_jsx(expr_ref, &props_arg);
@@ -85,12 +86,12 @@ impl<'a> TemplateTransformVisitor<'a> {
   }
   fn v_arrow(&mut self, fn_name: Option<&Ident>, expr: &mut ArrowExpr, is_slot: bool) -> bool {
     match expr.body.as_mut() {
-      BlockStmtOrExpr::Expr(e) => {
+      ArrowFunctionBody::Expr(e) => {
         let mut should_parse_jsx = is_slot;
         let params = &mut expr.params;
         if !should_parse_jsx {
           let props_arg = params.first().and_then(|p| match p {
-            Pat::Ident(v) => Some(v.sym.clone()),
+            Pat::Ident(v) => Some(Wtf8Atom::new(v.sym.as_str())),
             _ => None,
           });
           should_parse_jsx = should_render_as_jsx(e.as_ref(), &props_arg);
@@ -101,8 +102,8 @@ impl<'a> TemplateTransformVisitor<'a> {
           false
         }
       }
-      BlockStmtOrExpr::BlockStmt(body) => {
-        self.v_func_body(fn_name, body, &mut expr.params, is_slot)
+      ArrowFunctionBody::FunctionBody(body) => {
+        self.v_func_body_stmts(fn_name, &mut body.stmts, &mut expr.params, is_slot)
       }
     }
   }
@@ -136,7 +137,7 @@ impl<'a> TemplateTransformVisitor<'a> {
     let mut props_arg = None;
     if let Some(p) = params.first() {
       if let Pat::Ident(p) = p {
-        props_arg.replace(p.sym.clone());
+        props_arg.replace(Wtf8Atom::new(p.sym.as_str()));
       } else {
         emit_error(p.span(), ERR);
         return None;
@@ -216,7 +217,7 @@ impl VisitMut for TemplateTransformVisitor<'_> {
               let mut params = vec![];
               if let Some(parsed_expr) = self.v_return_parse(expr, &mut params, true) {
                 *expr =
-                  ast_create_expr_arrow_fn(params, Box::new(BlockStmtOrExpr::Expr(parsed_expr)));
+                  ast_create_expr_arrow_fn(params, Box::new(ArrowFunctionBody::Expr(parsed_expr)));
               }
             } else {
               kv.visit_mut_children_with(self);

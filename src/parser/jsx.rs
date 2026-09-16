@@ -126,8 +126,7 @@ impl TemplateParser {
         span: DUMMY_SP,
         arg: Some(ast_create_expr_ident(JINGE_EL_IDENT.clone())),
       }));
-      let body = Box::new(BlockStmtOrExpr::BlockStmt(BlockStmt {
-        ctxt: SyntaxContext::empty(),
+      let body = Box::new(ArrowFunctionBody::FunctionBody(FunctionBody {
         span: DUMMY_SP,
         stmts,
       }));

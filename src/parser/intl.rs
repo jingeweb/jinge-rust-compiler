@@ -1,6 +1,6 @@
 use base64ct::{Base64, Encoding};
 use sha2::{Digest, Sha512};
-use swc_common::{DUMMY_SP, Spanned, SyntaxContext};
+use swc_common::{DUMMY_SP, Spanned};
 use swc_core::{atoms::Wtf8Atom, ecma::ast::*};
 
 use super::{
@@ -286,9 +286,8 @@ impl TemplateParser {
     let expr = ast_create_expr_call(
       ast_create_expr_arrow_fn(
         vec![],
-        Box::new(BlockStmtOrExpr::BlockStmt(BlockStmt {
+        Box::new(ArrowFunctionBody::FunctionBody(FunctionBody {
           span: DUMMY_SP,
-          ctxt: SyntaxContext::empty(),
           stmts,
         })),
       ),

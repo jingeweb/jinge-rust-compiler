@@ -214,7 +214,7 @@ impl MapKeyFindVisitor {
   }
 
   pub fn get_key(&self, expr: &mut ArrowExpr) -> MapKey {
-    let BlockStmtOrExpr::Expr(expr) = expr.body.as_mut() else {
+    let ArrowFunctionBody::Expr(expr) = expr.body.as_mut() else {
       // self.parse_component_element 里会约束 Slot 函数只能是箭头函数且箭头函数直接返回 Expr 表达式。
       // 所以如果是 expr.body 是 BlockStmt 则不再需要尝试获取 key 属性。
       return MapKey::None;

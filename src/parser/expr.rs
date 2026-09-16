@@ -139,7 +139,7 @@ impl ExprVisitor {
       }))),
       ast_create_arg_expr(ast_create_expr_arrow_fn(
         rep.params,
-        Box::new(BlockStmtOrExpr::Expr(Box::new(expr))),
+        Box::new(ArrowFunctionBody::Expr(Box::new(expr))),
       )),
     ];
     ast_create_expr_call(

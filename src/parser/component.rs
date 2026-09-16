@@ -25,15 +25,14 @@ fn slot_to_expr(
   ast_create_expr_arrow_fn(
     params,
     Box::new(if stmts.is_empty() {
-      BlockStmtOrExpr::Expr(rtn_expr)
+      ArrowFunctionBody::Expr(rtn_expr)
     } else {
       stmts.push(Stmt::Return(ReturnStmt {
         span: DUMMY_SP,
         arg: Some(rtn_expr),
       }));
-      BlockStmtOrExpr::BlockStmt(BlockStmt {
+      ArrowFunctionBody::FunctionBody(FunctionBody {
         span: DUMMY_SP,
-        ctxt: SyntaxContext::empty(),
         stmts,
       })
     }),
@@ -97,7 +96,7 @@ impl TemplateParser {
           // 第 0 个是默认 slot
           IdentName::from(JINGE_SLOT_DEFAULT.clone())
         } else {
-          IdentName::from(format!("slot:{}", s.name))
+          IdentName::from(format!("slot:{}", s.name.as_str().unwrap()))
         },
         if let Some(pass_by) = s.pass_by {
           pass_by
@@ -191,9 +190,8 @@ impl TemplateParser {
         expr: ast_create_expr_call(
           ast_create_expr_arrow_fn(
             vec![],
-            Box::new(BlockStmtOrExpr::BlockStmt(BlockStmt {
+            Box::new(ArrowFunctionBody::FunctionBody(FunctionBody {
               span: DUMMY_SP,
-              ctxt: SyntaxContext::empty(),
               stmts,
             })),
           ),

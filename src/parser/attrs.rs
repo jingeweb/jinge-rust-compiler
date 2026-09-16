@@ -3,7 +3,7 @@ use crate::common::{
 };
 use crate::parser::TemplateParser;
 use crate::visitor::TemplateTransformVisitor;
-use swc_core::atoms::Atom;
+use swc_core::atoms::{Atom, Wtf8Atom};
 use swc_core::common::Spanned;
 use swc_core::ecma::ast::*;
 use swc_ecma_visit::{Visit, VisitMut};
@@ -193,7 +193,10 @@ impl TemplateParser {
       attrs.meet_slot = true;
       self.push_context(Parent::Component);
     }
-    self.context.slots.push(Slot::new(an.sym.clone()));
+    self
+      .context
+      .slots
+      .push(Slot::new(Wtf8Atom::new(an.sym.as_str())));
   }
   fn parse_slot_attr(&mut self, attrs: &mut AttrStore, an: &IdentName, av: &JSXAttrValue) {
     match av {
