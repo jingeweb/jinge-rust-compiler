@@ -45,7 +45,7 @@ fn block_stmts_contains_jsx_return(bs: &BlockStmt, props_arg: &Option<Atom>) -> 
   let Some(expr) = &st.arg else {
     return false;
   };
-  should_render_as_jsx(&expr, props_arg)
+  should_render_as_jsx(expr, props_arg)
 }
 
 /// 是否是需要 jsx 渲染的表达式。
@@ -56,12 +56,12 @@ pub fn should_render_as_jsx(expr: &Expr, props_arg: &Option<Atom>) -> bool {
   match expr {
     Expr::JSXElement(_) | Expr::JSXFragment(_) => true,
     Expr::Cond(e) => {
-      return should_render_as_jsx(&e.alt, props_arg) || should_render_as_jsx(&e.cons, props_arg);
+      should_render_as_jsx(&e.alt, props_arg) || should_render_as_jsx(&e.cons, props_arg)
     }
     Expr::Bin(e) => {
-      return should_render_as_jsx(&e.left, props_arg) || should_render_as_jsx(&e.right, props_arg);
+      should_render_as_jsx(&e.left, props_arg) || should_render_as_jsx(&e.right, props_arg)
     }
-    Expr::Paren(e) => return should_render_as_jsx(&e.expr, props_arg),
+    Expr::Paren(e) => should_render_as_jsx(&e.expr, props_arg),
     Expr::Member(mem) => {
       props_arg.is_some() && get_slot_name_from_member_expr(mem, props_arg).is_some()
     }

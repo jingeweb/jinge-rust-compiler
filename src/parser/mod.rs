@@ -61,7 +61,7 @@ impl Context {
   }
   fn new_with_host_ident(parent: Parent, host_ident: Option<Ident>) -> Self {
     Self {
-      host_ident: host_ident,
+      host_ident,
       // root_container,
       parent,
       slots: vec![Slot::new(Atom::default())], // 第 0 个 Slot 是默认 DEFAULT_SLOT
@@ -184,7 +184,7 @@ impl TemplateParser {
       .unwrap()
       .expressions
       .into_iter()
-      .map(|e| Some(e))
+      .map(Some)
       .collect();
     if elems.is_empty() {
       None
@@ -259,7 +259,7 @@ impl TemplateParser {
       }
     }
   }
-  fn parse_func_body(&mut self, body: &BlockStmt, params: &Vec<Pat>) {
+  fn parse_func_body(&mut self, body: &BlockStmt, params: &[Pat]) {
     const ERR: &str = "插槽函数必须有返回值";
     let Some(Stmt::Return(r)) = body.stmts.last() else {
       emit_error(body.span(), ERR);
@@ -282,7 +282,7 @@ impl TemplateParser {
         .push(stmt.clone());
     }
   }
-  fn parse_func_return(&mut self, expr: &Box<Expr>, params: &Vec<Pat>) {
+  fn parse_func_return(&mut self, expr: &Expr, params: &[Pat]) {
     if !self.context.is_parent_component() {
       emit_error(expr.span(), "插槽函数不能定义在 html 元素下");
       return;
@@ -295,7 +295,7 @@ impl TemplateParser {
       return;
     }
     let props_param;
-    if let Some(p) = params.get(0) {
+    if let Some(p) = params.first() {
       if !matches!(p, Pat::Ident(_)) {
         emit_error(
           p.span(),
@@ -345,7 +345,7 @@ impl Visit for TemplateParser {
   fn visit_expr(&mut self, expr_node: &Expr) {
     match expr_node {
       Expr::JSXElement(n) => {
-        self.visit_jsx_element(&*n);
+        self.visit_jsx_element(n);
       }
       Expr::JSXEmpty(_) => (),
       Expr::JSXFragment(f) => {
@@ -459,8 +459,7 @@ fn trim_html_text(text: &Atom) -> Option<Atom> {
   let mut meet_not_whitespace = false;
 
   let bytes = text.as_bytes();
-  for i in 0..bytes.len() {
-    let chr = bytes[i];
+  for (i, &chr) in bytes.iter().enumerate() {
     if chr == b'\n' {
       meet_break_line = true;
       break_line_i = i as i32;
@@ -473,7 +472,7 @@ fn trim_html_text(text: &Atom) -> Option<Atom> {
       if break_line_i >= 0 {
         if meet_not_whitespace {
           // 位于中间的带 \n 的空白才需要被替换为单个空格。首尾的带 \n 空白直接 trim 去除。
-          result.push_str(" ");
+          result.push(' ');
         }
         break_line_i = -1;
       }

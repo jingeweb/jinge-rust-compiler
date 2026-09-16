@@ -97,7 +97,7 @@ pub fn ast_create_expr_arrow_fn(params: Vec<Pat>, body: Box<BlockStmtOrExpr>) ->
   Box::new(Expr::Arrow(ArrowExpr {
     span: DUMMY_SP,
     ctxt: SyntaxContext::empty(),
-    params: params,
+    params,
     body,
     is_async: false,
     is_generator: false,

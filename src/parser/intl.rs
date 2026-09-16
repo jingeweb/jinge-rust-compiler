@@ -34,12 +34,8 @@ struct IntlParams {
   pub watch_props: Vec<(PropName, ExprParseResult)>,
 }
 
-pub fn extract_t<'a>(
-  args: &'a [ExprOrSpread],
-) -> Option<(Wtf8Atom, &'a Wtf8Atom, Option<&'a ObjectLit>)> {
-  let Some(default_text) = args.get(0) else {
-    return None;
-  };
+pub fn extract_t(args: &[ExprOrSpread]) -> Option<(Wtf8Atom, &Wtf8Atom, Option<&ObjectLit>)> {
+  let default_text = args.first()?;
   if default_text.spread.is_some() {
     return None;
   }
@@ -60,18 +56,16 @@ pub fn extract_t<'a>(
       emit_error(options.span(), "t 函数的 options 参数不支持 ... 解构写法");
     } else if let Expr::Object(opts) = options.expr.as_ref() {
       for prop in opts.props.iter() {
-        if let PropOrSpread::Prop(prop) = prop {
-          if let Prop::KeyValue(kv) = prop.as_ref() {
-            if let PropName::Ident(id) = &kv.key {
-              if JINGE_KEY.eq(&id.sym) {
-                if let Expr::Lit(Lit::Str(v)) = kv.value.as_ref() {
-                  key = Some(v.value.clone());
-                }
-                // 找到 key 就退出循环。
-                break;
-              }
-            }
+        if let PropOrSpread::Prop(prop) = prop
+          && let Prop::KeyValue(kv) = prop.as_ref()
+          && let PropName::Ident(id) = &kv.key
+          && JINGE_KEY.eq(&id.sym)
+        {
+          if let Expr::Lit(Lit::Str(v)) = kv.value.as_ref() {
+            key = Some(v.value.clone());
           }
+          // 找到 key 就退出循环。
+          break;
         }
       }
     }
@@ -104,7 +98,7 @@ impl TemplateParser {
   /// 因此有很大的问题，比如不支持 `import {t as someFn} from 'jinge'` 的别名 import 写法；
   /// 比如如果用户使用了自已定义的也名为 t 函数。
   /// TODO: 未来结合实现情况来支持上述两种 case。
-  pub fn parse_intl_t(&mut self, callee: &Expr, args: &Vec<ExprOrSpread>) -> bool {
+  pub fn parse_intl_t(&mut self, callee: &Expr, args: &[ExprOrSpread]) -> bool {
     if !matches!(callee, Expr::Ident(name) if JINGE_T.eq(&name.sym)) {
       return false;
     }

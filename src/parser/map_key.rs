@@ -7,7 +7,7 @@ use crate::common::emit_warn;
 
 use super::{JINGE_KEY, emit_error};
 
-const BAD_KEY_WARNING: &'static str = "key 不是受支持的表达式，已忽略。";
+const BAD_KEY_WARNING: &str = "key 不是受支持的表达式，已忽略。";
 
 #[derive(Debug)]
 pub enum MapKey {
@@ -19,10 +19,7 @@ pub enum MapKey {
 }
 impl MapKey {
   pub fn is_none(&self) -> bool {
-    match self {
-      MapKey::None => true,
-      _ => false,
-    }
+    matches!(self, MapKey::None)
   }
 }
 /// 将 map 函数体返回的第一个有 key 属性的 jsx 元素的 key 属性的表达式，转换成 <For> 组件的 keyFn 属性。
@@ -44,7 +41,7 @@ impl MapKeyFindVisitor {
   //   }
   //   params
   // }
-  fn get_key_from_jsx_element(&self, attrs: &Vec<JSXAttrOrSpread>) -> (usize, MapKey) {
+  fn get_key_from_jsx_element(&self, attrs: &[JSXAttrOrSpread]) -> (usize, MapKey) {
     for (index, attr) in attrs.iter().enumerate() {
       let JSXAttrOrSpread::JSXAttr(attr) = attr else {
         continue;

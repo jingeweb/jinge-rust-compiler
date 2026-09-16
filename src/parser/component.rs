@@ -16,7 +16,7 @@ fn slot_to_expr(
 ) -> Box<Expr> {
   let rtn_expr = Box::new(Expr::Array(ArrayLit {
     span: DUMMY_SP,
-    elems: expressions.into_iter().map(|e| Some(e)).collect(),
+    elems: expressions.into_iter().map(Some).collect(),
   }));
   if params.is_empty() {
     params.push(Pat::Ident(BindingIdent::from(JINGE_ATTR_IDENT.clone())));
@@ -34,7 +34,7 @@ fn slot_to_expr(
       BlockStmtOrExpr::BlockStmt(BlockStmt {
         span: DUMMY_SP,
         ctxt: SyntaxContext::empty(),
-        stmts: stmts,
+        stmts,
       })
     }),
   )
@@ -46,26 +46,19 @@ impl TemplateParser {
       return false;
     }
     let expr = &n.children[0];
-    match expr {
-      JSXElementChild::JSXExprContainer(e) => match &e.expr {
-        JSXExpr::Expr(e) => match e.as_ref() {
-          Expr::Member(mem_expr) => {
-            if let Some(slot_name) = get_slot_name_from_member_expr(mem_expr, &self.props_arg) {
-              self
-                .context
-                .slots
-                .last_mut()
-                .unwrap()
-                .pass_by
-                .replace(slot_name);
-              return true;
-            }
-          }
-          _ => (),
-        },
-        _ => (),
-      },
-      _ => (),
+    if let JSXElementChild::JSXExprContainer(e) = expr
+      && let JSXExpr::Expr(e) = &e.expr
+      && let Expr::Member(mem_expr) = e.as_ref()
+      && let Some(slot_name) = get_slot_name_from_member_expr(mem_expr, &self.props_arg)
+    {
+      self
+        .context
+        .slots
+        .last_mut()
+        .unwrap()
+        .pass_by
+        .replace(slot_name);
+      return true;
     }
     false
   }

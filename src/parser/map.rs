@@ -86,7 +86,7 @@ impl ReplaceVisitor {
     overrided.0 && overrided.1
   }
   /// 检查参数是否已经全部被覆盖。如果根参数 v0, v1 在嵌套函数的参数中被覆盖，则这个函数内部的同名参数都不再需要被替换成 slot 参数。
-  fn check_params_override(&mut self, params: &Vec<Param>) -> bool {
+  fn check_params_override(&mut self, params: &[Param]) -> bool {
     for par in params.iter() {
       if self.check_p(&par.pat) {
         return true;
@@ -94,7 +94,7 @@ impl ReplaceVisitor {
     }
     false
   }
-  fn check_params_override_2(&mut self, params: &Vec<Pat>) -> bool {
+  fn check_params_override_2(&mut self, params: &[Pat]) -> bool {
     for par in params.iter() {
       if self.check_p(par) {
         return true;
@@ -105,25 +105,25 @@ impl ReplaceVisitor {
 }
 impl VisitMut for ReplaceVisitor {
   fn visit_mut_fn_decl(&mut self, node: &mut FnDecl) {
-    self.stack.push(self.stack.last().unwrap().clone());
-    if !self.check_params_override(&node.function.params) {
-      if let Some(body) = &mut node.function.body {
-        body.visit_mut_children_with(self);
-      }
+    self.stack.push(*self.stack.last().unwrap());
+    if !self.check_params_override(&node.function.params)
+      && let Some(body) = &mut node.function.body
+    {
+      body.visit_mut_children_with(self);
     }
     self.stack.pop();
   }
   fn visit_mut_fn_expr(&mut self, node: &mut FnExpr) {
-    self.stack.push(self.stack.last().unwrap().clone());
-    if !self.check_params_override(&node.function.params) {
-      if let Some(body) = &mut node.function.body {
-        body.visit_mut_children_with(self);
-      }
+    self.stack.push(*self.stack.last().unwrap());
+    if !self.check_params_override(&node.function.params)
+      && let Some(body) = &mut node.function.body
+    {
+      body.visit_mut_children_with(self);
     }
     self.stack.pop();
   }
   fn visit_mut_arrow_expr(&mut self, node: &mut ArrowExpr) {
-    self.stack.push(self.stack.last().unwrap().clone());
+    self.stack.push(*self.stack.last().unwrap());
     if !self.check_params_override_2(&node.params) {
       node.body.as_mut().visit_mut_children_with(self);
     }
@@ -158,23 +158,23 @@ impl VisitMut for ReplaceVisitor {
               Prop::Shorthand(s) => {
                 let overrided: &(bool, bool) = self.stack.last().unwrap();
                 if !overrided.0 && matches!(self.arg_data, Some(ref a) if a.eq(&s.sym)) {
-                  *p = Box::new(Prop::KeyValue(KeyValueProp {
+                  **p = Prop::KeyValue(KeyValueProp {
                     key: PropName::Ident(IdentName::from(s.sym.clone())),
                     value: Box::new(Expr::Member(MemberExpr {
                       span: DUMMY_SP,
                       obj: ast_create_expr_ident(Ident::from(self.slot_vm_name.clone())),
                       prop: MemberProp::Ident(IdentName::from(JINGE_LOOP_EACH_DATA.clone())),
                     })),
-                  }));
+                  });
                 } else if !overrided.1 && matches!(self.arg_index, Some(ref a) if a.eq(&s.sym)) {
-                  *p = Box::new(Prop::KeyValue(KeyValueProp {
+                  **p = Prop::KeyValue(KeyValueProp {
                     key: PropName::Ident(IdentName::from(s.sym.clone())),
                     value: Box::new(Expr::Member(MemberExpr {
                       span: DUMMY_SP,
                       obj: ast_create_expr_ident(Ident::from(self.slot_vm_name.clone())),
                       prop: MemberProp::Ident(IdentName::from(JINGE_LOOP_EACH_INDEX.clone())),
                     })),
-                  }))
+                  })
                 }
               }
               _ => p.visit_mut_children_with(self),
@@ -187,13 +187,13 @@ impl VisitMut for ReplaceVisitor {
   }
 }
 
-fn gen_for_component(looop: &Box<Expr>, key: MapKey, func: ArrowExpr) -> JSXElement {
+fn gen_for_component(looop: &Expr, key: MapKey, func: ArrowExpr) -> JSXElement {
   let mut attrs = vec![JSXAttrOrSpread::JSXAttr(JSXAttr {
     span: looop.span(),
     name: JSXAttrName::Ident(IdentName::from(JINGE_LOOP.clone())),
     value: Some(JSXAttrValue::JSXExprContainer(JSXExprContainer {
       span: looop.span(),
-      expr: JSXExpr::Expr(looop.clone()),
+      expr: JSXExpr::Expr(Box::new(looop.clone())),
     })),
   })];
   if let Some(key_attr_value) = match key {
@@ -234,7 +234,7 @@ fn gen_for_component(looop: &Box<Expr>, key: MapKey, func: ArrowExpr) -> JSXElem
 }
 impl TemplateParser {
   /// 如果表达式是 xx.map() 调用，且参数只有一个，参数是箭头函数，则转换为 <For> 组件。
-  pub fn parse_map_fn(&mut self, callee: &Expr, args: &Vec<ExprOrSpread>) -> bool {
+  pub fn parse_map_fn(&mut self, callee: &Expr, args: &[ExprOrSpread]) -> bool {
     if args.len() != 1 {
       return false;
     }
@@ -281,9 +281,9 @@ impl TemplateParser {
     // 一般情况下，map 嵌套不会太多。小于 JINGE_LOOP_EACH_IDENTS.len() 层直接用预置好的 Atom，否则才用 format! 动态拼接。
     let slot_vm_name = JINGE_LOOP_EACH_IDENTS
       .get(self.map_loop_level)
-      .map(|v| v.clone())
+      .cloned()
       .unwrap_or_else(|| Atom::from(format!("each$jg${}", self.map_loop_level)));
-    let arg_data = pat_to_atom(func.params.get(0));
+    let arg_data = pat_to_atom(func.params.first());
     let arg_index = pat_to_atom(func.params.get(1));
     let mut replace_visitor =
       ReplaceVisitor::new(arg_data.clone(), arg_index.clone(), slot_vm_name.clone());
@@ -308,7 +308,7 @@ impl TemplateParser {
     }
 
     let for_component = gen_for_component(looop, map_key, func);
-    let tn = Ident::from(JINGE_IMPORT_FOR.local());
+    let tn = JINGE_IMPORT_FOR.local();
 
     self.map_loop_level += 1;
     self.parse_component_element(&tn, &for_component);

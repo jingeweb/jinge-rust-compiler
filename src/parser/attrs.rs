@@ -308,7 +308,6 @@ impl TemplateParser {
       | Expr::JSXEmpty(_)
       | Expr::Lit(_) => {
         emit_error(an.span(), "事件属性的属性值不支持 JSX/Await/Lit 类型。");
-        return;
       }
       _ => {
         // 如果是其它类型的值，tsx 的类型会保证这个值的类型一定是函数。模板编译器只需要处理值可能的 watch。
@@ -341,7 +340,7 @@ impl TemplateParser {
           }
         }
       }
-    };
+    }
 
     // if is_component {
     //   attrs

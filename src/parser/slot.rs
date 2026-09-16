@@ -56,23 +56,21 @@ fn get_slot_name_type_from_member_epxr(
         return SlotNameType::Default;
       }
     }
-    MemberProp::Computed(e) => match e.expr.as_ref() {
-      Expr::Lit(id) => match id {
-        Lit::Str(id) => {
-          if id.value.as_atom().map_or(false, |v| JINGE_CHILDREN.eq(v)) {
-            if let Some(props_arg) = props_arg {
-              if matches!(expr.obj.as_ref(), Expr::Ident(id) if id.sym.eq(props_arg)) {
-                return SlotNameType::Default;
-              }
-            }
-          } else if id.value.starts_with("slot:") {
-            return SlotNameType::Expr;
+    MemberProp::Computed(e) => {
+      if let Expr::Lit(id) = e.expr.as_ref()
+        && let Lit::Str(id) = id
+      {
+        if id.value.as_atom().is_some_and(|v| JINGE_CHILDREN.eq(v)) {
+          if let Some(props_arg) = props_arg
+            && matches!(expr.obj.as_ref(), Expr::Ident(id) if id.sym.eq(props_arg))
+          {
+            return SlotNameType::Default;
           }
+        } else if id.value.starts_with("slot:") {
+          return SlotNameType::Expr;
         }
-        _ => (),
-      },
-      _ => (),
-    },
+      }
+    }
     _ => (),
   }
   SlotNameType::None
@@ -169,7 +167,7 @@ fn exprorspread_vec_to_expr(mut exprorspread_vec: Vec<ExprOrSpread>) -> Box<Expr
   } else {
     Box::new(Expr::Array(ArrayLit {
       span: DUMMY_SP,
-      elems: exprorspread_vec.into_iter().map(|e| Some(e)).collect(),
+      elems: exprorspread_vec.into_iter().map(Some).collect(),
     }))
   }
 }
@@ -213,20 +211,8 @@ fn parse_slot_arg_prop(vm: &mut SlotVm, prop: &Prop, intl_type: IntlType) {
     }
     Expr::Fn(_) | Expr::Arrow(_) => {
       if match &kv.key {
-        PropName::Str(s) => {
-          if s.value.starts_with("on:") {
-            true
-          } else {
-            false
-          }
-        }
-        PropName::Ident(s) => {
-          if s.sym.starts_with("on:") {
-            true
-          } else {
-            false
-          }
-        }
+        PropName::Str(s) => s.value.starts_with("on:"),
+        PropName::Ident(s) => s.sym.starts_with("on:"),
         _ => false,
       } {
         vm.const_props.push((kv.key.clone(), kv.value.clone()));
@@ -248,7 +234,7 @@ fn parse_slot_arg_prop(vm: &mut SlotVm, prop: &Prop, intl_type: IntlType) {
     }
   }
 }
-fn parse_slot_arg(args: &Vec<ExprOrSpread>, intl_type: IntlType) -> SlotVm {
+fn parse_slot_arg(args: &[ExprOrSpread], intl_type: IntlType) -> SlotVm {
   let mut vm = SlotVm {
     const_props: vec![],
     watch_props: vec![],
@@ -395,11 +381,7 @@ impl TemplateParser {
     let render_fn_expr = self.transform_slot_to_render_fn(slot_name, slot_args);
     self.push_expression_with_spread(render_fn_expr);
   }
-  fn transform_slot_args(
-    &mut self,
-    args: &Vec<ExprOrSpread>,
-    stmts: &mut Vec<Stmt>,
-  ) -> Option<Ident> {
+  fn transform_slot_args(&mut self, args: &[ExprOrSpread], stmts: &mut Vec<Stmt>) -> Option<Ident> {
     let mut slot_arg_vm = parse_slot_arg(args, self.intl_type);
 
     let has_slot_vm = !slot_arg_vm.const_props.is_empty() || !slot_arg_vm.watch_props.is_empty();
@@ -486,7 +468,7 @@ impl TemplateParser {
       self.transform_slot(slot_name, Some(args));
       true
     } else {
-      return false;
+      false
     }
   }
   pub fn parse_slot_optchain_expr(&mut self, expr: &OptChainExpr) -> bool {

@@ -183,7 +183,6 @@ impl TemplateParser {
           tn.span(),
           "不支持的 Tag。合法 Tag 为：大写字母打头为 Component 组件，小写字母打头为 html 元素。",
         );
-        return;
       }
     }
   }

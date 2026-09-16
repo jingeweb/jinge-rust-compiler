@@ -109,7 +109,7 @@ lazy_static::lazy_static! {
   pub static ref IDL_ATTRIBUTE_SET: Vec<Atom> = {
     let mut attrs = vec!["disabled", "readOnly", "value", "autoFocus", "autoComplete", "autoPlay", "controls", "required", "checked", "selected", "multiple", "muted", "draggable"];
     attrs.sort_unstable();
-    attrs.into_iter().map(|s| Atom::from(s)).collect()
+    attrs.into_iter().map(Atom::from).collect()
   };
 
   pub static ref JINGE_IMPORT_MODULE_ITEM: ModuleItem = gen_import_jinge();

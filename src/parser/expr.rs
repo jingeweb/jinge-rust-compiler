@@ -45,7 +45,7 @@ pub enum ExprParseResult {
 
 pub struct ExprVisitor {
   no_watch: bool,
-  expressions: Vec<Box<Expr>>,
+  expressions: Vec<Expr>,
   level: usize,
   simple_result: Option<SimpleExprParseResult>,
   intl_type: IntlType, // exclude_roots: ExcludeRoots,
@@ -111,6 +111,9 @@ impl ExprVisitor {
       ExprParseResult::Complex(x)
     }
   }
+  fn pop_expression(&mut self) -> Box<Expr> {
+    Box::new(self.expressions.pop().unwrap())
+  }
   fn covert(&mut self, expr: &Expr) -> Box<Expr> {
     let mut expr = expr.clone();
 
@@ -121,7 +124,7 @@ impl ExprVisitor {
       // 如果转换后的表达式是一个简单的 Ident，并且 expressions 只有一个，说明不需要使用 ExprWatcher 包裹。
       // 比如 state.arr[state.b] 最后会被替换为 ExprWatcher(DymPathWatcher(state, ['arr', PathWatcher(state, 'b')]), (v) => v)
       // 外层的 ExprWatcher 是不需要的，可以直接返回 DymPathWatcher
-      return self.expressions.pop().unwrap();
+      return self.pop_expression();
     };
 
     let mut x = vec![];
@@ -131,7 +134,7 @@ impl ExprVisitor {
         span: DUMMY_SP,
         elems: x
           .into_iter()
-          .map(|e| Some(ast_create_arg_expr(e)))
+          .map(|e| Some(ast_create_arg_expr(Box::new(e))))
           .collect(),
       }))),
       ast_create_arg_expr(ast_create_expr_arrow_fn(
@@ -150,11 +153,11 @@ impl ExprVisitor {
       return None;
     }
     // 如果表达式整个是一个 MemberExpr，则不需要使用 ExprWatcher 进一步封装。
-    if matches!(expr, Expr::Member(_)) {
-      self.expressions.pop()
+    Some(if matches!(expr, Expr::Member(_)) {
+      self.pop_expression()
     } else {
-      Some(self.covert(expr))
-    }
+      self.covert(expr)
+    })
   }
 }
 impl Visit for ExprVisitor {
@@ -193,7 +196,7 @@ impl Visit for ExprVisitor {
       elems: mem_parser
         .path
         .into_iter()
-        .map(|p| Some(ast_create_arg_expr(p)))
+        .map(|p| Some(ast_create_arg_expr(Box::new(p))))
         .collect(),
     }));
 
@@ -215,7 +218,7 @@ impl Visit for ExprVisitor {
         Bool::from(true),
       )))));
     }
-    self.expressions.push(ast_create_expr_call(
+    self.expressions.push(*ast_create_expr_call(
       ast_create_expr_ident(if mem_parser.computed {
         JINGE_IMPORT_DYM_PATH_WATCHER.local()
       } else {
@@ -230,7 +233,7 @@ impl Visit for ExprVisitor {
     {
       // 当前已经配置启用了多语言能力，且 call 表达式是 t() 函数，则转换为多语言。
       let args = parse_intl_call_args(&node.args, drop_default_text);
-      self.expressions.push(ast_create_expr_call(
+      self.expressions.push(*ast_create_expr_call(
         ast_create_expr_ident(JINGE_IMPORT_INTL_WATCHER.local()),
         args,
       ));
@@ -290,7 +293,7 @@ impl<'a> VisitMut for MemberExprReplaceVisitor<'a> {
 
 struct MemberExprVisitor {
   root: Root,
-  path: Vec<Box<Expr>>,
+  path: Vec<Expr>,
   meet_error: bool,
   // meet_private: bool,
   level: usize,
@@ -366,7 +369,7 @@ impl Visit for MemberExprVisitor {
       MemberProp::Ident(id) => {
         self
           .path
-          .push(Box::new(Expr::Lit(Lit::Str(Str::from(id.sym.clone())))));
+          .push(Expr::Lit(Lit::Str(Str::from(id.sym.clone()))));
       }
       MemberProp::PrivateName(v) => {
         emit_error(v.span(), "不支持 PrivateName");
@@ -376,7 +379,7 @@ impl Visit for MemberExprVisitor {
         let expr = c.expr.as_ref();
         match expr {
           Expr::Lit(v) => match v {
-            Lit::Str(_) | Lit::Num(_) => self.path.push(Box::new(Expr::Lit(v.clone()))),
+            Lit::Str(_) | Lit::Num(_) => self.path.push(Expr::Lit(v.clone())),
             _ => {
               self.meet_error = true;
               emit_error(v.span(), "不支持该常量作为属性");
@@ -388,7 +391,7 @@ impl Visit for MemberExprVisitor {
               ExprVisitor::new_with_level(self.level + 1, self.intl_type).inner_parse(expr)
             {
               self.computed = true;
-              self.path.push(result);
+              self.path.push(*result);
             } else {
               self.meet_error = true;
             }

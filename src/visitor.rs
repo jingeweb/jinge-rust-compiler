@@ -26,7 +26,7 @@ impl<'a> TemplateTransformVisitor<'a> {
     if let Some(body) = &mut expr.body {
       let mut params: Vec<_> = expr.params.iter().map(|p| p.pat.clone()).collect();
       if self.v_func_body(fn_name, body, &mut params, is_slot) {
-        expr.params = params.into_iter().map(|p| Param::from(p)).collect();
+        expr.params = params.into_iter().map(Param::from).collect();
       }
     };
   }
@@ -51,7 +51,7 @@ impl<'a> TemplateTransformVisitor<'a> {
         let expr_ref = expr.as_ref();
         let mut should_parse_jsx = is_slot;
         if !should_parse_jsx {
-          let props_arg = params.get(0).and_then(|p| match p {
+          let props_arg = params.first().and_then(|p| match p {
             Pat::Ident(v) => Some(v.sym.clone()),
             _ => None,
           });
@@ -61,11 +61,8 @@ impl<'a> TemplateTransformVisitor<'a> {
           if !is_slot {
             // 如果是最外层的函数组件，当有传递第二个参数 [H] 时，需要在第一行添加 const root_host$jg$ = [H]。
             // 这样对于 props.children 转成取 SLOTS 时，从 root_host$jg$ 取才不会有问题。
-            match params.get(1) {
-              Some(Pat::Ident(id)) => {
-                root_host_arg.replace(id.id.clone());
-              }
-              _ => (),
+            if let Some(Pat::Ident(id)) = params.get(1) {
+              root_host_arg.replace(id.id.clone());
             };
           }
           changed = self.v_return(fn_name, expr, params, is_slot);
@@ -92,7 +89,7 @@ impl<'a> TemplateTransformVisitor<'a> {
         let mut should_parse_jsx = is_slot;
         let params = &mut expr.params;
         if !should_parse_jsx {
-          let props_arg = params.get(0).and_then(|p| match p {
+          let props_arg = params.first().and_then(|p| match p {
             Pat::Ident(v) => Some(v.sym.clone()),
             _ => None,
           });
@@ -137,7 +134,7 @@ impl<'a> TemplateTransformVisitor<'a> {
   ) -> Option<Box<Expr>> {
     const ERR: &str = "函数组件或 Slot 组件的参数不合法";
     let mut props_arg = None;
-    if let Some(p) = params.get(0) {
+    if let Some(p) = params.first() {
       if let Pat::Ident(p) = p {
         props_arg.replace(p.sym.clone());
       } else {
@@ -172,8 +169,7 @@ impl<'a> TemplateTransformVisitor<'a> {
       })));
     }
     // println!("{:#?} {:#?}", props_arg, host_ident);
-    let mut visitor =
-      parser::TemplateParser::new(props_arg, host_ident.clone(), self.intl_type.clone());
+    let mut visitor = parser::TemplateParser::new(props_arg, host_ident.clone(), self.intl_type);
     if is_slot {
       visitor.push_context_with_host_ident(parser::Parent::Component, host_ident);
     }
@@ -222,7 +218,6 @@ impl VisitMut for TemplateTransformVisitor<'_> {
                 *expr =
                   ast_create_expr_arrow_fn(params, Box::new(BlockStmtOrExpr::Expr(parsed_expr)));
               }
-              return;
             } else {
               kv.visit_mut_children_with(self);
             }

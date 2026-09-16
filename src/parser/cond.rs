@@ -15,11 +15,7 @@ lazy_static::lazy_static! {
 }
 
 /// 将形如 `test ? cons : alt` 的二元条件表达式，转换为 `If` 组件： `<If expect={test} slot:true={cons} slot:false={alt} />`
-fn gen_if_component(
-  test: Box<Expr>,
-  alt: Option<&Box<Expr>>,
-  cons: Option<&Box<Expr>>,
-) -> JSXElement {
+fn gen_if_component(test: Box<Expr>, alt: Option<&Expr>, cons: Option<&Expr>) -> JSXElement {
   let mut attrs = Vec::with_capacity(if alt.is_some() { 2 } else { 1 });
   attrs.push(JSXAttrOrSpread::JSXAttr(JSXAttr {
     span: test.span(),
@@ -36,11 +32,11 @@ fn gen_if_component(
       name: JSXAttrName::JSXNamespacedName(JSXNamespacedName {
         span: DUMMY_SP,
         ns: IdentName::from(JINGE_SLOT.clone()),
-        name: IdentName::from(ELSE.clone()),
+        name: ELSE.clone(),
       }),
       value: Some(JSXAttrValue::JSXExprContainer(JSXExprContainer {
         span: DUMMY_SP,
-        expr: JSXExpr::Expr(alt.clone()),
+        expr: JSXExpr::Expr(Box::new(alt.clone())),
       })),
     }));
   }
@@ -54,10 +50,10 @@ fn gen_if_component(
       self_closing: cons.is_none(),
       type_args: None,
     },
-    children: if cons.is_some() {
+    children: if let Some(cons) = cons {
       vec![JSXElementChild::JSXExprContainer(JSXExprContainer {
         span: DUMMY_SP,
-        expr: JSXExpr::Expr(cons.unwrap().clone()),
+        expr: JSXExpr::Expr(Box::new(cons.clone())),
       })]
     } else {
       vec![]
