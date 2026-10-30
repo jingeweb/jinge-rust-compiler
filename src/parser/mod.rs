@@ -451,43 +451,44 @@ impl Visit for TemplateParser {
  * 中间的空白，如果包含了 \n，替换为单个空格；否则全部保留。
  */
 fn trim_html_text(text: &Wtf8Atom) -> Option<Wtf8Atom> {
+  let str = text.as_str()?;
   let mut result = String::new();
 
-  let mut start_i = 0i32;
-  let mut not_whitespace_i = -1;
+  // 注意：下面的偏移量必须是「字节偏移」，不能用 chars().enumerate() 的字符下标，
+  // 否则文本里出现中文等多字节字符时，按字节切片会切在字符中间导致 panic。
+  let mut start: Option<usize> = Some(0);
+  let mut last_non_whitespace: Option<usize> = None;
   let mut meet_break_line = false;
-  let mut break_line_i = -1i32;
   let mut meet_not_whitespace = false;
+  let mut line_break_since_content = false;
 
-  // let bytes = text.as_bytes();
-  let str = text.as_str()?;
-
-  for (i, chr) in str.chars().enumerate() {
+  for (i, chr) in str.char_indices() {
     if chr == '\n' {
       meet_break_line = true;
-      break_line_i = i as i32;
-      if not_whitespace_i >= 0 {
-        result.push_str(&str[(start_i as usize)..=(not_whitespace_i as usize)]);
+      line_break_since_content = true;
+      if let (Some(s), Some(end)) = (start, last_non_whitespace) {
+        result.push_str(&str[s..end]);
       }
-      not_whitespace_i = -1;
-      start_i = -1;
+      start = None;
+      last_non_whitespace = None;
     } else if chr != ' ' && chr != '\t' {
-      if break_line_i >= 0 {
+      if line_break_since_content {
         if meet_not_whitespace {
           // 位于中间的带 \n 的空白才需要被替换为单个空格。首尾的带 \n 空白直接 trim 去除。
           result.push(' ');
         }
-        break_line_i = -1;
+        line_break_since_content = false;
       }
       meet_not_whitespace = true;
-      not_whitespace_i = i as i32;
-      if start_i < 0 {
-        start_i = i as i32;
+      last_non_whitespace = Some(i + chr.len_utf8());
+      if start.is_none() {
+        start = Some(i);
       }
     }
   }
-  if meet_break_line && not_whitespace_i >= 0 {
-    result.push_str(&str[(start_i as usize)..]);
+  if meet_break_line && let (Some(s), Some(_)) = (start, last_non_whitespace) {
+    // 最后一段的尾部空白保留，和原实现保持一致。
+    result.push_str(&str[s..]);
   }
 
   if !meet_break_line {
@@ -513,4 +514,17 @@ fn test_trim_html_text() {
   assert_eq!(trim_html_text(&t), None);
   t = Wtf8Atom::from("  a \n\n\n b c \n d ");
   assert_eq!(trim_html_text(&t), Some(Wtf8Atom::from("  a b c d ")));
+}
+
+#[test]
+fn test_trim_html_text_with_multibyte_chars() {
+  // 多字节字符不能按「字符下标」当作字节偏移来切片。
+  let mut t = Wtf8Atom::from("\n  通过\n");
+  assert_eq!(trim_html_text(&t), Some(Wtf8Atom::from("通过")));
+  t = Wtf8Atom::from("\n  你好 \n  世界  ");
+  assert_eq!(trim_html_text(&t), Some(Wtf8Atom::from("你好 世界  ")));
+  t = Wtf8Atom::from("\n  你好  世界\n");
+  assert_eq!(trim_html_text(&t), Some(Wtf8Atom::from("你好  世界")));
+  t = Wtf8Atom::from("  普通文本  ");
+  assert_eq!(trim_html_text(&t), Some(t));
 }
