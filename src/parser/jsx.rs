@@ -1,11 +1,7 @@
 use swc_common::{Spanned, SyntaxContext};
-use swc_core::ecma::ast::*;
 use swc_ecma_visit::VisitWith;
 
-use crate::{
-  ast::*,
-  parser::{attrs::AttrWatchPropName, *},
-};
+use crate::parser::{attrs::AttrWatchPropName, *};
 
 use super::{TemplateParser, emit_error};
 
