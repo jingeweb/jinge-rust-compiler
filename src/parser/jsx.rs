@@ -8,7 +8,8 @@ use super::{TemplateParser, emit_error};
 impl TemplateParser {
   fn parse_html_element(&mut self, tn: &Ident, n: &JSXElement) {
     let mut attrs = self.parse_attrs(n, false);
-    self.push_context_inherit_host_ident(if JINGE_SVG.eq(&tn.sym) {
+    let is_svg = self.context.is_parent_svg() || JINGE_SVG.eq(&tn.sym);
+    self.push_context_inherit_host_ident(if is_svg && tn.sym != "foreignObject" {
       Parent::Svg
     } else {
       Parent::Html
@@ -21,6 +22,7 @@ impl TemplateParser {
     let mut children_context = self.pop_context();
     // html 元素下不可能出现多个 slots。事实上，html 元素没有 slot 概念，只是用统一的数据结构保存子节点。
     assert_eq!(children_context.slots.len(), 1);
+    let had_const_props = !attrs.const_props.is_empty();
     let callee_ident = if self.context.is_parent_svg() || tn.sym.eq("svg") {
       if !attrs.const_props.is_empty() {
         JINGE_IMPORT_CREATE_SVG_ELE_A.local()
@@ -39,6 +41,43 @@ impl TemplateParser {
     ))))];
     let host_ident = self.create_host_ident();
 
+    let mut idl_props = vec![];
+    if !is_svg {
+      attrs.const_props.retain(|(name, value)| {
+        if IDL_ATTRIBUTE_SET.binary_search(&name.sym).is_ok() {
+          idl_props.push((name.clone(), value.clone()));
+          false
+        } else {
+          true
+        }
+      });
+    }
+    // Select mode must be established before selected options are appended.
+    // Keep value and other property bindings in their existing post-child phase.
+    let initialize_multiple_first = !is_svg
+      && tn.sym == "select"
+      && (idl_props.iter().any(|(name, _)| name.sym == "multiple")
+        || attrs.watch_props.iter().any(
+          |(name, _)| matches!(name, AttrWatchPropName::Id(name) if name.as_str() == "multiple"),
+        ));
+    let (initial_idl_props, idl_props): (Vec<_>, Vec<_>) = if initialize_multiple_first {
+      idl_props
+        .into_iter()
+        .partition(|(name, _)| name.sym == "multiple")
+    } else {
+      (Vec::new(), idl_props)
+    };
+    let initial_watch_props = if initialize_multiple_first {
+      let (initial, remaining): (Vec<_>, Vec<_>) = std::mem::take(&mut attrs.watch_props)
+        .into_iter()
+        .partition(
+          |(name, _)| matches!(name, AttrWatchPropName::Id(name) if name.as_str() == "multiple"),
+        );
+      attrs.watch_props = remaining;
+      initial
+    } else {
+      Vec::new()
+    };
     let set_ref_code = attrs
       .ref_prop
       .take()
@@ -48,11 +87,12 @@ impl TemplateParser {
     } else {
       None
     };
-    if !attrs.const_props.is_empty() {
+    if had_const_props {
       args.push(ast_create_arg_expr(tpl_lit_obj(attrs.const_props)));
     }
-    if !children_context.slots[0].expressions.is_empty() {
-      args.append(&mut children_context.slots[0].expressions);
+    let mut children = std::mem::take(&mut children_context.slots[0].expressions);
+    if !initialize_multiple_first {
+      args.append(&mut children);
     }
 
     let output = if set_ref_code.is_some()
@@ -60,11 +100,54 @@ impl TemplateParser {
       || !attrs.dom_const_events.is_empty()
       || !attrs.dom_watch_events.is_empty()
       || !attrs.watch_props.is_empty()
+      || !idl_props.is_empty()
+      || initialize_multiple_first
     {
       let mut stmts: Vec<Stmt> = vec![ast_create_stmt_decl_const(
         JINGE_EL_IDENT.clone(),
         ast_create_expr_call(ast_create_expr_ident(callee_ident), args),
       )];
+      for (name, value) in initial_idl_props {
+        stmts.push(Stmt::Expr(ExprStmt {
+          span: DUMMY_SP,
+          expr: ast_create_expr_assign_mem(
+            ast_create_expr_ident(JINGE_EL_IDENT.clone()),
+            name.sym,
+            value,
+          ),
+        }));
+      }
+      for (name, watch_expr) in initial_watch_props {
+        let AttrWatchPropName::Id(name) = name else {
+          unreachable!()
+        };
+        stmts.push(Stmt::Expr(ExprStmt {
+          span: DUMMY_SP,
+          expr: tpl_watch_and_set_html_attr(name, watch_expr, host_ident.clone()),
+        }));
+      }
+      if initialize_multiple_first && !children.is_empty() {
+        stmts.push(Stmt::Expr(ExprStmt {
+          span: DUMMY_SP,
+          expr: ast_create_expr_call(
+            ast_create_expr_member(
+              ast_create_expr_ident(JINGE_EL_IDENT.clone()),
+              MemberProp::Ident(IdentName::from("append")),
+            ),
+            children,
+          ),
+        }));
+      }
+      for (name, value) in idl_props {
+        stmts.push(Stmt::Expr(ExprStmt {
+          span: DUMMY_SP,
+          expr: ast_create_expr_assign_mem(
+            ast_create_expr_ident(JINGE_EL_IDENT.clone()),
+            name.sym,
+            value,
+          ),
+        }));
+      }
       attrs.dom_const_events.into_iter().for_each(|evt| {
         let mut args = vec![
           ast_create_arg_expr(ast_create_expr_ident(JINGE_EL_IDENT.clone())),

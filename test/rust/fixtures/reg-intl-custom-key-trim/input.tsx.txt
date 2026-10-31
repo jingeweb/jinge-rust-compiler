@@ -1,0 +1,1 @@
+import {vm,t} from 'jinge';export function A(){return <p>{t('hello',{}, {key:' greeting '})}</p>}

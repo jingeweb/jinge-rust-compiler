@@ -41,7 +41,7 @@ export function __hmrUpdate__() {
 if (import.meta.hot) {
   ${initHmrId}
   import.meta.hot.accept((newModule) => {
-    newModule.__hmrUpdate__();
+    newModule?.__hmrUpdate__();
   });
 }`;
 }
@@ -95,7 +95,7 @@ export function jingeVitePlugin(options?: JingeVitePluginOptions): PluginOption 
       apply: 'build',
       enforce: 'pre',
       configResolved(config) {
-        if (config.build?.sourcemap) sourcemapEnabled = true;
+        sourcemapEnabled = !!config.build?.sourcemap;
         if (options?.intl) {
           intlOpts = {
             dropDefaultText: true,

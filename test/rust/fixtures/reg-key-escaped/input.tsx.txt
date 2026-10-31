@@ -1,0 +1,1 @@
+import {vm,t} from 'jinge';const state=vm({items:[{"quote'\key":1}]});export function A(){return <>{state.items.map(item=><p key={item["quote'\key"]}>ok</p>)}</>}

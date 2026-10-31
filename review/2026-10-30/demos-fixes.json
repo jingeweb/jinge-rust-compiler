@@ -1,0 +1,49 @@
+{
+  "before": {
+    "compilerRustRegression": {
+      "passed": 2,
+      "failed": 2
+    },
+    "compilerIntegrationRegression": {
+      "passed": 4,
+      "failed": 10
+    },
+    "compilerChromeRegression": {
+      "passed": 0,
+      "failed": 2
+    },
+    "runtimeRegression": {
+      "passed": 12,
+      "failed": 20
+    }
+  },
+  "after": {
+    "compilerRust": {
+      "passed": 113,
+      "failed": 0
+    },
+    "compilerIntegration": {
+      "passed": 162,
+      "failed": 0
+    },
+    "compilerChrome": {
+      "passed": 12,
+      "failed": 0
+    },
+    "runtime": {
+      "passed": 341,
+      "failed": 0,
+      "suites": 33
+    },
+    "demosChrome": {
+      "passed": 28,
+      "failed": 0
+    }
+  },
+  "pending": {
+    "todo": 7,
+    "includedInPassCounts": false
+  },
+  "ci": "Runtime pin must be updated after sibling runtime fix is committed",
+  "coverage": "Not measured again"
+}

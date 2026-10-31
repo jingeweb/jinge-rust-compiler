@@ -1,0 +1,1 @@
+export const opts={'slot:content':<p>hi</p>}

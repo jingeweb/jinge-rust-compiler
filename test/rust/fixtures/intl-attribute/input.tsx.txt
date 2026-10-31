@@ -1,0 +1,1 @@
+import {t,vm} from 'jinge';export const state=vm({name:'a'});export function A(){return <p title={t('Hello {name}',{name:state.name},{key:'fixture-params'})}>x</p>}

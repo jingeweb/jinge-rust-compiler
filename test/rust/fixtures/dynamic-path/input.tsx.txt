@@ -1,0 +1,1 @@
+import {vm} from 'jinge';export const state=vm({key:'a',values:{a:'A',b:'B'}});export function A(){return <p>{state.values[state.key]}</p>}

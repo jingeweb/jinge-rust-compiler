@@ -1,0 +1,1 @@
+import {vm} from 'jinge';export const state=vm({user:null});export function A(){return <p>{state.user?.name}</p>}

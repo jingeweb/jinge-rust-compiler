@@ -1,0 +1,1 @@
+export function A(){return <select multiple value="b"><option value="a" selected>A</option><option value="b" selected>B</option></select>}

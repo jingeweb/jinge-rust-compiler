@@ -1,0 +1,6 @@
+error: 警告：Slot 渲染函数的只允许一个参数，该参数应该是具备双向绑定属性的 ViewModel。是否忘了使用 object 包裹这几个参数？
+ --> fixture.tsx:1:54
+  |
+1 | export function A(props){return <>{props.children({},{})}</>}
+  |                                                      ^^
+

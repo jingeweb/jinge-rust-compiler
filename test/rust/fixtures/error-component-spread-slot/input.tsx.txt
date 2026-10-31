@@ -1,0 +1,1 @@
+const attrs={};function Child(){return <p/>}export function A(){return <Child {...attrs} slot:x={<b/>}/>}

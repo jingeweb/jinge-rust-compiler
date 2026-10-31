@@ -1,0 +1,1 @@
+function Child(props){return <div>{props['slot:head']?.()??<b>fallback</b>}</div>}export function A(){return <Child/>}

@@ -1,0 +1,1 @@
+import {vm} from 'jinge';export const state=vm({n:0,handler:()=>state.n++});function Child(props){return <button on:click={props['on:change']}>{props.n}</button>}export function A(){return <Child n={state.n} on:change={state.handler}/>}

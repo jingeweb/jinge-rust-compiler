@@ -1,0 +1,1 @@
+const attrs={};export function A(){return <div {...attrs}/>}

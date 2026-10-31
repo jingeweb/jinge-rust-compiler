@@ -1,0 +1,1 @@
+import {vm,t} from 'jinge';const state=vm({items:[1]});export function A(){return <>{state.items.map((item,index)=>{const copy={item,index};return <p key={index}>{copy.item}:{copy.index}</p>})}</>}

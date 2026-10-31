@@ -1,0 +1,1 @@
+export function A(){return <p slot:x="bad"/>}

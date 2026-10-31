@@ -1,0 +1,6 @@
+error: DOM 元素不支持 spread 属性
+ --> fixture.tsx:1:49
+  |
+1 | const attrs={};export function A(){return <div {...attrs}/>}
+  |                                                 ^^^^^^^^
+

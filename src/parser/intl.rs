@@ -62,7 +62,12 @@ pub fn extract_t(args: &[ExprOrSpread]) -> Option<(Wtf8Atom, &Wtf8Atom, Option<&
           && JINGE_KEY.eq(&id.sym)
         {
           if let Expr::Lit(Lit::Str(v)) = kv.value.as_ref() {
-            key = Some(v.value.clone());
+            key = v
+              .value
+              .as_str()
+              .map(str::trim)
+              .filter(|key| !key.is_empty())
+              .map(Wtf8Atom::from);
           }
           // 找到 key 就退出循环。
           break;

@@ -1,0 +1,6 @@
+error: 属性值不支持 JSX 元素，如果是定义插槽请使用 slot:n 定义。
+ --> fixture.tsx:1:64
+  |
+1 | function Child(){return <p/>}export function A(){return <Child n={<p/>}/>}
+  |                                                                ^
+

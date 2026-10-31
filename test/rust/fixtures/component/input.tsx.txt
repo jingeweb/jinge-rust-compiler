@@ -1,0 +1,1 @@
+import {vm} from 'jinge';export const state=vm({n:1});function Child(props){return <p>{props.n}</p>}export function A(){return <Child n={state.n}/>}

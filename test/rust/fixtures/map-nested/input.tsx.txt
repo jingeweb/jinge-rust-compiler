@@ -1,0 +1,1 @@
+import {vm} from 'jinge';export const state=vm({groups:[{id:1,items:[{id:2,name:'a'}]}]});export function A(){return <div>{state.groups.map(group=><section key={group.id}>{group.items.map(item=><p key={item.id}>{item.name}</p>)}</section>)}</div>}

@@ -1,7 +1,9 @@
 use std::borrow::Cow;
 
+use hashbrown::HashSet;
 use swc_common::Spanned;
-use swc_core::{atoms::Atom, ecma::ast::*};
+use swc_core::ecma::ast::*;
+use swc_ecma_visit::{Visit, VisitWith};
 
 use crate::common::emit_warn;
 
@@ -26,8 +28,8 @@ impl MapKey {
 /// 要求 key 属性必须是 Ident 或 MemberExpr，且必须是 map 函数的第一个 data 参数或第二个 index 参数。
 ///
 pub struct MapKeyFindVisitor {
-  pub arg_data: Option<Atom>,
-  pub arg_index: Option<Atom>,
+  pub arg_data: Option<Id>,
+  pub arg_index: Option<Id>,
 }
 impl MapKeyFindVisitor {
   // #[inline]
@@ -82,7 +84,9 @@ impl MapKeyFindVisitor {
               MemberProp::Ident(id) => {
                 let mut x = id.sym.to_string();
                 if !path.is_empty() {
-                  x.push('.');
+                  if !path.starts_with('[') {
+                    x.push('.');
+                  }
                   x.push_str(&path);
                 }
                 path = x;
@@ -94,7 +98,14 @@ impl MapKeyFindVisitor {
                     return (0, MapKey::None);
                   };
                   let mut x = "['".to_string();
-                  x.push_str(&p.replace('\'', "\\'"));
+                  x.push_str(
+                    &p.replace('\\', "\\\\")
+                      .replace('\'', "\\'")
+                      .replace('\n', "\\n")
+                      .replace('\r', "\\r")
+                      .replace('\u{2028}', "\\u2028")
+                      .replace('\u{2029}', "\\u2029"),
+                  );
                   x.push_str("']");
                   if !path.is_empty() {
                     if !path.starts_with('[') {
@@ -123,7 +134,7 @@ impl MapKeyFindVisitor {
             if self
               .arg_data
               .as_ref()
-              .map(|v| id.sym.eq(v))
+              .map(|v| id.to_id().eq(v))
               .unwrap_or(false)
             {
               (index, MapKey::Prop(path))
@@ -141,14 +152,14 @@ impl MapKeyFindVisitor {
           if self
             .arg_data
             .as_ref()
-            .map(|v| id.sym.eq(v))
+            .map(|v| id.to_id().eq(v))
             .unwrap_or(false)
           {
             (index, MapKey::Data)
           } else if self
             .arg_index
             .as_ref()
-            .map(|v| id.sym.eq(v))
+            .map(|v| id.to_id().eq(v))
             .unwrap_or(false)
           {
             (index, MapKey::Index)
@@ -214,11 +225,57 @@ impl MapKeyFindVisitor {
   }
 
   pub fn get_key(&self, expr: &mut ArrowExpr) -> MapKey {
-    let ArrowFunctionBody::Expr(expr) = expr.body.as_mut() else {
-      // self.parse_component_element 里会约束 Slot 函数只能是箭头函数且箭头函数直接返回 Expr 表达式。
-      // 所以如果是 expr.body 是 BlockStmt 则不再需要尝试获取 key 属性。
-      return MapKey::None;
+    let mut locals = KeyLocals::default();
+    expr.body.visit_with(&mut locals);
+    let key = match expr.body.as_mut() {
+      ArrowFunctionBody::Expr(expr) => self.get_key_inner(expr),
+      ArrowFunctionBody::FunctionBody(body) => {
+        match body
+          .stmts
+          .iter_mut()
+          .rev()
+          .find(|s| !matches!(s, Stmt::Empty(_)))
+        {
+          Some(Stmt::Return(r)) => r
+            .arg
+            .as_mut()
+            .map(|e| self.get_key_inner(e))
+            .unwrap_or(MapKey::None),
+          _ => MapKey::None,
+        }
+      }
     };
-    self.get_key_inner(expr)
+    if let MapKey::Expr(value) = &key {
+      let mut root = value.as_ref();
+      while let Expr::Member(member) = root {
+        root = &member.obj;
+      }
+      if let Expr::Ident(id) = root
+        && locals.0.contains(&id.to_id())
+      {
+        emit_error(
+          value.span(),
+          "key 引用了 map 回调内的局部变量，暂不支持向 For 提取；请直接使用 item 的属性路径",
+        );
+        return MapKey::None;
+      }
+    }
+    key
+  }
+}
+
+#[derive(Default)]
+struct KeyLocals(HashSet<Id>);
+impl Visit for KeyLocals {
+  fn visit_binding_ident(&mut self, id: &BindingIdent) {
+    self.0.insert(id.id.to_id());
+  }
+  fn visit_fn_decl(&mut self, node: &FnDecl) {
+    self.0.insert(node.ident.to_id());
+    node.visit_children_with(self);
+  }
+  fn visit_class_decl(&mut self, node: &ClassDecl) {
+    self.0.insert(node.ident.to_id());
+    node.visit_children_with(self);
   }
 }

@@ -1,0 +1,1 @@
+import {vm,t} from 'jinge';const state=vm({items:[]});export function A(){return state.items.map(({name})=><p>{name}</p>)}

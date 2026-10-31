@@ -1,0 +1,1 @@
+import {vm} from 'jinge';export const state=vm({n:0});export function A(){return <button on:click={()=>state.n++}>{state.n}</button>}

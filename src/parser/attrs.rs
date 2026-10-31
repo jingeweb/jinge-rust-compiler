@@ -378,6 +378,10 @@ impl TemplateParser {
 
     n.opening.attrs.iter().for_each(|attr| match attr {
       JSXAttrOrSpread::SpreadElement(s) => {
+        if !is_component {
+          emit_error(s.span(), "DOM 元素不支持 spread 属性");
+          return;
+        }
         let Expr::Ident(id) = s.expr.as_ref() else {
           emit_error(s.span(), "解构写法...后必须是 Ident");
           return;

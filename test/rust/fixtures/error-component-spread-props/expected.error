@@ -1,0 +1,6 @@
+error: 解构写法透传属性只能出现一次
+ --> fixture.tsx:1:83
+  |
+1 | const attrs={};function Child(){return <p/>}export function A(){return <Child {...attrs} n={1}/>}
+  |                                                                                   ^^^^^
+

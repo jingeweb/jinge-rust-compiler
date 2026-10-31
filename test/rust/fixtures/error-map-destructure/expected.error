@@ -1,0 +1,12 @@
+error: map 模板参数仅支持 data、index 两个普通标识符，不支持解构、默认、rest 或第三个参数
+ --> fixture.tsx:1:98
+  |
+1 | import {vm,t} from 'jinge';const state=vm({items:[]});export function A(){return state.items.map(({name})=><p>{name}</p>)}
+  |                                                                                                  ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: 不支持此位置的 JSX（包括提前 return）；请使用最终模板 return
+ --> fixture.tsx:1:108
+  |
+1 | import {vm,t} from 'jinge';const state=vm({items:[]});export function A(){return state.items.map(({name})=><p>{name}</p>)}
+  |                                                                                                            ^^^^^^^^^^^^^
+

@@ -1,0 +1,12 @@
+error: 函数组件的第二个参数必须是 host 或以 host 打头，确保已对第二个参数有充分理解
+ --> fixture.tsx:1:25
+  |
+1 | export function A(props,other){return <p/>}
+  |                         ^^^^^
+
+error: 不支持此位置的 JSX（包括提前 return）；请使用最终模板 return
+ --> fixture.tsx:1:39
+  |
+1 | export function A(props,other){return <p/>}
+  |                                       ^^^^
+

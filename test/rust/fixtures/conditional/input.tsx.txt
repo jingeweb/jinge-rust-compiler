@@ -1,0 +1,1 @@
+import {vm} from 'jinge';export const state=vm({on:true,n:1});export function A(){return <>{state.on?<b>{state.n}</b>:<i>off</i>}</>}

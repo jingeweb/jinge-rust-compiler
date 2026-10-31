@@ -14,5 +14,6 @@
   },
   "sortPackageJson": {
     "sortScripts": true
-  }
+  },
+  "ignorePatterns": ["test/rust/fixtures/**", "test/.compiled/**"]
 }

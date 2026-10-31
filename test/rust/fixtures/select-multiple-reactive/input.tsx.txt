@@ -1,0 +1,1 @@
+import {vm} from 'jinge';const state=vm({multi:true});export function A(){return <select multiple={state.multi}><option value="a" selected>A</option><option value="b" selected>B</option></select>}

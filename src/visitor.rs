@@ -40,8 +40,9 @@ impl<'a> TemplateTransformVisitor<'a> {
   ) -> bool {
     let mut changed = false;
     let mut root_host_arg = None;
-    for (index, stmt) in stmts.iter_mut().rev().enumerate() {
-      if index == 0 {
+    let last = stmts.iter().rposition(|s| !matches!(s, Stmt::Empty(_)));
+    for (index, stmt) in stmts.iter_mut().enumerate().rev() {
+      if Some(index) == last {
         let Stmt::Return(stmt) = stmt else {
           stmt.visit_mut_children_with(self);
           continue;
@@ -210,12 +211,16 @@ impl VisitMut for TemplateTransformVisitor<'_> {
                     return;
                   }
                 }
-                Expr::OptChain(_) => todo!("支持 optional-chain"),
+                Expr::OptChain(expr) => {
+                  emit_error(expr.span, "对象插槽透传暂不支持 optional chain");
+                  return;
+                }
                 _ => (),
               }
               // emit_error(s.span(), "slot:打头的属性代表插槽函数，属性值必须是函数");
               let mut params = vec![];
               if let Some(parsed_expr) = self.v_return_parse(expr, &mut params, true) {
+                self.changed = true;
                 *expr =
                   ast_create_expr_arrow_fn(params, Box::new(ArrowFunctionBody::Expr(parsed_expr)));
               }
@@ -242,7 +247,7 @@ impl VisitMut for TemplateTransformVisitor<'_> {
               let name = match &decl.name {
                 Pat::Ident(id) => Some(&id.id),
                 _ => {
-                  emit_error(decl.name.span(), "警告：非常规命令的函数组件无法使用 HMR");
+                  emit_warn(decl.name.span(), "非常规命名的函数组件无法使用 HMR");
                   None
                 }
               };
@@ -262,7 +267,7 @@ impl VisitMut for TemplateTransformVisitor<'_> {
             if let Some(n) = &func.ident {
               Some(n)
             } else {
-              emit_error(func.span(), "警告：匿名函数组件无法使用 HMR");
+              emit_warn(func.span(), "匿名函数组件无法使用 HMR");
               None
             },
             func.function.as_mut(),
@@ -323,5 +328,37 @@ impl VisitMut for TemplateTransformVisitor<'_> {
 
     let args = parse_intl_call_args(&node.args, drop_default_text);
     node.args = args;
+  }
+}
+
+/// Plain .ts internationalization must not run the component visitor.
+pub struct IntlTransformVisitor {
+  pub intl_type: IntlType,
+}
+impl VisitMut for IntlTransformVisitor {
+  fn visit_mut_call_expr(&mut self, node: &mut CallExpr) {
+    node.visit_mut_children_with(self);
+    if let IntlType::Enabled(drop) = self.intl_type
+      && matches!(&node.callee, Callee::Expr(c) if matches!(&**c, Expr::Ident(id) if id.sym == *JINGE_T))
+    {
+      node.args = parse_intl_call_args(&node.args, drop);
+    }
+  }
+}
+
+/// Any JSX left after template conversion is unsupported syntax, never valid JS.
+pub struct RemainingJsx;
+impl swc_ecma_visit::Visit for RemainingJsx {
+  fn visit_jsx_element(&mut self, node: &JSXElement) {
+    emit_error(
+      node.span,
+      "不支持此位置的 JSX（包括提前 return）；请使用最终模板 return",
+    );
+  }
+  fn visit_jsx_fragment(&mut self, node: &JSXFragment) {
+    emit_error(
+      node.span,
+      "不支持此位置的 JSX Fragment；请使用最终模板 return",
+    );
   }
 }

@@ -11,4 +11,5 @@ import { loopMkdir, parseCompileArgvs } from '../intl/helper';
   console.info('Intl Compile Done.');
 })().catch((ex) => {
   console.error(ex);
+  process.exitCode = 1;
 });

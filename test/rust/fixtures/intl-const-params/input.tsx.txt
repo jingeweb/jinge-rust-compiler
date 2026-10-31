@@ -1,0 +1,1 @@
+import {t} from 'jinge';export function A(){return <p>{t('Hello {name}',{name:'a'},{key:'fixture-params'})}</p>}

@@ -1,0 +1,1 @@
+export function A(){return <>hello <b>世界</b>{42}{null}{true}{undefined}</>}

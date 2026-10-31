@@ -10,3 +10,7 @@ index.debug.node
 /bindings
 .idea
 **/.DS_Store
+
+/test/.compiled/
+/coverage/
+*.profraw

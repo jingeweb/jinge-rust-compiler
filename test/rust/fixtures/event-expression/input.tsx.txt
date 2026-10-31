@@ -1,0 +1,1 @@
+import {vm} from 'jinge';const first=()=>state.n++;const second=()=>state.n+=2;export const state=vm({n:0,on:true});export function A(){return <button on:click={state.on?first:second}>{state.n}</button>}

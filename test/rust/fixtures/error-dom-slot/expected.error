@@ -1,0 +1,6 @@
+error: html 元素不支持 slot: 属性
+ --> fixture.tsx:1:31
+  |
+1 | export function A(){return <p slot:x="bad"/>}
+  |                               ^^^^^^
+

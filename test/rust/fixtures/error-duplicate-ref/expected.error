@@ -1,0 +1,6 @@
+error: 不能重复指定 ref
+ --> fixture.tsx:1:39
+  |
+1 | export function A(){return <p ref={a} ref={b}/>}
+  |                                       ^^^^^^^
+

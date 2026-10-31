@@ -1,0 +1,6 @@
+error: 事件属性的属性值必须是函数或表达式
+ --> fixture.tsx:1:34
+  |
+1 | export function A(){return <p on:click="bad"/>}
+  |                                  ^^^^^
+

@@ -1,0 +1,6 @@
+error: 不支持此位置的 JSX（包括提前 return）；请使用最终模板 return
+ --> fixture.tsx:1:45
+  |
+1 | export function A(props){if(props.ok)return <p>yes</p>;return <p>no</p>}
+  |                                             ^^^^^^^^^^
+

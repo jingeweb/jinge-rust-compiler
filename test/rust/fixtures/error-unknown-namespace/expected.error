@@ -1,0 +1,6 @@
+error: 不支持该命名空间属性名。目前命名空间只支持 on: 或 slot: 。
+ --> fixture.tsx:1:31
+  |
+1 | export function A(){return <p unknown:x={1}/>}
+  |                               ^^^^^^^^^
+

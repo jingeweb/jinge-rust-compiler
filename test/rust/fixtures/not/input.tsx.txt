@@ -1,0 +1,1 @@
+import {vm} from 'jinge';export const state=vm({on:false});export function A(){return <p>{!state.on}:{!!state.on}</p>}

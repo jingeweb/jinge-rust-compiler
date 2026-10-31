@@ -32,8 +32,9 @@ async function compileText(
   file: string,
   key: string,
   text: string,
-  flag: { needImportJNode: boolean; richComponents: string[] },
+  flag: { needImportJNode: boolean; richComponents: string[]; nextId: number },
 ) {
+  const functionId = flag.nextId++;
   const srcFile = ts.createSourceFile(`${key}.tsx`, `<>${text}</>`, ts.ScriptTarget.Latest);
   function err(e?: unknown): never {
     throw new Error(
@@ -71,7 +72,9 @@ async function compileText(
     // console.log(keyMsg);
     const comp = keyMsg.richComps?.get(tag);
     if (!comp) err(`rich component not found: ${key}: ${text}, ${file}, ${tag}`);
-    const compName = `T_${key}_${tag}`;
+    const existing = tags.get(tag);
+    if (existing) return existing.slice('function '.length).split('(')[0];
+    const compName = `T_${functionId}_${tags.size}`;
     if (comp.type === 'fc_with_props') {
       flag.needImportJNode = true;
     }
@@ -83,7 +86,12 @@ async function compileText(
   }
   function walk(node: ts.Node) {
     if (ts.isJsxText(node)) {
-      stack.push(node.text);
+      stack.push({
+        toString: () =>
+          hasTag
+            ? `{${JSON.stringify(node.text)}}`
+            : node.text.replaceAll('\\', '\\\\').replaceAll('`', '\\`').replaceAll('$', '\\$'),
+      });
     } else if (ts.isJsxExpression(node)) {
       const e = node.expression;
       if (!e || !ts.isIdentifier(e)) {
@@ -120,10 +128,10 @@ async function compileText(
   } else {
     flag.richComponents.push(...tags.values());
     flag.richComponents
-      .push(`function T_${key}(${vars.size ? 'props: Record<string, JNode>' : ''}) {
+      .push(`function T_${functionId}(${vars.size ? 'props: Record<string, JNode>' : ''}) {
   return <>${stack.join('')}</>;
 }`);
-    return `T_${key}`;
+    return `T_${functionId}`;
   }
 }
 export async function intlCompile({
@@ -146,6 +154,7 @@ export async function intlCompile({
       l,
       {
         needImportJNode: false,
+        nextId: 0,
         richComponents: [],
         rows: [] as string[],
       },

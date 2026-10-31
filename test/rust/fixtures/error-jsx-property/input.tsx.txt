@@ -1,0 +1,1 @@
+function Child(){return <p/>}export function A(){return <Child n={<p/>}/>}

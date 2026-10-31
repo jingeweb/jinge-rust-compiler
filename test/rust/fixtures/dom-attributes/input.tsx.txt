@@ -1,0 +1,1 @@
+export function A(){return <label className="x" htmlFor="field"><input id="field" disabled readOnly={false} value="abc"/><span data-id="x" title="hi">ok</span></label>}

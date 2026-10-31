@@ -1,0 +1,6 @@
+error: t 函数的第一个参数必须是字符串常量，代表默认文本
+ --> fixture.tsx:1:61
+  |
+1 | import {vm,t} from 'jinge';export function A(){return <p>{t(message)}</p>}
+  |                                                             ^^^^^^^
+

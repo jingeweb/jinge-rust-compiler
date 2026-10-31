@@ -1,0 +1,6 @@
+error: 暂不支持该 Call 表达式作为 Member Expr 的 object
+ --> fixture.tsx:1:32
+  |
+1 | export function A(){return <p>{factory().name}</p>}
+  |                                ^^^^^^^^^
+

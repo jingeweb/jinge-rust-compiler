@@ -1,0 +1,1 @@
+function Child(props){return <div>{props.children({name:'a'})}</div>}export function A(){return <Child>{function(slot){const prefix='Hi ';return <p>{prefix}{slot.name}</p>}}</Child>}

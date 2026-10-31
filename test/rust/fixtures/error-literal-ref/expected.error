@@ -1,0 +1,6 @@
+error: ref 属性值不合法
+ --> fixture.tsx:1:35
+  |
+1 | export function A(){return <p ref="bad"/>}
+  |                                   ^^^^^
+

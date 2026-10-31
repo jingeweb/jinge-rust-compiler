@@ -1,0 +1,1 @@
+import {vm,t} from 'jinge';const state=vm({fn:()=> 'ok'});export function A(){return <div>{state.fn?.()}</div>}

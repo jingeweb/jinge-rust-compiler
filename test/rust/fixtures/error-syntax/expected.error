@@ -1,0 +1,12 @@
+error: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+ --> fixture.tsx:1:33
+  |
+1 | export function A(){return <div>}
+  |                                 ^
+
+error: Expected '</', got '<eof>'
+ --> fixture.tsx:1:35
+  |
+1 | export function A(){return <div>}
+  |                                   ^
+

@@ -1,0 +1,1 @@
+import {ref} from 'jinge';const child=ref();const props={n:1};function Child(props){return <p>{props.n}</p>}export function A(){return <Child {...props} ref={child}/>}

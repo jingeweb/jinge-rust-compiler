@@ -1,0 +1,1 @@
+import {vm,t} from 'jinge';export const label=t('hello');

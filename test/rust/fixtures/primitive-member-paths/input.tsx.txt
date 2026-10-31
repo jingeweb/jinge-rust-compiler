@@ -1,0 +1,1 @@
+import {vm} from 'jinge';const state=vm({text:'jinge',index:0,items:[1,2],user:null});export function A(){return <div title={state.text.length}>{state.text.length}:{state.text[0]}:{state.text[state.index]}:{state.user?.name.length}:{state.items.length}</div>}

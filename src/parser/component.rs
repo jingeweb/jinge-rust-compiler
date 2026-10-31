@@ -81,6 +81,15 @@ impl TemplateParser {
 
     let mut stmts: Vec<Stmt> = vec![];
 
+    if attrs.spread_prop.is_some()
+      && (!attrs.slot_props.is_empty()
+        || children_context
+          .slots
+          .iter()
+          .any(|s| !s.expressions.is_empty() || s.pass_by.is_some()))
+    {
+      emit_error(n.span, "组件 spread 透传不能同时定义 children 或命名 slot");
+    }
     let mut const_props = attrs.const_props;
     let mut slots = children_context.slots;
     if !attrs.slot_props.is_empty() {

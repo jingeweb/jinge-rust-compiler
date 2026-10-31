@@ -1,0 +1,47 @@
+body {
+  font: 16px system-ui;
+  padding: 20px;
+}
+.box {
+  width: 150px;
+  height: 40px;
+  background: rgb(30, 120, 200);
+  color: white;
+}
+.shown {
+  opacity: 1;
+  transform: translateX(0px);
+}
+.hidden {
+  opacity: 0;
+  transform: translateX(120px);
+}
+.active {
+  transition:
+    opacity 360ms linear,
+    transform 360ms linear;
+}
+.appear-active {
+  transition:
+    opacity 600ms linear,
+    transform 600ms linear;
+}
+section {
+  margin: 15px 0;
+  min-height: 45px;
+}
+button {
+  margin: 4px;
+}
+
+@keyframes pulse {
+  from {
+    opacity: 0.2;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.pulse {
+  animation: pulse 500ms linear forwards;
+}

@@ -1,0 +1,67 @@
+name: compiler tests
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          path: jinge-compiler
+      - uses: actions/checkout@v6
+        with:
+          repository: jingeweb/jinge
+          ref: a4de8eecab0d6d8b5d6dfb989114c69a2b8d5710
+          path: jinge
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - uses: pnpm/action-setup@v4
+        with:
+          version: '11.21.0'
+      - uses: dtolnay/rust-toolchain@stable
+      - run: pnpm install --frozen-lockfile
+        working-directory: jinge
+      - run: pnpm build
+        working-directory: jinge
+      - run: pnpm install --frozen-lockfile
+        working-directory: jinge-compiler
+      - run: pnpm lint
+        working-directory: jinge-compiler
+      - run: pnpm test:types
+        working-directory: jinge-compiler
+      - run: pnpm test
+        working-directory: jinge-compiler
+      - run: pnpm exec playwright install --with-deps chrome
+        working-directory: jinge-compiler
+      - run: pnpm test:e2e
+        working-directory: jinge-compiler
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-test-results
+          path: |
+            jinge-compiler/coverage/e2e-report
+            jinge-compiler/coverage/e2e-results
+            jinge-compiler/coverage/e2e-results.json
+      - if: github.event_name == 'workflow_dispatch'
+        run: rustup component add llvm-tools-preview
+      - if: github.event_name == 'workflow_dispatch'
+        run: pnpm test:coverage
+        working-directory: jinge-compiler
+      - if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: |
+            jinge-compiler/coverage/rust-summary.txt
+            jinge-compiler/coverage/rust-html
+            jinge-compiler/coverage/compiler-ts
+            jinge-compiler/coverage/runtime

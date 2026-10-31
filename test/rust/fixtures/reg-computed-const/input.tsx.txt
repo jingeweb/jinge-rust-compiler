@@ -1,0 +1,1 @@
+import {vm,t} from 'jinge';const key='name';const state=vm({name:'Alice'});export function A(){return <p>{state[key]}</p>}

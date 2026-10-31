@@ -1,0 +1,1 @@
+function Child(props){return <div>{props['slot:head']}</div>}function Middle(props){return <Child slot:head={props.children}/>}export function A(){return <Middle><b>passed</b></Middle>}

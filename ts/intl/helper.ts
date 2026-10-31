@@ -50,7 +50,8 @@ export async function writeCsv(head: string[], rows: Record<string, string>[], f
           let v = row[k];
           if (!v) return '';
           v = v.replaceAll('"', () => '""');
-          if (v.includes(',') || v.includes('"')) v = `"${v}"`;
+          if (v.includes(',') || v.includes('"') || v.includes('\n') || v.includes('\r'))
+            v = `"${v}"`;
           return v;
         })
         .join(',');
@@ -130,6 +131,19 @@ export async function loopMkdir(dir: string) {
   }
 }
 
+const fileCheckers = new WeakMap<ts.SourceFile, ts.TypeChecker>();
+function getFileChecker(srcFile: ts.SourceFile) {
+  let checker = fileCheckers.get(srcFile);
+  if (!checker) {
+    const options = { noLib: true, noResolve: true };
+    const host = ts.createCompilerHost(options);
+    host.getSourceFile = (file) => (file === srcFile.fileName ? srcFile : undefined);
+    checker = ts.createProgram([srcFile.fileName], options, host).getTypeChecker();
+    fileCheckers.set(srcFile, checker);
+  }
+  return checker;
+}
+
 export interface ExtractRichComp {
   type: 'jsx' | 'fc' | 'fc_with_props';
   expr: string;
@@ -181,7 +195,37 @@ export function extractKeyAndMessage(
         const arg0 = expr.parameters.at(0);
         if (arg0 && ts.isIdentifier(arg0.name)) {
           type = 'fc_with_props';
-          code = code.replace(new RegExp(`\\b${arg0.name.text}\\b`, 'g'), 'props.children');
+          const checker = getFileChecker(srcFile);
+          const binding = checker.getSymbolAtLocation(arg0.name);
+          const result = ts.transform(expr.body, [
+            (context) => {
+              const replacement = () =>
+                ts.factory.createPropertyAccessExpression(
+                  ts.factory.createIdentifier('props'),
+                  'children',
+                );
+              const visit: ts.Visitor = (node) => {
+                if (
+                  ts.isShorthandPropertyAssignment(node) &&
+                  checker.getShorthandAssignmentValueSymbol(node) === binding
+                ) {
+                  return ts.factory.createPropertyAssignment(node.name, replacement());
+                }
+                if (
+                  ts.isIdentifier(node) &&
+                  binding &&
+                  checker.getSymbolAtLocation(node) === binding
+                )
+                  return replacement();
+                return ts.visitEachChild(node, visit, context);
+              };
+              return (node) => ts.visitNode(node, visit) as typeof node;
+            },
+          ]);
+          code = ts
+            .createPrinter()
+            .printNode(ts.EmitHint.Unspecified, result.transformed[0], srcFile);
+          result.dispose();
         }
         if (ts.isArrowFunction(expr)) {
           if (ts.isExpression(expr.body)) {

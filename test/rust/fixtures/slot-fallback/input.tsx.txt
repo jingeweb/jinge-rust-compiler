@@ -1,0 +1,1 @@
+function Child(props,hostOther){return <div>{props.children??<b>fallback</b>}</div>}export function A(){return <Child/>}

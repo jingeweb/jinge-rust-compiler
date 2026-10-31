@@ -1,0 +1,15 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    "types": ["node", "vite/client"],
+    "jsx": "preserve",
+    "allowJs": true,
+    "checkJs": false,
+    "paths": {
+      "jinge": ["../../jinge/types/index.d.ts"]
+    }
+  },
+  "include": ["**/*.ts", "**/*.tsx", "**/*.mjs"],
+  "exclude": ["rust/fixtures/**", ".compiled/**"]
+}

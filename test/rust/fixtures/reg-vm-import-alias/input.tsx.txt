@@ -1,0 +1,1 @@
+import {vm as makeVm} from 'jinge';const state=makeVm({n:1});export function A(){return <p>{state.n}</p>}

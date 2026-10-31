@@ -25,6 +25,16 @@
     "**/coverage/",
     ".husky/",
     ".idea/",
-    ".vscode/"
+    ".vscode/",
+    "test/rust/fixtures/**",
+    "test/.compiled/**"
+  ],
+  "overrides": [
+    {
+      "files": ["test/**/*.mjs", "test/**/*.ts"],
+      "rules": {
+        "typescript/no-floating-promises": "off"
+      }
+    }
   ]
 }

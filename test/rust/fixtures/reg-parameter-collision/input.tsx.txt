@@ -1,0 +1,1 @@
+import {vm,t} from 'jinge';const a0=10;const state=vm({n:1});export function A(){return <div>{a0+state.n}</div>}

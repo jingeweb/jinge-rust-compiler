@@ -1,0 +1,6 @@
+error: 组件 spread 透传不能同时定义 children 或命名 slot
+ --> fixture.tsx:1:72
+  |
+1 | const attrs={};function Child(){return <p/>}export function A(){return <Child {...attrs}><b/></Child>}
+  |                                                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+

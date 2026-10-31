@@ -1,7 +1,6 @@
 use hashbrown::HashSet;
-use swc_common::SyntaxContext;
+use swc_common::Span;
 use swc_core::{
-  atoms::Atom,
   common::{DUMMY_SP, Spanned},
   ecma::{
     ast::*,
@@ -24,7 +23,7 @@ use crate::{
 enum Root {
   None,
   // This,
-  Id(Atom),
+  Id(Ident),
 }
 #[derive(Debug)]
 pub struct SimpleExprParseResult {
@@ -49,7 +48,7 @@ pub struct ExprVisitor {
   level: usize,
   simple_result: Option<SimpleExprParseResult>,
   intl_type: IntlType, // exclude_roots: ExcludeRoots,
-  intl_nodes: HashSet<SyntaxContext>,
+  intl_nodes: HashSet<Span>,
 }
 
 impl ExprVisitor {
@@ -83,11 +82,13 @@ impl ExprVisitor {
       // 如果表达式只包含一个 member expr，且整个表达式是：一个 member expr 或 ! + member expr 或 !! + member expr
       // 则作为 Simple Result 返回。也就是对于 {this.submitting} 或 {!this.submitting} 一类的写法简化生成的代码。
       let not_op: i8 = match expr {
-        Expr::Member(_) | Expr::OptChain(_) => 0, // 如果是 OptChain，则 opt.base 一定是 MemberExpr，因为如果是 Call 则会报错并不会被放在监听 path 里。
+        Expr::Member(_) => 0,
+        Expr::OptChain(oc) if matches!(&*oc.base, OptChainBase::Member(_)) => 0,
         Expr::Unary(e) => match e.op {
           UnaryOp::Bang => match &*e.arg {
             Expr::Unary(e) => match &*e.arg {
-              Expr::Member(_) | Expr::OptChain(_) => 2,
+              Expr::Member(_) => 2,
+              Expr::OptChain(oc) if matches!(&*oc.base, OptChainBase::Member(_)) => 2,
               _ => -1,
             },
             Expr::Member(_) => 1,
@@ -177,6 +178,7 @@ impl Visit for ExprVisitor {
     if self.no_watch {
       return;
     }
+    crate::scope::warn_member(node);
     let mut mem_parser = MemberExprVisitor::new(self.level, self.intl_type);
     mem_parser.visit_member_expr(node);
     if mem_parser.meet_error || mem_parser.path.is_empty() || matches!(&mem_parser.root, Root::None)
@@ -188,7 +190,7 @@ impl Visit for ExprVisitor {
     let mut args: Vec<ExprOrSpread> = Vec::with_capacity(mem_parser.path.len() + 2);
     // let mut is_this = false;
     let target = match mem_parser.root {
-      Root::Id(id) => Box::new(Expr::Ident(Ident::from(id))),
+      Root::Id(id) => Box::new(Expr::Ident(id)),
       Root::None => unreachable!(),
     };
     let watch_path = Box::new(Expr::Array(ArrayLit {
@@ -233,11 +235,53 @@ impl Visit for ExprVisitor {
     {
       // 当前已经配置启用了多语言能力，且 call 表达式是 t() 函数，则转换为多语言。
       let args = parse_intl_call_args(&node.args, drop_default_text);
-      self.expressions.push(*ast_create_expr_call(
+      let params_watch = args.get(1).and_then(|arg| {
+        ExprVisitor::new_with_level(self.level, self.intl_type).inner_parse(&arg.expr)
+      });
+      // Watch locale without evaluating parameter expressions a second time.
+      let locale = ast_create_expr_call(
         ast_create_expr_ident(JINGE_IMPORT_INTL_WATCHER.local()),
-        args,
-      ));
-      self.intl_nodes.insert(node.ctxt);
+        if params_watch.is_some() {
+          vec![args[0].clone()]
+        } else {
+          args.clone()
+        },
+      );
+      let watcher = if let Some(params_watch) = params_watch {
+        let params: Ident = "$jg$intlParams".into();
+        let mut call_args = args;
+        call_args[1].expr = ast_create_expr_ident(params.clone());
+        let call = ast_create_expr_call(
+          match &node.callee {
+            Callee::Expr(callee) => callee.clone(),
+            _ => unreachable!(),
+          },
+          call_args,
+        );
+        ast_create_expr_call(
+          ast_create_expr_ident(JINGE_IMPORT_EXPR_WATCHER.local()),
+          vec![
+            ast_create_arg_expr(Box::new(Expr::Array(ArrayLit {
+              span: DUMMY_SP,
+              elems: vec![
+                Some(ast_create_arg_expr(locale)),
+                Some(ast_create_arg_expr(params_watch)),
+              ],
+            }))),
+            ast_create_arg_expr(ast_create_expr_arrow_fn(
+              vec![
+                Pat::Ident(BindingIdent::from(Ident::from("$jg$locale"))),
+                Pat::Ident(BindingIdent::from(params)),
+              ],
+              Box::new(ArrowFunctionBody::Expr(call)),
+            )),
+          ],
+        )
+      } else {
+        locale
+      };
+      self.expressions.push(*watcher);
+      self.intl_nodes.insert(node.span);
     } else {
       node.visit_children_with(self);
     }
@@ -247,10 +291,10 @@ impl Visit for ExprVisitor {
 struct MemberExprReplaceVisitor<'a> {
   count: usize,
   params: Vec<Pat>,
-  intl_nodes: &'a HashSet<SyntaxContext>,
+  intl_nodes: &'a HashSet<Span>,
 }
 impl<'a> MemberExprReplaceVisitor<'a> {
-  fn new(intl_nodes: &'a HashSet<SyntaxContext>) -> Self {
+  fn new(intl_nodes: &'a HashSet<Span>) -> Self {
     Self {
       count: 0,
       params: vec![],
@@ -258,7 +302,7 @@ impl<'a> MemberExprReplaceVisitor<'a> {
     }
   }
   fn get_alias_ident(&mut self) -> Expr {
-    let id = Ident::from(format!("a{}", self.count));
+    let id = Ident::from(format!("$jg$a{}", self.count));
     let p = Pat::Ident(BindingIdent {
       id: id.clone(),
       type_ann: None,
@@ -275,12 +319,12 @@ impl<'a> VisitMut for MemberExprReplaceVisitor<'a> {
         if let OptChainBase::Member(_) = oc.base.as_ref() {
           *node = self.get_alias_ident()
         } else {
-          // ignore
+          node.visit_mut_children_with(self);
         }
       }
       Expr::Member(_) => *node = self.get_alias_ident(),
       Expr::Call(c) => {
-        if self.intl_nodes.contains(&c.ctxt) {
+        if self.intl_nodes.contains(&c.span) {
           *node = self.get_alias_ident();
         } else {
           node.visit_mut_children_with(self);
@@ -325,12 +369,12 @@ impl Visit for MemberExprVisitor {
         //   if exclude_roots.contains(&id.sym) {
         //     self.meet_private = true;
         //   } else {
-        //     self.root = Root::Id(id.sym.clone());
+        //     self.root = Root::Id(id.clone());
         //   }
         // } else {
-        //   self.root = Root::Id(id.sym.clone());
+        //   self.root = Root::Id(id.clone());
         // }
-        self.root = Root::Id(id.sym.clone());
+        self.root = Root::Id(id.clone());
       }
       Expr::Member(expr) => {
         self.visit_member_expr(expr);
@@ -386,6 +430,10 @@ impl Visit for MemberExprVisitor {
             }
           },
 
+          Expr::Ident(id) => {
+            crate::scope::warn_mutable_key(id);
+            self.path.push(Expr::Ident(id.clone()));
+          }
           _ => {
             if let Some(result) =
               ExprVisitor::new_with_level(self.level + 1, self.intl_type).inner_parse(expr)

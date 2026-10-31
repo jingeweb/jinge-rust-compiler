@@ -31,4 +31,5 @@ import { loopMkdir, parseExtractArgvs } from '../intl/helper';
   });
 })().catch((ex) => {
   console.error(ex);
+  process.exitCode = 1;
 });

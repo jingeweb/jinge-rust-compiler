@@ -1,0 +1,186 @@
+{
+  "date": "2026-10-31",
+  "compilerCommit": "ded206346a10252b871293f34b4b1764122b3b1d",
+  "command": "cargo build --locked && node --test --test-concurrency=1 test/regressions.test.mjs",
+  "phase": "Initial 44 cases, before implementation changes; the suite has since been expanded.",
+  "passed": 6,
+  "failed": 38,
+  "cases": [
+    {
+      "name": "C01 Unicode multiline text preserves characters",
+      "passed": true
+    },
+    {
+      "name": "C04 optional call executes and short circuits",
+      "passed": false
+    },
+    {
+      "name": "C05 generated parameters do not capture a0",
+      "passed": false
+    },
+    {
+      "name": "C06 intl replacement identifies individual calls",
+      "passed": false
+    },
+    {
+      "name": "C07 SVG nesting and foreignObject namespace",
+      "passed": false
+    },
+    {
+      "name": "C08 reactive component attribute supports hyphens",
+      "passed": false
+    },
+    {
+      "name": "C09 constant IDL properties match reactive properties",
+      "passed": false
+    },
+    {
+      "name": "C10 rejects spread dom",
+      "passed": false
+    },
+    {
+      "name": "C10 rejects spread props",
+      "passed": false
+    },
+    {
+      "name": "C10 rejects spread children",
+      "passed": false
+    },
+    {
+      "name": "C10 rejects spread slot",
+      "passed": false
+    },
+    {
+      "name": "C10 preserves props identity and ref with component spread",
+      "passed": true
+    },
+    {
+      "name": "C11 object slot injects runtime imports",
+      "passed": false
+    },
+    {
+      "name": "C12 map replacement respects local shadowing and shorthand",
+      "passed": false
+    },
+    {
+      "name": "C13 const computed key watches state",
+      "passed": false
+    },
+    {
+      "name": "C13 mutable computed key still watches selected state field",
+      "passed": false
+    },
+    {
+      "name": "C14 mixed path key, block=false, preserves DOM identity",
+      "passed": false
+    },
+    {
+      "name": "C14 mixed path key, block=true, preserves DOM identity",
+      "passed": false
+    },
+    {
+      "name": "C15 .ts parser accepts generics and angle assertions",
+      "passed": false
+    },
+    {
+      "name": "C16 .ts intl transforms without component conversion",
+      "passed": false
+    },
+    {
+      "name": "C17 conditional slot inherits custom host",
+      "passed": false
+    },
+    {
+      "name": "C18 intl attribute params update and locale changes",
+      "passed": false
+    },
+    {
+      "name": "C19 rich text default fallback argument position",
+      "passed": false
+    },
+    {
+      "name": "intl tools: csv",
+      "passed": false
+    },
+    {
+      "name": "intl tools: escape",
+      "passed": false
+    },
+    {
+      "name": "intl tools: rich-key",
+      "passed": false
+    },
+    {
+      "name": "intl tools: rich-binding",
+      "passed": false
+    },
+    {
+      "name": "intl tools: key-trim",
+      "passed": false
+    },
+    {
+      "name": "intl tools: cli",
+      "passed": false
+    },
+    {
+      "name": "diagnostics reject early",
+      "passed": false
+    },
+    {
+      "name": "diagnostics reject destructure",
+      "passed": false
+    },
+    {
+      "name": "diagnostics reject default",
+      "passed": false
+    },
+    {
+      "name": "diagnostics reject rest",
+      "passed": false
+    },
+    {
+      "name": "diagnostics reject third",
+      "passed": false
+    },
+    {
+      "name": "trailing empty statements are accepted",
+      "passed": false
+    },
+    {
+      "name": "syntax and unsupported slot errors are ordinary errors; next compile succeeds",
+      "passed": false
+    },
+    {
+      "name": "binding respects sourcemap flag",
+      "passed": false
+    },
+    {
+      "name": "scope diagnostics: local-object",
+      "passed": false
+    },
+    {
+      "name": "scope diagnostics: local-array",
+      "passed": false
+    },
+    {
+      "name": "scope diagnostics: vm",
+      "passed": true
+    },
+    {
+      "name": "scope diagnostics: alias",
+      "passed": true
+    },
+    {
+      "name": "scope diagnostics: unknown",
+      "passed": true
+    },
+    {
+      "name": "scope diagnostics: mutable-key",
+      "passed": false
+    },
+    {
+      "name": "scope diagnostics: const-key",
+      "passed": true
+    }
+  ]
+}

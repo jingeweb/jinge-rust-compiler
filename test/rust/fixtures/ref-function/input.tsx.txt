@@ -1,0 +1,1 @@
+export let element;export function A(){return <p ref={node=>element=node}>ref</p>}

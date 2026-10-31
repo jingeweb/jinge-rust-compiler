@@ -1,0 +1,6 @@
+error: 对象插槽透传暂不支持 optional chain
+ --> fixture.tsx:1:50
+  |
+1 | const value={};export const opts={'slot:content':value?.['slot:a']}
+  |                                                  ^^^^^^^^^^^^^^^^^
+

@@ -107,6 +107,11 @@ pub fn tpl_render_intl_text(
   }
 
   if let Some(default_text) = default_text {
+    if is_rich && !has_params {
+      args.push(ast_create_arg_expr(ast_create_expr_ident(
+        JINGE_UNDEFINED.clone().into(),
+      )));
+    }
     args.push(ast_create_arg_expr(ast_create_expr_lit_str(
       default_text.clone(),
     )));
@@ -319,7 +324,10 @@ pub fn tpl_watch_and_set_component_attr(
       span: DUMMY_SP,
       obj: ast_create_expr_ident(JINGE_ATTR_IDENT.clone()),
       prop: match attr_name {
-        AttrWatchPropName::Id(attr_name) => MemberProp::Ident(IdentName::from(attr_name)),
+        AttrWatchPropName::Id(attr_name) => MemberProp::Computed(ComputedPropName {
+          span: DUMMY_SP,
+          expr: ast_create_expr_lit_str(attr_name.into()),
+        }),
         AttrWatchPropName::Str(attr_name) => MemberProp::Computed(ComputedPropName {
           span: DUMMY_SP,
           expr: ast_create_expr_lit_str(attr_name.into()),
