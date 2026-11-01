@@ -44,6 +44,39 @@ pub fn tpl_push_el_code(root: bool, host_ident: Ident) -> Box<Expr> {
   }))
 }
 
+/// A static empty slot branch still needs a DOM anchor when it is a component root.
+pub fn tpl_render_comment(is_parent_component: bool, host_ident: Ident) -> Box<Expr> {
+  let comment = ast_create_expr_call(
+    ast_create_expr_ident(JINGE_IMPORT_CREATE_COMMENT.local()),
+    vec![ast_create_arg_expr(ast_create_expr_lit_str(
+      "slot:empty".into(),
+    ))],
+  );
+  if !is_parent_component {
+    return comment;
+  }
+  ast_create_expr_call(
+    ast_create_expr_arrow_fn(
+      vec![],
+      Box::new(ArrowFunctionBody::FunctionBody(FunctionBody {
+        span: DUMMY_SP,
+        stmts: vec![
+          ast_create_stmt_decl_const(JINGE_EL_IDENT.clone(), comment),
+          Stmt::Expr(ExprStmt {
+            span: DUMMY_SP,
+            expr: tpl_push_el_code(true, host_ident),
+          }),
+          Stmt::Return(ReturnStmt {
+            span: DUMMY_SP,
+            arg: Some(ast_create_expr_ident(JINGE_EL_IDENT.clone())),
+          }),
+        ],
+      })),
+    ),
+    vec![],
+  )
+}
+
 pub fn tpl_lit_obj(lit_arr: Vec<(IdentName, Box<Expr>)>) -> Box<Expr> {
   Box::new(Expr::Object(ObjectLit {
     span: DUMMY_SP,

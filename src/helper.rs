@@ -5,7 +5,7 @@ use swc_core::{
 
 use crate::{
   ast::*,
-  common::{JINGE_MAP, JINGE_T, JINGE_UNDEFINED},
+  common::{JINGE_MAP, JINGE_UNDEFINED},
   parser::{
     intl::extract_t,
     slot::{
@@ -24,7 +24,7 @@ use crate::{
 //     Expr::Paren(e) => return has_jsx(&e.expr),
 //     Expr::Call(e) => match &e.callee {
 //       Callee::Expr(e) => match e.as_ref() {
-//         Expr::Ident(id) if JINGE_T.eq(&id.sym) => true,
+//         Expr::Ident(id) if crate::scope::is_intl_t(id) => true,
 //         _ => false,
 //       },
 //       _ => false,
@@ -70,7 +70,7 @@ pub fn should_render_as_jsx(expr: &Expr, props_arg: &Option<Wtf8Atom>) -> bool {
     }
     Expr::Call(call) => match &call.callee {
       Callee::Expr(callee) => match callee.as_ref() {
-        Expr::Ident(id) if JINGE_T.eq(&id.sym) => true,
+        Expr::Ident(id) if crate::scope::is_intl_t(id) => true,
         Expr::Member(me) if matches!(&me.prop, MemberProp::Ident(id) if JINGE_MAP.eq(&id.sym)) => {
           let Some(arg_expr) = call.args.first() else {
             return false;

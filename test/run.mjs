@@ -47,6 +47,8 @@ run(process.execPath, [
         'test/integration/svg.test.mjs',
         'test/integration/local-snapshots.test.mjs',
         'test/integration/component-reactivity.test.mjs',
+        'test/integration/slot-empty.test.mjs',
+        'test/integration/intl-bindings.test.mjs',
         'test/integration/modules.test.mjs',
         'test/integration/runtime.test.mjs',
         'test/integration/diagnostics.test.mjs',

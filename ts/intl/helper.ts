@@ -144,6 +144,41 @@ function getFileChecker(srcFile: ts.SourceFile) {
   return checker;
 }
 
+// Only direct named imports from jinge participate; never resolve re-exports.
+const fileIntlImports = new WeakMap<ts.SourceFile, Map<string, ts.ImportSpecifier>>();
+function isIntlT(id: ts.Identifier, srcFile: ts.SourceFile): boolean {
+  let imports = fileIntlImports.get(srcFile);
+  if (!imports) {
+    imports = new Map();
+    for (const statement of srcFile.statements) {
+      if (
+        !ts.isImportDeclaration(statement) ||
+        !ts.isStringLiteral(statement.moduleSpecifier) ||
+        statement.moduleSpecifier.text !== 'jinge'
+      )
+        continue;
+      const clause = statement.importClause;
+      if (
+        !clause ||
+        clause.isTypeOnly ||
+        !clause.namedBindings ||
+        !ts.isNamedImports(clause.namedBindings)
+      )
+        continue;
+      for (const specifier of clause.namedBindings.elements) {
+        if (!specifier.isTypeOnly && (specifier.propertyName ?? specifier.name).text === 't')
+          imports.set(specifier.name.text, specifier);
+      }
+    }
+    fileIntlImports.set(srcFile, imports);
+  }
+  const imported = imports.get(id.text);
+  if (!imported) return false;
+  const checker = getFileChecker(srcFile);
+  const symbol = checker.getSymbolAtLocation(id);
+  return symbol !== undefined && symbol === checker.getSymbolAtLocation(imported.name);
+}
+
 export interface ExtractRichComp {
   type: 'jsx' | 'fc' | 'fc_with_props';
   expr: string;
@@ -168,7 +203,7 @@ export function extractKeyAndMessage(
   if (
     !ts.isCallExpression(node) ||
     !ts.isIdentifier(node.expression) ||
-    node.expression.text !== 't'
+    !isIntlT(node.expression, srcFile)
   ) {
     return null;
   }

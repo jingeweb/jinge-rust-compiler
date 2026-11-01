@@ -19,6 +19,7 @@ async function parseFile({ file, filename, dict }: { file: string; filename: str
     file,
     await fs.readFile(file, 'utf-8'),
     ts.ScriptTarget.Latest,
+    true,
   );
 
   let hasMessage = false;

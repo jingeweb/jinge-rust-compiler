@@ -9,18 +9,18 @@
     "runtimeSource": "Sibling clean working tree at runtimeCommit"
   },
   "rust": {
-    "passed": 121,
+    "passed": 136,
     "failed": 0,
-    "fixtures": 102,
-    "codeSnapshots": 80,
+    "fixtures": 108,
+    "codeSnapshots": 86,
     "diagnosticSnapshots": 22
   },
   "integration": {
-    "passed": 225,
+    "passed": 254,
     "failed": 0
   },
   "e2e": {
-    "passed": 13,
+    "passed": 15,
     "failed": 0,
     "flaky": 0,
     "skipped": 0,
@@ -57,7 +57,7 @@
   },
   "ciRuntimePin": "Updated to runtimeCommit; remote CI not executed",
   "pending": {
-    "todo": 5,
+    "todo": 4,
     "includedInPassCounts": false
   },
   "svgRegressionBefore": {
@@ -97,5 +97,47 @@
   "componentReactivityRegressionAfter": {
     "passed": 36,
     "failed": 0
+  },
+  "slotEmptyRegressionBefore": {
+    "rust": {
+      "passed": 1,
+      "failed": 2
+    },
+    "integration": {
+      "passed": 6,
+      "failed": 11
+    },
+    "chrome": {
+      "passed": 0,
+      "failed": 1
+    }
+  },
+  "slotEmptyRegressionAfter": {
+    "integration": {
+      "passed": 22,
+      "failed": 0
+    },
+    "dynamicSlotsSupported": false
+  },
+  "intlBindingRegressionBefore": {
+    "rust": {
+      "passed": 0,
+      "failed": 6
+    },
+    "integration": {
+      "passed": 1,
+      "failed": 5
+    },
+    "intlRootPropsDiagnostic": {
+      "passed": 0,
+      "failed": 1
+    }
+  },
+  "intlBindingRegressionAfter": {
+    "rustDirectTests": 6,
+    "codeSnapshots": 3,
+    "integration": 7,
+    "chrome": 1,
+    "crossFileReexportsSupported": false
   }
 }

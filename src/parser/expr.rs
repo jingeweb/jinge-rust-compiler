@@ -15,7 +15,7 @@ use crate::{
   },
   common::{
     IntlType, JINGE_IMPORT_DYM_PATH_WATCHER, JINGE_IMPORT_EXPR_WATCHER, JINGE_IMPORT_INTL_WATCHER,
-    JINGE_IMPORT_PATH_WATCHER, JINGE_T, emit_error,
+    JINGE_IMPORT_PATH_WATCHER, emit_error,
   },
   helper::parse_intl_call_args,
 };
@@ -232,7 +232,7 @@ impl Visit for ExprVisitor {
   }
   fn visit_call_expr(&mut self, node: &CallExpr) {
     if let IntlType::Enabled(drop_default_text) = self.intl_type
-      && matches!(&node.callee, Callee::Expr(callee) if matches!(&**callee, Expr::Ident(name) if JINGE_T.eq(&name.sym)))
+      && matches!(&node.callee, Callee::Expr(callee) if matches!(&**callee, Expr::Ident(name) if crate::scope::is_intl_t(name)))
     {
       // 当前已经配置启用了多语言能力，且 call 表达式是 t() 函数，则转换为多语言。
       let args = parse_intl_call_args(&node.args, drop_default_text);

@@ -13,7 +13,7 @@ function extractSource(file: string) {
   if (src) return src;
   src = new Map();
   const cnt = readFileSync(filepath, 'utf-8');
-  const srcFile = ts.createSourceFile(file, cnt, ts.ScriptTarget.Latest);
+  const srcFile = ts.createSourceFile(file, cnt, ts.ScriptTarget.Latest, true);
   function walk(node: ts.Node) {
     ts.forEachChild(node, walk);
 

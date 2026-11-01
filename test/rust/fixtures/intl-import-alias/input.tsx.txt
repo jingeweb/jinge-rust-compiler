@@ -1,0 +1,1 @@
+import {t as tr,vm} from 'jinge';const state=vm({name:'Alice'});export function A(){return <p title={tr('Hello')+'!'}>{tr('Hello {name}',{name:state.name},{key:'greet'})}</p>}

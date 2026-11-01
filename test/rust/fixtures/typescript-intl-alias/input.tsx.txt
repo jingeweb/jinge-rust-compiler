@@ -1,0 +1,1 @@
+import {t as tr} from 'jinge';export const translated=tr('Hello');function t(text){return '[local]'+text}export const local=t('Hello');

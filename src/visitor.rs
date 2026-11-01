@@ -2,7 +2,7 @@ use swc_common::Spanned;
 use swc_core::atoms::Wtf8Atom;
 use swc_core::ecma::ast::*;
 use swc_core::ecma::visit::VisitMut;
-use swc_ecma_visit::VisitMutWith;
+use swc_ecma_visit::{Visit, VisitMutWith, VisitWith};
 
 use crate::ast::*;
 use crate::common::*;
@@ -303,7 +303,24 @@ impl VisitMut for TemplateTransformVisitor<'_> {
 
     if self.changed {
       let mut new_items = Vec::with_capacity(n.body.len() + 1);
-      new_items.push(JINGE_IMPORT_MODULE_ITEM.clone());
+      let mut imports = JINGE_IMPORT_MODULE_ITEM.clone();
+      let mut comment_usage = CommentUsage(false);
+      n.visit_with(&mut comment_usage);
+      if comment_usage.0
+        && let ModuleItem::ModuleDecl(ModuleDecl::Import(import)) = &mut imports
+      {
+        import
+          .specifiers
+          .push(ImportSpecifier::Named(ImportNamedSpecifier {
+            span: swc_common::DUMMY_SP,
+            local: JINGE_IMPORT_CREATE_COMMENT.local(),
+            imported: Some(ModuleExportName::Ident(
+              JINGE_IMPORT_CREATE_COMMENT.imported(),
+            )),
+            is_type_only: false,
+          }));
+      }
+      new_items.push(imports);
       new_items.append(&mut n.body);
 
       n.body = new_items;
@@ -321,7 +338,7 @@ impl VisitMut for TemplateTransformVisitor<'_> {
       return;
     };
 
-    if !matches!(callee.as_ref(), Expr::Ident(name) if JINGE_T.eq(&name.sym)) {
+    if !matches!(callee.as_ref(), Expr::Ident(name) if crate::scope::is_intl_t(name)) {
       node.visit_mut_children_with(self);
       return;
     }
@@ -339,7 +356,7 @@ impl VisitMut for IntlTransformVisitor {
   fn visit_mut_call_expr(&mut self, node: &mut CallExpr) {
     node.visit_mut_children_with(self);
     if let IntlType::Enabled(drop) = self.intl_type
-      && matches!(&node.callee, Callee::Expr(c) if matches!(&**c, Expr::Ident(id) if id.sym == *JINGE_T))
+      && matches!(&node.callee, Callee::Expr(c) if matches!(&**c, Expr::Ident(id) if crate::scope::is_intl_t(id)))
     {
       node.args = parse_intl_call_args(&node.args, drop);
     }
@@ -360,5 +377,17 @@ impl swc_ecma_visit::Visit for RemainingJsx {
       node.span,
       "不支持此位置的 JSX Fragment；请使用最终模板 return",
     );
+  }
+}
+
+// Keep the common import list unchanged for templates that need no empty-slot anchor.
+struct CommentUsage(bool);
+impl Visit for CommentUsage {
+  fn visit_call_expr(&mut self, node: &CallExpr) {
+    if matches!(&node.callee, Callee::Expr(callee) if matches!(&**callee, Expr::Ident(id) if id.span.is_dummy() && id.sym == JINGE_IMPORT_CREATE_COMMENT.local().sym))
+    {
+      self.0 = true;
+    }
+    node.visit_children_with(self);
   }
 }

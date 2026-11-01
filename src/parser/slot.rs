@@ -479,14 +479,30 @@ impl TemplateParser {
     }
   }
 
+  fn empty_slot_branch(&self) -> Vec<ExprOrSpread> {
+    vec![ast_create_arg_expr(super::tpl::tpl_render_comment(
+      self.context.is_parent_component(),
+      self.create_host_ident(),
+    ))]
+  }
   fn parse_expr_to_render_fn(&mut self, expr: &Expr) -> Vec<ExprOrSpread> {
+    // Match ordinary conditional rendering: literal null/undefined mean no content.
+    if super::cond::is_null_undef(expr) {
+      return self.empty_slot_branch();
+    }
     self.push_context_inherit_host_ident(self.context.parent);
     self.visit_expr(expr);
     let mut context = self.pop_context_without_dec_deep();
-    let Some(s) = context.slots.pop() else {
-      return vec![];
-    };
-    s.expressions
+    let expressions = context
+      .slots
+      .pop()
+      .map(|slot| slot.expressions)
+      .unwrap_or_default();
+    if expressions.is_empty() {
+      self.empty_slot_branch()
+    } else {
+      expressions
+    }
   }
   pub fn parse_cond_slot(&mut self, expr: &CondExpr) -> bool {
     let Some((slot_name, slot_args)) = get_bin_expr_slot_name(&expr.test, &self.props_arg) else {
@@ -518,10 +534,7 @@ impl TemplateParser {
       span: DUMMY_SP,
       test: slot_name,
       cons: exprorspread_vec_to_expr(render_fn),
-      alt: Box::new(Expr::Array(ArrayLit {
-        span: DUMMY_SP,
-        elems: vec![],
-      })),
+      alt: exprorspread_vec_to_expr(self.empty_slot_branch()),
     })));
     true
   }

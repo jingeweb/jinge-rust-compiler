@@ -4,9 +4,9 @@
 
 | 目录                                 | 目的                                                       | 当前规模                                                 |
 | ------------------------------------ | ---------------------------------------------------------- | -------------------------------------------------------- |
-| [rust](rust/README.md)               | 直接调用 Rust 编译核心，比较完整目标代码、诊断和组件元数据 | 121 个测试；102 组 fixture，其中 80 份目标 JS、22 份诊断 |
-| [integration](integration/README.md) | 原有 JS/TS 验证集中存放，实际加载编译产物并联测运行时      | 225 个主用例；5 个待讨论复现单独运行                     |
-| [e2e](e2e/README.md)                 | 真实 Chrome + Vite，检查 CSS 动画、列表、HMR 和错误恢复    | 13 个用例，全量通过                                      |
+| [rust](rust/README.md)               | 直接调用 Rust 编译核心，比较完整目标代码、诊断和组件元数据 | 136 个测试；108 组 fixture，其中 86 份目标 JS、22 份诊断 |
+| [integration](integration/README.md) | 原有 JS/TS 验证集中存放，实际加载编译产物并联测运行时      | 254 个主用例；4 个待讨论复现单独运行                     |
+| [e2e](e2e/README.md)                 | 真实 Chrome + Vite，检查 CSS 动画、列表、HMR 和错误恢复    | 15 个用例，全量通过                                      |
 
 ## 运行
 
@@ -49,9 +49,9 @@ pnpm test:update
 pnpm test:pending
 ```
 
-5 个复现使用明确的 TODO 标记，命令成功不表示问题已修复；包括 C02/C03、局部计算 key 外提、空插槽根模板及带副作用的可选链。它们不计入主集通过数。
+4 个复现使用明确的 TODO 标记，命令成功不表示问题已修复；包括 C02/C03、局部计算 key 外提及带副作用的可选链。它们不计入主集通过数。
 
-本次完整验证记录见 [verification.json](verification.json)。Rust 121、integration 225、e2e 13 个用例均通过。修复前失败与修复后验证见 [D01/D02 记录](../review/2026-10-30/demos-fixes.md)。
+本次完整验证记录见 [verification.json](verification.json)。Rust 136、integration 254、e2e 15 个用例均通过。修复前失败与修复后验证见 [D01/D02 记录](../review/2026-10-30/demos-fixes.md)。
 
 ## 覆盖率与浏览器报告
 

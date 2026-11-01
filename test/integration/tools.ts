@@ -8,7 +8,14 @@ import path from 'node:path';
 
 import { intlCompile } from '../../ts/intl/compile';
 import { intlExtract } from '../../ts/intl/extract';
-import { calcIntlTextKey, writeCsv, parseCsv, loopMkdir, loopReadDir } from '../../ts/intl/helper';
+import {
+  calcIntlTextKey,
+  extractKeyAndMessage,
+  writeCsv,
+  parseCsv,
+  loopMkdir,
+  loopReadDir,
+} from '../../ts/intl/helper';
 const scenario = process.argv[2];
 const dir = await mkdtemp(path.join(os.tmpdir(), 'jinge-tools-test-'));
 const csv = path.join(dir, 'translate.csv');
@@ -43,6 +50,62 @@ if (scenario === 'csv') {
     ),
   );
   assert.equal((await loopReadDir(sourceDir)).length, 2);
+} else if (scenario === 'intl-bindings') {
+  const cases: [string, string[]][] = [
+    ["import {t as tr} from 'jinge';tr('Hello');", ['Hello']],
+    ["function t(x:string){return x}t('Local');", []],
+    ["import {t as tr} from 'jinge';function f(tr:any){tr('Shadow')}tr('Hello');", ['Hello']],
+    ["import {t} from './a';t('Other');", []],
+    ["import * as jinge from 'jinge';jinge.t('Other');", []],
+    ["import {t} from 'jinge';const tr=t;tr('Other');", []],
+    ["import type {t} from 'jinge';t('Other');", []],
+    ["import {type t} from 'jinge';t('Other');", []],
+    ["tr('Hello');import {t as tr} from 'jinge';", ['Hello']],
+  ];
+  for (const [source, expected] of cases) {
+    const sf = ts.createSourceFile('case.tsx', source, ts.ScriptTarget.Latest, true);
+    const messages: string[] = [];
+    function walk(node: ts.Node) {
+      const msg = extractKeyAndMessage('case.tsx', node, 'extract', sf);
+      if (msg) messages.push(msg.defaultMessage);
+      ts.forEachChild(node, walk);
+    }
+    walk(sf);
+    assert.deepEqual(messages, expected, source);
+  }
+  const source = path.join(dir, 'alias.tsx');
+  await writeFile(
+    source,
+    `import {t as tr} from 'jinge';export const message=tr('Hello <B>{name}</B>',{name:'world',B:(text)=><b>{text}</b>},{key:'alias-rich'});function t(x){return x}export const local=t('Local');`,
+  );
+  await writeFile(csv, '');
+  await intlExtract({ languages: ['en'], srcDirs: [dir], translateFilePath: csv });
+  const rows = (await parseCsv(csv)) as unknown as Record<string, string>[];
+  assert.deepEqual(
+    rows.map((row) => row.id),
+    ['alias-rich'],
+  );
+  await intlCompile({ outputDir: dir, translateCsvFile: csv });
+  const output = await readFile(path.join(dir, 'en.tsx'), 'utf8');
+  assert.match(output, /<b>/);
+  assert.match(output, /name/);
+  const harnessPath = path.join(process.cwd(), 'test/integration/harness.mjs');
+  const h = await import(harnessPath);
+  const dictionary = await h.load(output);
+  await h.rt.intlInit({
+    defaultLocale: 'binding-rich',
+    dicts: { 'binding-rich': dictionary.module.default },
+  });
+  const view = await h.mount(
+    `import {t as tr} from 'jinge';export function A(){return <>{tr('Hello <B>{name}</B>',{name:'world',B:(text)=><b>{text}</b>},{key:'alias-rich'})}</>}`,
+    { intl: 1 },
+  );
+  try {
+    assert.equal(view.text(), 'Hello world');
+    assert.equal(document.querySelector('b')?.textContent, 'world');
+  } finally {
+    view.dispose();
+  }
 } else if (scenario === 'helper-cli') {
   for (const [script, args] of [
     ['intl-extract', []],

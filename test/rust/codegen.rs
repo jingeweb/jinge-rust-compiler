@@ -102,4 +102,10 @@ fixture_tests! {
   case_svg_component_slots => "svg-component-slots",
   case_svg_generated_branches => "svg-generated-branches",
   case_svg_standalone_foreign_object => "svg-standalone-foreign-object",
+  case_slot_empty_root_and => "slot-empty-root-and",
+  case_slot_empty_ternary => "slot-empty-ternary",
+  case_slot_empty_fallback => "slot-empty-fallback",
+  case_intl_import_alias => "intl-import-alias",
+  case_intl_local_shadow => "intl-local-shadow",
+  case_typescript_intl_alias => "typescript-intl-alias",
 }

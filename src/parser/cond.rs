@@ -67,7 +67,7 @@ fn gen_if_component(test: Box<Expr>, alt: Option<&Expr>, cons: Option<&Expr>) ->
 
 /// 判定表达式是否是 null 或者 undefined。注意 null 是 Lit::Null，但 undefined 是 Ident 类型。
 #[inline]
-fn is_null_undef(expr: &Expr) -> bool {
+pub(super) fn is_null_undef(expr: &Expr) -> bool {
   match expr {
     Expr::Lit(Lit::Null(_)) => true,
     Expr::Ident(id) => JINGE_UNDEFINED.eq(&id.sym),

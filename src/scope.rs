@@ -27,22 +27,39 @@ struct Symbols {
   // so bindings remain usable when templates are parsed out of visit order.
   scopes: Vec<Vec<Id>>,
   vm_imports: Vec<Id>,
+  intl_imports: HashSet<Id>,
   map_parameters: HashSet<Id>,
   written: HashSet<Id>,
 }
 thread_local! { static SYMBOLS: RefCell<Symbols> = RefCell::default(); }
 pub struct ScopeGuard(Option<Symbols>);
 impl ScopeGuard {
-  pub fn enter(program: &Program) -> Self {
-    let mut writes = WrittenBindings::default();
-    program.visit_with(&mut writes);
-    let mut symbols = Symbols {
-      written: writes.0,
-      ..Default::default()
-    };
-    symbols.scopes.push(vec![]);
-    program.visit_with(&mut symbols);
-    Self(Some(SYMBOLS.with(|s| s.replace(symbols))))
+  pub fn enter(program: &Program, templates: bool) -> Self {
+    let mut symbols = Symbols::default();
+    // Make hoisted import identities available even while classifying template
+    // function parameters (a component may return only an imported t call).
+    if let Program::Module(module) = program {
+      for item in &module.body {
+        if let ModuleItem::ModuleDecl(ModuleDecl::Import(import)) = item {
+          symbols.visit_import_decl(import);
+        }
+      }
+    }
+    let guard = Self(Some(SYMBOLS.with(|s| {
+      s.replace(Symbols {
+        intl_imports: symbols.intl_imports.clone(),
+        ..Default::default()
+      })
+    })));
+    if templates {
+      let mut writes = WrittenBindings::default();
+      program.visit_with(&mut writes);
+      symbols.written = writes.0;
+      symbols.scopes.push(vec![]);
+      program.visit_with(&mut symbols);
+    }
+    SYMBOLS.with(|s| s.replace(symbols));
+    guard
   }
 }
 impl Drop for ScopeGuard {
@@ -105,9 +122,20 @@ impl Symbols {
 }
 impl Visit for Symbols {
   fn visit_import_decl(&mut self, node: &ImportDecl) {
-    if node.src.value == "jinge" {
+    if node.src.value == "jinge" && !node.type_only {
       for spec in &node.specifiers {
         if let ImportSpecifier::Named(n) = spec {
+          if n.is_type_only {
+            continue;
+          }
+          let intl = match &n.imported {
+            Some(ModuleExportName::Ident(id)) => id.sym == "t",
+            Some(ModuleExportName::Str(name)) => name.value == "t",
+            None => n.local.sym == "t",
+          };
+          if intl {
+            self.intl_imports.insert(n.local.to_id());
+          }
           let vm = match &n.imported {
             Some(ModuleExportName::Ident(id)) => id.sym == "vm",
             Some(ModuleExportName::Str(s)) => s.value == "vm",
@@ -119,15 +147,6 @@ impl Visit for Symbols {
         }
       }
     }
-  }
-  fn visit_module(&mut self, node: &Module) {
-    // Imports are hoisted regardless of their position in the file.
-    for item in &node.body {
-      if let ModuleItem::ModuleDecl(ModuleDecl::Import(i)) = item {
-        self.visit_import_decl(i);
-      }
-    }
-    node.visit_children_with(self);
   }
   fn visit_function(&mut self, node: &Function) {
     self.template_parameter(
@@ -428,4 +447,8 @@ impl Visit for WrittenBindings {
     }
     node.visit_children_with(self);
   }
+}
+
+pub fn is_intl_t(id: &Ident) -> bool {
+  SYMBOLS.with(|symbols| symbols.borrow().intl_imports.contains(&id.to_id()))
 }

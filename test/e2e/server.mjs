@@ -11,7 +11,7 @@ const server = await createServer({
   root: path.join(import.meta.dirname, 'app'),
   logLevel: 'warn',
   plugins: [
-    jingeVitePlugin({ loadDebugNativeBinding: true }),
+    jingeVitePlugin({ loadDebugNativeBinding: true, intl: true }),
     {
       name: 'test-runtime',
       resolveId(id) {

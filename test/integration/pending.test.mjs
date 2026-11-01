@@ -37,13 +37,6 @@ test(
   },
 );
 test(
-  'component whose only slot condition renders no nodes',
-  { todo: 'runtime 要求组件至少返回一个节点；需讨论空模板占位策略' },
-  async () => {
-    await behavior(`export function A(props){return <>{props.children&&<b>present</b>}</>}`, '');
-  },
-);
-test(
   'optional computed member preserves side-effect short circuit',
   { todo: '短路依赖提取需统一设计，本轮仅修复普通可选函数调用' },
   async () => {

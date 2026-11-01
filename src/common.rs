@@ -46,6 +46,7 @@ lazy_static::lazy_static! {
   pub static ref JINGE_IMPORT_RENDER_INTL_RICH_TEXT: JingeImport = x!("renderIntlRichText");
   pub static ref JINGE_IMPORT_CREATE_ELE: JingeImport = x!("createEle");
   pub static ref JINGE_IMPORT_CREATE_SVG_ELE: JingeImport = x!("createSVGEle");
+  pub static ref JINGE_IMPORT_CREATE_COMMENT: JingeImport = x!("createComment");
   pub static ref JINGE_IMPORT_CREATE_TEXT_NODE: JingeImport = x!("createTextNode");
 
   pub static ref JINGE_IMPORT_CREATE_ELE_A: JingeImport = x!("createEleA");
@@ -84,7 +85,6 @@ lazy_static::lazy_static! {
   pub static ref JINGE_HOST_IDENT: Ident = "host$jg$".into();
   pub static ref JINGE_ROOT_HOST_IDENT: Ident = "rthost$jg$".into();
   pub static ref JINGE_V_IDENT: Ident = "v".into();
-  pub static ref JINGE_T: Atom = "t".into();
   pub static ref TEXT_CONTENT: Ident = "textContent".into();
   pub static ref JINGE: Atom = "jinge".into();
   pub static ref JINGE_REF: Atom = "ref".into();

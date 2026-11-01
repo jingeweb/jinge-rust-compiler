@@ -66,3 +66,7 @@ state.items.map((item, index, array) => <p>{array.length}</p>);
 ```
 
 上述限制只针对转换为模板/For 的语法，不应禁止普通业务 JavaScript 中的 map 或提前 return。
+
+- 第 4 点：静态插槽条件的空分支由编译器生成 comment，占位根节点登记到当前 host；同步处理三元及 ||/?? 的静态空 fallback。保持插槽静态契约与运行时非空根节点约束。
+
+- 第 6 点：编译、提取与字典编译统一按当前文件直接从 jinge 导入的 t 绑定识别，支持命名导入 as 别名；不追踪跨文件重导出、namespace 或二次别名。

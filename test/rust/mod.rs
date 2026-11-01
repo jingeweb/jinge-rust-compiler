@@ -97,3 +97,7 @@ mod contracts;
 mod dom_paths;
 
 mod svg;
+
+mod slot_empty;
+
+mod intl_bindings;

@@ -135,7 +135,7 @@ fn inner_transform(
     // https://github.com/swc-project/swc/blob/main/crates/swc_ecma_transforms_typescript/examples/ts_to_js.rs
     // Conduct identifier scope analysis
     let module = module.apply(resolver(unresolved_mark, top_level_mark, true));
-    let _scope = (code_type == 2).then(|| scope::ScopeGuard::enter(&module));
+    let _scope = scope::ScopeGuard::enter(&module, code_type == 2);
     // Remove typescript types
     let module = module.apply(strip(unresolved_mark, top_level_mark));
 

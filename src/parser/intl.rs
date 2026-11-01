@@ -4,7 +4,7 @@ use swc_common::{DUMMY_SP, Spanned};
 use swc_core::{atoms::Wtf8Atom, ecma::ast::*};
 
 use super::{
-  IntlType, JINGE_ATTR_IDENT, JINGE_IMPORT_VM, JINGE_KEY, JINGE_T, JINGE_V_IDENT, TemplateParser,
+  IntlType, JINGE_ATTR_IDENT, JINGE_IMPORT_VM, JINGE_KEY, JINGE_V_IDENT, TemplateParser,
   ast_create_arg_expr, ast_create_expr_arrow_fn, ast_create_expr_call, ast_create_expr_ident,
   ast_create_stmt_decl_const, emit_error,
   expr::{ExprParseResult, ExprVisitor},
@@ -99,12 +99,9 @@ pub fn extract_t(args: &[ExprOrSpread]) -> Option<(Wtf8Atom, &Wtf8Atom, Option<&
   Some((key.unwrap(), &default_text.value, params_arg))
 }
 impl TemplateParser {
-  /// 将国际化多语言的 t 函数转换为相应的组件或渲染。这里采用了极简单的粗糙方法，仅通过函数名为 t 来判定。
-  /// 因此有很大的问题，比如不支持 `import {t as someFn} from 'jinge'` 的别名 import 写法；
-  /// 比如如果用户使用了自已定义的也名为 t 函数。
-  /// TODO: 未来结合实现情况来支持上述两种 case。
+  /// Recognize the current file's direct jinge t import by resolver binding Id.
   pub fn parse_intl_t(&mut self, callee: &Expr, args: &[ExprOrSpread]) -> bool {
-    if !matches!(callee, Expr::Ident(name) if JINGE_T.eq(&name.sym)) {
+    if !matches!(callee, Expr::Ident(name) if crate::scope::is_intl_t(name)) {
       return false;
     }
     let Some((key, default_text, params_arg)) = extract_t(args) else {

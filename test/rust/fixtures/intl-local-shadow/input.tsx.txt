@@ -1,0 +1,1 @@
+import {t as tr} from 'jinge';function t(text){return '[local]'+text}function Local(tr){return tr('Hello')}export function A(){return <p>{t('Hello')}:{Local(text=>text)}:{tr('Hello')}</p>}

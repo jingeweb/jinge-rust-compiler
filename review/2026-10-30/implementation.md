@@ -30,12 +30,12 @@
 1. C02、C03：按事先决定不改方法接收者/方法体及嵌套回调的依赖语义。
 2. SVG 跨边界：2026-11-01 已按标签名静态识别 SVG 专有标签，修复 circle/path 等跨组件、插槽、If/For 的场景；a/title/style/script 等同名标签仍沿用原上下文规则，跨独立组件的歧义场景继续保留讨论。
 3. `map(item => { const id = item.id; return <p key={id}/> })`：本轮明确报错，并建议完整书写原始 key 表达式，例如 `key={item.id}`。支持它需要分析并外提局部计算，避免把闭包局部变量放到 For 外部。
-4. `return <>{props.children && <b/>}</>` 在没有 slot 时返回空数组，运行时要求函数组件至少有一个节点。如何统一空模板的 comment/host 占位需进一步讨论；未修改运行时根节点契约。
+4. `return <>{props.children && <b/>}</>` 的缺失插槽空分支已于 2026-11-01 修复：编译器生成 comment 占位，根部登记到当前 host。插槽存在性仍静态判断，运行时根节点契约保持不变。
 5. `state.obj?.[key() + state.n]`：提取 watcher 可能提前执行 key()，违反短路副作用语义。统一处理惰性依赖需要更大表达式设计，本轮只修普通可选函数调用，不声称完整修复所有 optional chain。
-6. 国际化 t 的 import alias/同名函数识别仍是原 review 已注明的历史限制，未在本轮扩大到统一国际化绑定识别设计。
+6. 国际化 t 的 import alias/同名函数识别已修复：Rust 编译器和 TS 提取/字典编译统一按当前文件中直接从 jinge 导入的 t 绑定识别，支持 as 别名并排除同名/遮蔽。跨文件重导出、namespace 和二次别名不追踪。
 7. CSS 动画及真实浏览器 HMR/overlay 未为覆盖数字强行补齐；当前覆盖率和环境边界见测试 README。
 
-尚未修复的 5 个可执行失败复现位于 test/integration/pending.test.mjs，单独命令运行，未混入主测试成功数字。未来 TS 返回类型推断、仅支持 TS/TSX、告警抑制注释、spread 组合能力及此前拒绝语法的扩展仍保留在 decisions.md。
+尚未修复的 4 个可执行失败复现位于 test/integration/pending.test.mjs，单独命令运行，未混入主测试成功数字。未来 TS 返回类型推断、仅支持 TS/TSX、告警抑制注释、spread 组合能力及此前拒绝语法的扩展仍保留在 decisions.md。
 
 ### 第 2 点示例：SVG 穿过组件、条件、列表和插槽（修复前复现）
 
@@ -182,3 +182,27 @@ export function App() {
 正常的 VM 成员修改不算重新绑定 VM。`let state = vm(...)` 但没有 state = ... 时不触发重赋值告警；state = vm(...) 后，使用 state 的模板会提示。只在事件闭包内读取/修改的变量不触发模板告警；同名遮蔽按绑定区分。外部导入和未知工厂返回值仍不猜测；普通 helper 的参数不被当成组件 props，只有按现有规则被识别为模板函数的首参数才标记为响应式来源。
 
 先新增 34 个用例验证：20 个失败、14 个通过；修复后扩展至 36 个，包括对象 shorthand 派生和 count = count + 1。目标代码保持原生成策略；这里只增加诊断，不自动修复响应式行为。
+
+## 后续：第 4 点静态插槽条件的空分支占位（2026-11-01）
+
+普通条件的 && 原本会生成 If，运行时已有 comment 兜底。问题仅在插槽存在性判断的特殊编译路径：props.children && ... 被静态简化为三元表达式，缺失分支返回 []，绕过了 If 的占位逻辑。
+
+现在缺失分支生成 createComment('slot:empty')。位于组件/插槽根部时登记到当前 host 的 ROOT_NODES；位于普通 DOM 内部时由父元素管理，避免重复登记或重复销毁。自定义 host 参数同样适用。不生成 If、不注册插槽存在性的 watcher，不增加动态插槽支持，不修改运行时源码或公共接口。
+
+同步覆盖插槽三元表达式及 ||/?? fallback 的静态空 fragment、null/undefined 分支；这些条件分支的字面量 null/undefined 按普通条件渲染的约定表示无内容。其它位置的普通值渲染语义保持原样。此修复没有放宽直接返回空 fragment、外部插槽函数返回空数组等通用空模板的运行时契约。
+
+createComment 使用运行时既有导出，按需加入生成的 import；无占位需求的模块保持原 import 列表。已有目标代码快照仅 slot-and 发生预期变化；另补 3 份完整目标代码快照。
+
+修复前新增 Rust 集 2 失败/1 通过，Node 集 11 失败/6 通过，Chrome 1 失败。修复后扩展为 22 个 Node 用例，检查默认/命名插槽、有/无插槽、空 fragment、null/undefined、自定义 host、根部/DOM 内部归属、实际销毁、组件根替换、If 离开再进入、keyed 列表移动/删除，并确认插槽存在性仍不响应动态替换。原第 4 点 TODO 已移入常规回归，不再计入待讨论复现。
+
+## 后续：第 6 点国际化调用按绑定识别（2026-11-01）
+
+支持 `import { t } from 'jinge'` 与 `import { t as translate } from 'jinge'`。本地同名 t、被参数/局部变量遮蔽的导入、type-only 导入，以及从 ./a 导入的 t 都不会被误当成国际化调用。直接 import 可以出现在文件后方，按 JS import 提升语义识别。
+
+Rust 在 resolver 后收集 import 的绑定 Id；模板文本、属性/复合表达式、组件根部 return t(...) 及普通 TS 调用使用同一识别入口。TSX 分析局部变量来源前先安装导入身份，避免仅返回翻译的组件丢失 props 提前取值告警；普通 TS 只收集 import，不执行模板变量来源分析。ScopeGuard 继续在结束/失败时恢复状态。
+
+TS 工具在 extractKeyAndMessage 共享入口中，先按文件缓存直接导入的本地名称，再通过现有单文件 TypeChecker 比较 import specifier 与调用标识符的符号。没有匹配候选时不创建 checker；使用 noLib/noResolve，不读取模块依赖或追踪跨文件重导出。SourceFile 保留 parent 信息，checker 与候选缓存都使用 WeakMap。intl-extract 和 intl-compile 的目录扫描、CSV、hash、字典格式和富文本生成算法保持原样。
+
+明确不扩展：`import { xx } from './a'` 的重导出追踪、`import * as jinge` 后的 jinge.t()、`const translate = t` 二次别名。
+
+先确认新增 Rust 6 个用例全失败，集成集 5 失败/1 通过；另外补测仅翻译调用的组件根部 props 告警，先确认该兼容用例失败再修正。修复后补 3 份完整目标代码快照，并验证别名在语言切换、响应式参数和属性更新时有效，本地 t 正常执行。TS 工具用例实际完成提取、CSV、富文本字典生成，再用生成字典挂载渲染。Chrome 独立验证别名与本地 t 共存、输入及语言切换。已有快照无需因本次国际化识别修改而重写。

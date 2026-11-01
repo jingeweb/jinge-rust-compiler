@@ -15,6 +15,7 @@
 ## Todo
 
 - 只支持 typescript，不再支持 javascript。考虑下要不要这样做。
+- 对于先 `const name = state.name` 这样声明，再在 tsx 中使用 `<span>{name}</span>` 的情况，当前会报告警。应该是可以将这个转成通过 `vmWatch` 来监听的，只不过模板中的 `{name}` 如何也通知更新是个问题，可以讨论下方案实现。
 - 对 style 的处理对齐 react 等的 CSSProperties。
   - 对于 `<div style={{ width: state.width, marginTop: 30 }}>` 这种写法，编译成带 watch 的转换。在编译器中转成 `styel={``width:${state.width};margin-top:30px;``}` 这样的字符串 style。运行时不会去做 marginTop 转 margin-top 的逻辑。由 typescript 提供 CSSProperties 的类型能力。
   - 对于 `<div style={state.style}>` 这种写法，类型上也是要求 state.style 是 CSSProperties 类型，但运行时还是要求是 string，否则报错。state.style 由用户通过 `css()` 这个内置编译器糖函数来处理，编译器会在编译时将 css 直接转成带 watch 的 template string 表达式。
