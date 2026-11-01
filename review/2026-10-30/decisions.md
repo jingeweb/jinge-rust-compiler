@@ -30,7 +30,7 @@
 - C09：优先在编译器内让常量 IDL 属性复用已有 property 赋值规则，与响应式路径保持一致；避免扩大通用运行时 setAttribute 的语义变化。
 - C14：修正混合路径与字符串转义，提取块体最终 return 的 key；涉及局部计算或分支、不能安全外提的 key 明确诊断，避免生成越界变量引用。
 - C20：优先使用独立、合法且唯一的内部函数编号；这同时覆盖默认 hash 和自定义 key，通常无需改变 hash 协议。
-- C07：修复可静态确定的 SVG 继承和 foreignObject 边界；跨独立组件调用传播 namespace 若需要新运行时协议，另行讨论。
+- C07：2026-11-01 追加决定并实现：SVG 专有标签直接按标签名选择 namespace，覆盖跨组件/插槽/If/For；foreignObject 子节点保持 HTML 边界。a/title/style/script 等同名标签暂不扩展跨组件推断。
 - 将编译诊断纳入失败返回，替换已知输入错误的 panic/todo 分支；区分 warning 和 error，避免把现有“警告”文案全部升级为阻断错误。
 - 测试先建立 Rust 转换/诊断、当前源码 binding + 真实运行时联测、TS 国际化及 Vite 测试；再补少量浏览器 smoke。C02、C03 保留已知失败记录，不误列为已修复。
 

@@ -8,14 +8,14 @@ cargo test --locked tests::contracts
 
 完全不依赖 Node、`.node`、浏览器或同级运行时。通过 `src/lib.rs` 的 `#[cfg(test)]` 引入本目录，直接调用私有编译核心 `inner_transform`；无需为测试拆分 crate 或增加公共 API。
 
-当前 `cargo test` 共 **113 个测试**，其中 99 个逐例 fixture 测试、1 个 fixture 注册完整性检查、5 个编译契约测试、2 个 smoke 测试，4 个 DOM/成员路径回归测试，以及编译器原有的 2 个文本单元测试。
+当前 `cargo test` 共 **121 个测试**，其中 102 个逐例 fixture 测试、1 个 fixture 注册完整性检查、6 个编译契约测试、2 个 smoke 测试，4 个 DOM/成员路径回归测试、4 个 SVG 标签/上下文回归测试，以及编译器原有的 2 个文本单元测试。
 
 每个 fixture 在 `fixtures/<name>/` 下独立保存：
 
 ```text
 input.tsx.txt        原始输入；options.txt 中 type=1 时按普通 TS 解析
 options.txt      type、intl 模式及预期 HMR components
-expected.js      77 个成功输入的完整目标 JS
+expected.js      80 个成功输入的完整目标 JS
 expected.error   22 个拒绝输入的完整诊断，含源码位置
 ```
 

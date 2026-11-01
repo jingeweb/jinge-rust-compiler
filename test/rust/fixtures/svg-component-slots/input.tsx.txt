@@ -1,0 +1,1 @@
+function Shape(){return <g><title>shape</title><path d="M0 0L10 10"/></g>}function Frame(props){return <svg>{props.children}{props['slot:extra']}</svg>}export function A(){return <Frame slot:extra={<circle r="5"/>}><Shape/></Frame>}

@@ -79,3 +79,13 @@ fn transforms_are_isolated_across_threads() {
     thread.join().unwrap();
   }
 }
+
+#[test]
+fn local_map_key_error_suggests_writing_the_complete_expression() {
+  let error = inner_transform(
+    "local-key.tsx".into(), 2,
+    "import {vm} from 'jinge';const items=vm([{id:1}]);export function A(){return <>{items.map(item=>{const id=item.id;return <p key={id}/>})}</>}".into(),
+    false, IntlType::Disabled,
+  ).unwrap_err();
+  assert!(error.contains("key={item.id}"), "{error}");
+}

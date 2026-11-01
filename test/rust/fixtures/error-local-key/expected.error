@@ -1,4 +1,4 @@
-error: key 引用了 map 回调内的局部变量，暂不支持向 For 提取；请直接使用 item 的属性路径
+error: key 引用了 map 回调内的局部变量，暂不支持向 For 提取；请直接完整书写 key 表达式，例如 key={item.id}，不要先提取为局部变量
  --> fixture.tsx:1:146
   |
 1 | import {vm,t} from 'jinge';const state=vm({items:[{id:1}]});export function A(){return <>{state.items.map(item=>{const id=item.id;return <p key={id}/>})}</>}

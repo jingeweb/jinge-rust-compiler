@@ -5,10 +5,77 @@ use crate::parser::{attrs::AttrWatchPropName, *};
 
 use super::{TemplateParser, emit_error};
 
+// SVG-specific intrinsic tags can be identified even across component/slot boundaries.
+// Shared HTML/SVG names (a, title, style, script) still require the existing context.
+fn is_svg_tag(name: &str) -> bool {
+  matches!(
+    name,
+    "svg"
+      | "animate"
+      | "animateMotion"
+      | "animateTransform"
+      | "circle"
+      | "clipPath"
+      | "defs"
+      | "desc"
+      | "ellipse"
+      | "feBlend"
+      | "feColorMatrix"
+      | "feComponentTransfer"
+      | "feComposite"
+      | "feConvolveMatrix"
+      | "feDiffuseLighting"
+      | "feDisplacementMap"
+      | "feDistantLight"
+      | "feDropShadow"
+      | "feFlood"
+      | "feFuncA"
+      | "feFuncB"
+      | "feFuncG"
+      | "feFuncR"
+      | "feGaussianBlur"
+      | "feImage"
+      | "feMerge"
+      | "feMergeNode"
+      | "feMorphology"
+      | "feOffset"
+      | "fePointLight"
+      | "feSpecularLighting"
+      | "feSpotLight"
+      | "feTile"
+      | "feTurbulence"
+      | "filter"
+      | "foreignObject"
+      | "g"
+      | "image"
+      | "line"
+      | "linearGradient"
+      | "marker"
+      | "mask"
+      | "metadata"
+      | "mpath"
+      | "path"
+      | "pattern"
+      | "polygon"
+      | "polyline"
+      | "radialGradient"
+      | "rect"
+      | "set"
+      | "stop"
+      | "switch"
+      | "symbol"
+      | "text"
+      | "textPath"
+      | "tspan"
+      | "use"
+      | "view"
+  )
+}
+
 impl TemplateParser {
   fn parse_html_element(&mut self, tn: &Ident, n: &JSXElement) {
     let mut attrs = self.parse_attrs(n, false);
-    let is_svg = self.context.is_parent_svg() || JINGE_SVG.eq(&tn.sym);
+    let is_svg = self.context.is_parent_svg() || is_svg_tag(tn.sym.as_ref());
     self.push_context_inherit_host_ident(if is_svg && tn.sym != "foreignObject" {
       Parent::Svg
     } else {
@@ -23,7 +90,7 @@ impl TemplateParser {
     // html 元素下不可能出现多个 slots。事实上，html 元素没有 slot 概念，只是用统一的数据结构保存子节点。
     assert_eq!(children_context.slots.len(), 1);
     let had_const_props = !attrs.const_props.is_empty();
-    let callee_ident = if self.context.is_parent_svg() || tn.sym.eq("svg") {
+    let callee_ident = if is_svg {
       if !attrs.const_props.is_empty() {
         JINGE_IMPORT_CREATE_SVG_ELE_A.local()
       } else {

@@ -85,7 +85,7 @@
     "jinge-compiler-win32-x64": "4.1.13"
   },
   "lint-staged": {
-    "*.{js,ts}": [
+    "!(test/**).{js,ts}": [
       "oxlint --type-aware --fix",
       "oxfmt"
     ]

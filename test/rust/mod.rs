@@ -95,3 +95,5 @@ mod codegen;
 mod contracts;
 
 mod dom_paths;
+
+mod svg;

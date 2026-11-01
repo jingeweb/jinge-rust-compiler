@@ -2,11 +2,11 @@
 
 测试分成三层，常规编译结果比较以 Rust 层为主：
 
-| 目录                                 | 目的                                                       | 当前规模                                                |
-| ------------------------------------ | ---------------------------------------------------------- | ------------------------------------------------------- |
-| [rust](rust/README.md)               | 直接调用 Rust 编译核心，比较完整目标代码、诊断和组件元数据 | 113 个测试；99 组 fixture，其中 77 份目标 JS、22 份诊断 |
-| [integration](integration/README.md) | 原有 JS/TS 验证集中存放，实际加载编译产物并联测运行时      | 162 个主用例；7 个待讨论复现单独运行                    |
-| [e2e](e2e/README.md)                 | 真实 Chrome + Vite，检查 CSS 动画、列表、HMR 和错误恢复    | 12 个用例，全量通过                                     |
+| 目录                                 | 目的                                                       | 当前规模                                                 |
+| ------------------------------------ | ---------------------------------------------------------- | -------------------------------------------------------- |
+| [rust](rust/README.md)               | 直接调用 Rust 编译核心，比较完整目标代码、诊断和组件元数据 | 121 个测试；102 组 fixture，其中 80 份目标 JS、22 份诊断 |
+| [integration](integration/README.md) | 原有 JS/TS 验证集中存放，实际加载编译产物并联测运行时      | 225 个主用例；5 个待讨论复现单独运行                     |
+| [e2e](e2e/README.md)                 | 真实 Chrome + Vite，检查 CSS 动画、列表、HMR 和错误恢复    | 13 个用例，全量通过                                      |
 
 ## 运行
 
@@ -22,7 +22,7 @@ pnpm lint
 
 Rust 单层只需 Rust stable。其他层需要 Node 24+、pnpm；先运行 `pnpm install --frozen-lockfile`。联测运行时默认使用同级 `../jinge`，也可以设置 `JINGE_RUNTIME_ROOT=/absolute/path/to/jinge`；运行时需先安装依赖并执行 `pnpm build`，避免 dist 落后于源码。
 
-CI 当前固定检出的运行时为 jinge 4.1.9，提交 `a4de8eecab0d6d8b5d6dfb989114c69a2b8d5710`；CI 显式检出该提交，不依赖尚未发布的 npm 版本。本次本机联测使用同级运行时工作区，包含 D02 修复。运行时修复提交后，还需将 `.github/workflows/test.yml` 的运行时 ref 更新到该提交；旧 ref 无法通过新增 D02 用例。CI 也安装 Chrome 并执行 e2e，但本机通过不代表远端 CI 已运行。
+CI 当前固定检出的运行时为 jinge 4.1.9，提交 `daf0d92119bc123fdae7db46cb787c2e369dc7c9`；CI 显式检出该提交，不依赖尚未发布的 npm 版本。该提交包含 D02 修复，本次已同步 CI ref。CI 也安装 Chrome 并执行 e2e，但本机通过不代表远端 CI 已运行。
 
 ## 编辑器和类型检查
 
@@ -49,9 +49,9 @@ pnpm test:update
 pnpm test:pending
 ```
 
-7 个复现使用明确的 TODO 标记，命令成功不表示问题已修复；包括 C02/C03、SVG 跨组件/If/For、局部计算 key 外提、空插槽根模板及带副作用的可选链。它们不计入主集通过数。
+5 个复现使用明确的 TODO 标记，命令成功不表示问题已修复；包括 C02/C03、局部计算 key 外提、空插槽根模板及带副作用的可选链。它们不计入主集通过数。
 
-本次完整验证记录见 [verification.json](verification.json)。Rust 113、integration 162、e2e 12 个用例均通过。修复前失败与修复后验证见 [D01/D02 记录](../review/2026-10-30/demos-fixes.md)。
+本次完整验证记录见 [verification.json](verification.json)。Rust 121、integration 225、e2e 13 个用例均通过。修复前失败与修复后验证见 [D01/D02 记录](../review/2026-10-30/demos-fixes.md)。
 
 ## 覆盖率与浏览器报告
 

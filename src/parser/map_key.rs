@@ -255,7 +255,14 @@ impl MapKeyFindVisitor {
       {
         emit_error(
           value.span(),
-          "key 引用了 map 回调内的局部变量，暂不支持向 For 提取；请直接使用 item 的属性路径",
+          &format!(
+            "key 引用了 map 回调内的局部变量，暂不支持向 For 提取；请直接完整书写 key 表达式，例如 key={{{}.id}}，不要先提取为局部变量",
+            self
+              .arg_data
+              .as_ref()
+              .map(|id| id.0.as_ref())
+              .unwrap_or("item")
+          ),
         );
         return MapKey::None;
       }

@@ -1,26 +1,26 @@
 {
-  "date": "2026-10-31",
+  "date": "2026-11-01",
   "source": "Current working tree; changes are not committed",
   "environment": {
     "node": "v26.4.0",
     "chrome": "156.0.8078.73",
     "playwright": "1.64.1",
-    "runtimeCommit": "a4de8eecab0d6d8b5d6dfb989114c69a2b8d5710",
-    "runtimeSource": "Sibling working tree including uncommitted D02 fix"
+    "runtimeCommit": "daf0d92119bc123fdae7db46cb787c2e369dc7c9",
+    "runtimeSource": "Sibling clean working tree at runtimeCommit"
   },
   "rust": {
-    "passed": 113,
+    "passed": 121,
     "failed": 0,
-    "fixtures": 99,
-    "codeSnapshots": 77,
+    "fixtures": 102,
+    "codeSnapshots": 80,
     "diagnosticSnapshots": 22
   },
   "integration": {
-    "passed": 162,
+    "passed": 225,
     "failed": 0
   },
   "e2e": {
-    "passed": 12,
+    "passed": 13,
     "failed": 0,
     "flaky": 0,
     "skipped": 0,
@@ -48,11 +48,54 @@
   "runtime": {
     "suites": 33,
     "passed": 341,
-    "failed": 0
+    "failed": 0,
+    "verificationDate": "2026-10-31; unchanged runtime, not rerun for compiler-only SVG fix"
   },
   "demos": {
     "passed": 28,
     "failed": 0
   },
-  "ciRuntimePin": "Still old commit; update after runtime fix has a commit"
+  "ciRuntimePin": "Updated to runtimeCommit; remote CI not executed",
+  "pending": {
+    "todo": 5,
+    "includedInPassCounts": false
+  },
+  "svgRegressionBefore": {
+    "rust": {
+      "passed": 1,
+      "failed": 3
+    },
+    "integration": {
+      "passed": 1,
+      "failed": 4
+    },
+    "chrome": {
+      "passed": 0,
+      "failed": 1
+    }
+  },
+  "localSnapshotRegressionBefore": {
+    "integration": {
+      "passed": 5,
+      "failed": 10
+    },
+    "rustKeySuggestion": {
+      "passed": 0,
+      "failed": 1
+    }
+  },
+  "localSnapshotRegressionAfter": {
+    "integration": {
+      "passed": 22,
+      "failed": 0
+    }
+  },
+  "componentReactivityRegressionBefore": {
+    "passed": 14,
+    "failed": 20
+  },
+  "componentReactivityRegressionAfter": {
+    "passed": 36,
+    "failed": 0
+  }
 }

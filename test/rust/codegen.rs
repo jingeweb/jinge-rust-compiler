@@ -99,4 +99,7 @@ fixture_tests! {
   case_select_multiple_reactive => "select-multiple-reactive",
   case_select_multiple_value => "select-multiple-value",
   case_primitive_member_paths => "primitive-member-paths",
+  case_svg_component_slots => "svg-component-slots",
+  case_svg_generated_branches => "svg-generated-branches",
+  case_svg_standalone_foreign_object => "svg-standalone-foreign-object",
 }

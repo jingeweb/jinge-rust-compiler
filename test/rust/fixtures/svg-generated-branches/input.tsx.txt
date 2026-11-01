@@ -1,0 +1,1 @@
+import {vm} from 'jinge';const state=vm({on:true,items:[{id:1,x:10}]});export function A(){return <svg>{state.on&&<path d="M0 0L10 10"/>}{state.items.map(item=><circle key={item.id} cx={item.x} r="5"/>)}</svg>}

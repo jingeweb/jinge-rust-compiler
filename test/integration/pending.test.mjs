@@ -26,20 +26,6 @@ test(
   },
 );
 test(
-  'SVG context across independent component boundaries',
-  { todo: '需新增跨组件 namespace 协议，本轮不扩展运行时接口' },
-  async () => {
-    const v = await mount(
-      `function Shape(){return <path/>}export function A(){return <svg><Shape/></svg>}`,
-    );
-    try {
-      assert.equal(document.querySelector('path').namespaceURI, 'http://www.w3.org/2000/svg');
-    } finally {
-      v.dispose();
-    }
-  },
-);
-test(
   'callback-local computed map key extraction',
   { todo: '目前明确拒绝；支持它需要局部计算和外提分析' },
   async () => {
@@ -67,23 +53,6 @@ test(
     );
     try {
       assert.equal(v.m.count, 0);
-    } finally {
-      v.dispose();
-    }
-  },
-);
-
-test(
-  'SVG context across compiler-generated If and For boundaries',
-  { todo: 'namespace 与组件所有权上下文需解耦，超出本轮静态继承修复' },
-  async () => {
-    const v = await mount(
-      vm +
-        `const state=vm({on:true,items:[1]});export function A(){return <svg>{state.on&&<path/>}{state.items.map(item=><circle key={item}/>)}</svg>}`,
-    );
-    try {
-      assert.equal(document.querySelector('path').namespaceURI, 'http://www.w3.org/2000/svg');
-      assert.equal(document.querySelector('circle').namespaceURI, 'http://www.w3.org/2000/svg');
     } finally {
       v.dispose();
     }

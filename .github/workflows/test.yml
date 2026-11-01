@@ -18,7 +18,7 @@ jobs:
       - uses: actions/checkout@v6
         with:
           repository: jingeweb/jinge
-          ref: a4de8eecab0d6d8b5d6dfb989114c69a2b8d5710
+          ref: daf0d92119bc123fdae7db46cb787c2e369dc7c9
           path: jinge
       - uses: actions/setup-node@v6
         with:

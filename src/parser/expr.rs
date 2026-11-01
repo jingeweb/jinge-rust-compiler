@@ -70,6 +70,7 @@ impl ExprVisitor {
   }
 
   pub fn parse(&mut self, expr: &Expr) -> ExprParseResult {
+    crate::scope::warn_snapshot_refs(expr);
     self.visit_expr(expr);
     if self.no_watch || self.expressions.is_empty() {
       return ExprParseResult::None;
