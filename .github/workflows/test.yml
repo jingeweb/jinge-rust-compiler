@@ -31,7 +31,10 @@ jobs:
         working-directory: jinge
       - run: pnpm build
         working-directory: jinge
-      - run: pnpm install --frozen-lockfile
+      # A version bump leaves the lock unchanged until native packages are
+      # published. Unpublished optional bindings can be skipped: tests build
+      # the local binding from source rather than loading a registry package.
+      - run: pnpm install --no-frozen-lockfile
         working-directory: jinge-compiler
       - run: pnpm lint
         working-directory: jinge-compiler

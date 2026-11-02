@@ -37,3 +37,32 @@
   });
   ...
   ```
+
+## 发布与版本同步
+
+发布流程与 lightstatic 一致：创建 GitHub Release 或手动运行
+`.github/workflows/ci.yml`，先构建、发布五个平台的 native 包，全部成功后再
+构建并发布 `jinge-compiler` 主包（含 `dist/` 和 `types/`）。已发布的同版本包会跳过，
+可以重跑失败的工作流。npm 侧需为六个包配置此工作流的 trusted publishing，
+或提供具有发布权限的 `NODE_AUTH_TOKEN` 仓库 secret。
+
+```sh
+npm version patch         # 或 pnpm release:patch；同步版本、提交并创建 vX.Y.Z tag
+npm version minor         # 同一 version hook 也支持 minor/major 等 npm version 参数
+node scripts/sync-version.mjs  # 仅按当前主包版本同步，不递增版本、不暂存或提交
+pnpm test:release         # 在临时仓库中验证同步、提交和 tag
+```
+
+`patch-version` 保留为 `npm version patch` 的兼容别名。版本 hook 同步：
+
+- 主包 `optionalDependencies` 和 `platform/*/package.json`，清理废弃平台依赖。
+- `pnpm-workspace.yaml` 中平台包的 `minimumReleaseAgeExclude`，保留其他配置。
+- `Cargo.toml` 和 `Cargo.lock` 中 compiler 自身的版本，不修改依赖版本。
+
+`npm version` 的提交会包含这些同步文件；没有运行 `git push` 或自动创建 GitHub Release。
+下一版本的平台包发布前尚不存在，因此 hook 不刷新 `pnpm-lock.yaml`。
+发布完成后运行 `pnpm install --lockfile-only` 并提交 lock 更新；在此之前，新增版本的
+清单和旧 lock 不一致，`pnpm install --frozen-lockfile` 会失败。
+主包发布任务在平台包发布完成后使用 `--no-frozen-lockfile` 安装构建依赖。
+compiler 测试 CI 同样允许更新 lock，未发布的平台包作为 optional dependency 可跳过，
+测试会从源码构建本地 binding；同级 jinge 的安装仍使用 frozen lock。

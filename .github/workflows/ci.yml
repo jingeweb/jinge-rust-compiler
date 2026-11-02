@@ -1,5 +1,8 @@
 name: build and release
 
+# Publish all five native packages first, then build and publish the JS/TS
+# wrapper. Configure npm trusted publishing for all six packages, or provide
+# NODE_AUTH_TOKEN with publish rights. Both jobs are safe to rerun.
 on:
   workflow_dispatch:
   release:
@@ -11,7 +14,7 @@ permissions:
 
 jobs:
   build:
-    name: ${{ matrix.platform.os_name }} with rust ${{ matrix.toolchain }}
+    name: ${{ matrix.platform.os_name }}
     runs-on: ${{ matrix.platform.os }}
     strategy:
       fail-fast: false
@@ -29,7 +32,6 @@ jobs:
             os: windows-latest
             target: x86_64-pc-windows-msvc
             bin: jinge_compiler.dll
-            node: x86_64-windows.node
           - os_name: darwin-x64
             os: macOS-latest
             target: x86_64-apple-darwin
@@ -38,27 +40,72 @@ jobs:
             os: macOS-latest
             target: aarch64-apple-darwin
             bin: libjinge_compiler.dylib
-        toolchain:
-          - stable
+    env:
+      HUSKY: 0
+      NODE_AUTH_TOKEN: ${{ secrets.NODE_AUTH_TOKEN }}
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
         with:
           node-version: '24'
-      - run: npm -v
-      - run: npm install -g npm@latest
-      - run: npm install
-      - run: npm ci
+          registry-url: 'https://registry.npmjs.org'
+
+      # Native builds need Rust and Node, not the root npm dependencies.
       - name: Build binary
         uses: houseabsolute/actions-rust-cross@v1
         with:
-          command: 'build'
+          command: build
           target: ${{ matrix.platform.target }}
-          toolchain: ${{ matrix.toolchain }}
+          toolchain: stable
           args: '--locked --release'
           strip: true
       - name: Copy to bindings directory
-        run: mv target/${{ matrix.platform.target }}/release/${{ matrix.platform.bin }} platform/${{ matrix.platform.os_name }}/index.node
-      - name: Publish to npm
+        shell: bash
+        run: |
+          mv target/${{ matrix.platform.target }}/release/${{ matrix.platform.bin }} \
+             platform/${{ matrix.platform.os_name }}/index.node
+      - name: Publish platform package
         working-directory: platform/${{ matrix.platform.os_name }}
-        run: npm publish --provenance
+        shell: bash
+        run: |
+          name=$(node -p "require('./package.json').name")
+          version=$(node -p "require('./package.json').version")
+          if npm view "${name}@${version}" version >/dev/null 2>&1; then
+            echo "${name}@${version} already in registry — skipping"
+          else
+            npm publish --provenance --access public --ignore-scripts
+          fi
+
+  publish-root:
+    name: publish jinge-compiler
+    needs: build
+    runs-on: ubuntu-latest
+    env:
+      HUSKY: 0
+      NODE_AUTH_TOKEN: ${{ secrets.NODE_AUTH_TOKEN }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+      - uses: pnpm/action-setup@v4
+        with:
+          version: '11.21.0'
+
+      # The version hook deliberately leaves pnpm-lock.yaml unchanged until
+      # native packages exist. They have now been published by the build job.
+      - name: Install build dependencies
+        run: pnpm install --no-frozen-lockfile --ignore-scripts
+      - name: Build JS and type declarations
+        run: pnpm build-ts
+      - name: Publish root package
+        shell: bash
+        run: |
+          name=$(node -p "require('./package.json').name")
+          version=$(node -p "require('./package.json').version")
+          if npm view "${name}@${version}" version >/dev/null 2>&1; then
+            echo "${name}@${version} already in registry — skipping"
+          else
+            npm publish --provenance --access public --ignore-scripts
+          fi

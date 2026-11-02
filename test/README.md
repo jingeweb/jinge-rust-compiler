@@ -11,10 +11,11 @@
 ## 运行
 
 ```sh
+pnpm test:release      # 版本同步、npm version 提交/tag 的隔离测试
 pnpm test:types        # 正常测试脚本和示例的 TypeScript 检查
 pnpm test:rust         # cargo test --locked；无需 Node 或运行时
 pnpm test:integration  # 当前源码 binding + JS/TS 联测
-pnpm test             # 先 Rust，再 integration
+pnpm test             # 先 release，再 Rust 和 integration
 pnpm test:chrome      # 检查本机 Chrome
 pnpm test:e2e         # 启动真实浏览器
 pnpm lint
