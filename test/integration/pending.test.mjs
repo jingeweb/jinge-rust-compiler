@@ -4,17 +4,6 @@ import { test } from 'node:test';
 import { behavior, mount } from './harness.mjs';
 const vm = `import {vm} from 'jinge';`;
 test(
-  'C02 method receivers and method body dependencies',
-  { todo: '已决定本轮不修复；需讨论接收者和依赖规则' },
-  async () => {
-    await behavior(
-      vm +
-        `const state=vm({user:{n:7,get(){return this.n}}});export function A(){return <p>{state.user.get()}</p>}`,
-      '7',
-    );
-  },
-);
-test(
   'C03 callback-local expression dependencies',
   { todo: '已决定本轮不修复；需讨论回调依赖边界' },
   async () => {

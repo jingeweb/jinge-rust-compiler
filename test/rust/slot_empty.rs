@@ -43,3 +43,20 @@ fn unrelated_templates_do_not_import_the_optional_comment_helper() {
   let code = compile_slot("export function A(){return <p>hi</p>}");
   assert!(!code.contains("createComment"), "{code}");
 }
+
+#[test]
+fn f05_chained_slots_render_each_branch_as_a_slot() {
+  for expression in [
+    "props.children ?? props['slot:icon'] ?? 'fallback'",
+    "(props.children ?? props['slot:icon']) ?? props['slot:extra'] ?? 'fallback'",
+    "props.children?.() ?? props['slot:icon']?.() ?? 'fallback'",
+  ] {
+    let code = compile_slot(&format!(
+      "export function A(props){{return <>{{{expression}}}</>}}"
+    ));
+    assert!(code.contains("\"slot:default\""), "{code}");
+    assert!(code.contains("renderSlotFunction$jg$("), "{code}");
+    assert!(!code.contains("ExprWatcher$jg$("), "{code}");
+    assert!(!code.contains("props.children"), "{code}");
+  }
+}

@@ -289,10 +289,10 @@ pub fn tpl_watch_and_set_html_attr(
   expr_result: ExprParseResult,
   host_ident: Ident,
 ) -> Box<Expr> {
-  let set_fn = if IDL_ATTRIBUTE_SET.binary_search(&attr_name).is_ok() {
+  let set_fn = if let Some(property_name) = get_idl_attribute_name(&attr_name) {
     ast_create_expr_assign_mem(
       ast_create_expr_ident(JINGE_EL_IDENT.clone()),
-      attr_name,
+      property_name,
       ast_create_expr_ident(JINGE_V_IDENT.clone()),
     )
   } else {

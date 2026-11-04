@@ -101,3 +101,5 @@ mod svg;
 mod slot_empty;
 
 mod intl_bindings;
+
+mod method_calls;

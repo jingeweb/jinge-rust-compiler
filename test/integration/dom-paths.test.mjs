@@ -138,3 +138,92 @@ test('D02 primitive reads update attributes and arithmetic expressions', async (
     v.dispose();
   }
 });
+
+test('F03 static hidden follows native boolean reflection without changing aria-hidden', async () => {
+  const v = await mount(
+    `export function A(){return <><div id="bare" hidden/><div id="yes" hidden={true}/><div id="no" hidden={false}/><div id="unset" hidden={undefined}/><div id="aria" aria-hidden={false}/></>}`,
+  );
+  try {
+    for (const id of ['bare', 'yes']) {
+      assert.equal(document.getElementById(id).hidden, true);
+      assert.equal(document.getElementById(id).hasAttribute('hidden'), true);
+    }
+    for (const id of ['no', 'unset']) {
+      assert.equal(document.getElementById(id).hidden, false);
+      assert.equal(document.getElementById(id).hasAttribute('hidden'), false);
+    }
+    assert.equal(document.getElementById('aria').getAttribute('aria-hidden'), 'false');
+  } finally {
+    v.dispose();
+  }
+});
+test('F03 reactive hidden toggles presence and undefined clears the native state', async () => {
+  const v = await mount(
+    `import {vm} from 'jinge';export const state=vm({hidden:false});export function A(){return <div hidden={state.hidden} aria-hidden={state.hidden}/>}`,
+  );
+  try {
+    const el = document.querySelector('div');
+    for (const value of [false, true, false, undefined]) {
+      v.m.state.hidden = value;
+      await flush();
+      assert.equal(el.hidden, !!value);
+      assert.equal(el.hasAttribute('hidden'), !!value);
+      assert.equal(el.getAttribute('aria-hidden'), value === undefined ? null : String(value));
+    }
+  } finally {
+    v.dispose();
+  }
+});
+
+test('F07 static IDL bindings use native property casing', async () => {
+  const v = await mount(
+    `export function A(){return <><input autoComplete="username" autoFocus readOnly/><video autoPlay/></>}`,
+  );
+  try {
+    const input = document.querySelector('input');
+    const video = document.querySelector('video');
+    assert.equal(input.autocomplete, 'username');
+    assert.equal(input.getAttribute('autocomplete'), 'username');
+    assert.equal(input.autofocus, true);
+    assert.equal(input.readOnly, true);
+    assert.equal(video.autoplay, true);
+    for (const name of ['autoComplete', 'autoFocus', 'readonly'])
+      assert.equal(Object.hasOwn(input, name), false);
+    assert.equal(Object.hasOwn(video, 'autoPlay'), false);
+  } finally {
+    v.dispose();
+  }
+});
+test('F07 reactive IDL bindings update native properties without expando fields', async () => {
+  const v = await mount(
+    `import {vm} from 'jinge';export const state=vm({complete:'username',enabled:true});export function A(){return <><input autoComplete={state.complete} autoFocus={state.enabled} readOnly={state.enabled}/><video autoPlay={state.enabled}/></>}`,
+  );
+  try {
+    const input = document.querySelector('input');
+    const video = document.querySelector('video');
+    for (const [complete, enabled] of [
+      ['username', true],
+      ['off', false],
+      ['', true],
+    ]) {
+      v.m.state.complete = complete;
+      v.m.state.enabled = enabled;
+      await flush();
+      assert.equal(input.autocomplete, complete);
+      assert.equal(input.getAttribute('autocomplete'), complete);
+      for (const [el, property, attribute] of [
+        [input, 'autofocus', 'autofocus'],
+        [input, 'readOnly', 'readonly'],
+        [video, 'autoplay', 'autoplay'],
+      ]) {
+        assert.equal(el[property], enabled);
+        assert.equal(el.hasAttribute(attribute), enabled);
+      }
+    }
+    for (const name of ['autoComplete', 'autoFocus', 'readonly'])
+      assert.equal(Object.hasOwn(input, name), false);
+    assert.equal(Object.hasOwn(video, 'autoPlay'), false);
+  } finally {
+    v.dispose();
+  }
+});

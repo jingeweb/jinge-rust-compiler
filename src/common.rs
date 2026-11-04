@@ -57,6 +57,7 @@ lazy_static::lazy_static! {
   pub static ref JINGE_IMPORT_IF: JingeImport = x!("If");
   pub static ref JINGE_IMPORT_FOR: JingeImport = x!("For");
   pub static ref JINGE_IMPORT_INTL_WATCHER: JingeImport = x!("IntlWatcher");
+  pub static ref JINGE_IMPORT_METHOD_PATH_WATCHER: JingeImport = x!("MethodPathWatcher");
   pub static ref JINGE_IMPORT_PATH_WATCHER: JingeImport = x!("PathWatcher");
   pub static ref JINGE_IMPORT_DYM_PATH_WATCHER: JingeImport = x!("DymPathWatcher");
   pub static ref JINGE_IMPORT_EXPR_WATCHER: JingeImport = x!("ExprWatcher");
@@ -105,13 +106,34 @@ lazy_static::lazy_static! {
   pub static ref JINGE_DOUBLE_CLICK: Atom = "doubleClick".into();
   pub static ref JINGE_DBL_CLICK: Atom = "dblclick".into();
 
-  pub static ref IDL_ATTRIBUTE_SET: Vec<Atom> = {
-    let mut attrs = vec!["disabled", "readOnly", "value", "autoFocus", "autoComplete", "autoPlay", "controls", "required", "checked", "selected", "multiple", "muted", "draggable"];
-    attrs.sort_unstable();
-    attrs.into_iter().map(Atom::from).collect()
+  // 每项为 (JSX 属性名, 生成 DOM property 时是否转为 ASCII 全小写)。
+  // bool 为 true 时仅转换生成的 property 名；false 保留原名（如 readOnly）。
+  // 查找始终按原始 JSX 名进行；此标记不表示属性值是否为布尔类型。
+  pub static ref IDL_ATTRIBUTE_SET: Vec<(Atom, bool)> = {
+    let mut attrs = vec![
+      ("disabled", false), ("readOnly", false), ("value", false),
+      ("autoFocus", true), ("autoComplete", true), ("autoPlay", true),
+      ("controls", false), ("required", false), ("checked", false),
+      ("selected", false), ("multiple", false), ("muted", false),
+      ("draggable", false), ("hidden", false), ("inert", false),
+    ];
+    attrs.sort_unstable_by(|a, b| a.0.cmp(b.0));
+    attrs.into_iter().map(|(name, lowercase)| (Atom::from(name), lowercase)).collect()
   };
 
   pub static ref JINGE_IMPORT_MODULE_ITEM: ModuleItem = gen_import_jinge();
+}
+
+/// 查询 JSX 属性对应的原生 DOM property 名；静态及响应式绑定共用。
+pub fn get_idl_attribute_name(name: &Atom) -> Option<Atom> {
+  let index = IDL_ATTRIBUTE_SET
+    .binary_search_by(|(jsx_name, _)| jsx_name.cmp(name))
+    .ok()?;
+  Some(if IDL_ATTRIBUTE_SET[index].1 {
+    Atom::from(name.as_ref().to_ascii_lowercase())
+  } else {
+    name.clone()
+  })
 }
 
 fn gen_import_jinge() -> ModuleItem {

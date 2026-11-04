@@ -111,8 +111,10 @@ impl TemplateParser {
     let mut idl_props = vec![];
     if !is_svg {
       attrs.const_props.retain(|(name, value)| {
-        if IDL_ATTRIBUTE_SET.binary_search(&name.sym).is_ok() {
-          idl_props.push((name.clone(), value.clone()));
+        if let Some(property_name) = get_idl_attribute_name(&name.sym) {
+          let mut name = name.clone();
+          name.sym = property_name;
+          idl_props.push((name, value.clone()));
           false
         } else {
           true

@@ -72,3 +72,9 @@ pnpm test:coverage
 上轮（D01/D02 修复前）行覆盖率，未在本次重新测量：Rust **86.95%**，编译器 TS **91.35%**，Node 联测对运行时的覆盖 **81.48%**。这些数值不包含浏览器覆盖率。
 
 CSS 测试检查真实中间样式、CSSAnimation 及浏览器可信结束事件，不手动派发结束事件。浏览器也实际修改测试专用 TSX，验证 WebSocket HMR、overlay 和恢复。各平台 native binding 发布矩阵及更多浏览器仍未覆盖。
+
+## MethodPathWatcher（2026-11-04）
+
+当前验收为 release 6、Rust 140、integration 265、Chrome 17，全部通过；历史 pending 余 3 项独立 TODO，不计入通过数。配套 Jinge 全量 361、demos 45、antd 608 通过，来源和命令见 [METHOD-CALLS.md](../docs/METHOD-CALLS.md)。
+
+新 helper 要求配套 runtime。当前远端 CI 的 runtime pin 尚未包含本地未提交的 MethodPathWatcher；发布/提交配套 runtime 后需更新 pin。本地联测使用相邻 runtime 构建，消费仓库显式同步产物，未把旧 CI pin 的通过当作本轮证据。

@@ -1,4 +1,4 @@
-use hashbrown::HashSet;
+use hashbrown::{HashMap, HashSet};
 use swc_common::Span;
 use swc_core::{
   common::{DUMMY_SP, Spanned},
@@ -15,7 +15,7 @@ use crate::{
   },
   common::{
     IntlType, JINGE_IMPORT_DYM_PATH_WATCHER, JINGE_IMPORT_EXPR_WATCHER, JINGE_IMPORT_INTL_WATCHER,
-    JINGE_IMPORT_PATH_WATCHER, emit_error,
+    JINGE_IMPORT_METHOD_PATH_WATCHER, JINGE_IMPORT_PATH_WATCHER, emit_error,
   },
   helper::parse_intl_call_args,
 };
@@ -49,6 +49,7 @@ pub struct ExprVisitor {
   simple_result: Option<SimpleExprParseResult>,
   intl_type: IntlType, // exclude_roots: ExcludeRoots,
   intl_nodes: HashSet<Span>,
+  method_calls: HashMap<Span, bool>,
 }
 
 impl ExprVisitor {
@@ -66,6 +67,7 @@ impl ExprVisitor {
       simple_result: None,
       intl_type,
       intl_nodes: HashSet::new(),
+      method_calls: HashMap::new(),
     }
   }
 
@@ -119,7 +121,7 @@ impl ExprVisitor {
   fn covert(&mut self, expr: &Expr) -> Box<Expr> {
     let mut expr = expr.clone();
 
-    let mut rep = MemberExprReplaceVisitor::new(&self.intl_nodes);
+    let mut rep = MemberExprReplaceVisitor::new(&self.intl_nodes, &self.method_calls);
     rep.visit_mut_expr(&mut expr);
     // println!("{:?}", expr);
     if matches!(&expr, Expr::Ident(_)) && self.expressions.len() == 1 {
@@ -149,33 +151,7 @@ impl ExprVisitor {
       args,
     )
   }
-  fn inner_parse(&mut self, expr: &Expr) -> Option<Box<Expr>> {
-    self.visit_expr(expr);
-    if self.no_watch || self.expressions.is_empty() {
-      return None;
-    }
-    // 如果表达式整个是一个 MemberExpr，则不需要使用 ExprWatcher 进一步封装。
-    Some(if matches!(expr, Expr::Member(_)) {
-      self.pop_expression()
-    } else {
-      self.covert(expr)
-    })
-  }
-}
-impl Visit for ExprVisitor {
-  fn visit_expr(&mut self, node: &Expr) {
-    if self.no_watch {
-      return;
-    }
-    node.visit_children_with(self);
-  }
-  fn visit_jsx_element(&mut self, node: &JSXElement) {
-    emit_error(node.span(), "表达式中不能有 JSX Element 元素");
-  }
-  fn visit_jsx_fragment(&mut self, node: &JSXFragment) {
-    emit_error(node.span(), "表达式中不能有 JSX Fragment 元素");
-  }
-  fn visit_member_expr(&mut self, node: &MemberExpr) {
+  fn add_member(&mut self, node: &MemberExpr, method: Option<(bool, bool)>) {
     if self.no_watch {
       return;
     }
@@ -203,7 +179,7 @@ impl Visit for ExprVisitor {
         .collect(),
     }));
 
-    if self.level == 0 && !mem_parser.computed && self.expressions.is_empty() {
+    if method.is_none() && self.level == 0 && !mem_parser.computed && self.expressions.is_empty() {
       // 如果没有 computed 属性，且是第一层的第一个 member expr，则先假设整个表达式都只有这一个 member expr 保存 vm 和 path
       // 待表达式整体全部 visit 结束后，再根据最终的结果看是否使用这个 simple result 作为返回数据。
       self.simple_result = Some(SimpleExprParseResult {
@@ -216,19 +192,71 @@ impl Visit for ExprVisitor {
 
     args.push(ast_create_arg_expr(target));
     args.push(ast_create_arg_expr(watch_path));
-    if self.level == 0 {
+    if let Some((optional_receiver, optional_call)) = method {
+      if optional_receiver || optional_call {
+        for value in [optional_receiver, optional_call] {
+          args.push(ast_create_arg_expr(Box::new(Expr::Lit(Lit::Bool(
+            Bool::from(value),
+          )))));
+        }
+      }
+    } else if self.level == 0 {
       args.push(ast_create_arg_expr(Box::new(Expr::Lit(Lit::Bool(
         Bool::from(true),
       )))));
     }
     self.expressions.push(*ast_create_expr_call(
-      ast_create_expr_ident(if mem_parser.computed {
+      ast_create_expr_ident(if method.is_some() {
+        JINGE_IMPORT_METHOD_PATH_WATCHER.local()
+      } else if mem_parser.computed {
         JINGE_IMPORT_DYM_PATH_WATCHER.local()
       } else {
         JINGE_IMPORT_PATH_WATCHER.local()
       }),
       args,
     ))
+  }
+  fn inner_parse(&mut self, expr: &Expr) -> Option<Box<Expr>> {
+    self.visit_expr(expr);
+    if self.no_watch || self.expressions.is_empty() {
+      return None;
+    }
+    // 如果表达式整个是一个 MemberExpr，则不需要使用 ExprWatcher 进一步封装。
+    Some(if matches!(expr, Expr::Member(_)) {
+      self.pop_expression()
+    } else {
+      self.covert(expr)
+    })
+  }
+}
+impl Visit for ExprVisitor {
+  fn visit_expr(&mut self, node: &Expr) {
+    if self.no_watch {
+      return;
+    }
+    node.visit_children_with(self);
+  }
+  fn visit_jsx_element(&mut self, node: &JSXElement) {
+    emit_error(node.span(), "表达式中不能有 JSX Element 元素");
+  }
+  fn visit_jsx_fragment(&mut self, node: &JSXFragment) {
+    emit_error(node.span(), "表达式中不能有 JSX Fragment 元素");
+  }
+  fn visit_member_expr(&mut self, node: &MemberExpr) {
+    self.add_member(node, None);
+  }
+  fn visit_opt_chain_expr(&mut self, node: &OptChainExpr) {
+    if let OptChainBase::Call(call) = node.base.as_ref()
+      && let Some((member, optional_receiver)) = method_callee(&call.callee)
+    {
+      self.add_member(member, Some((optional_receiver, node.optional)));
+      self.method_calls.insert(call.span, optional_receiver);
+      for arg in &call.args {
+        arg.visit_with(self);
+      }
+    } else {
+      node.visit_children_with(self);
+    }
   }
   fn visit_call_expr(&mut self, node: &CallExpr) {
     if let IntlType::Enabled(drop_default_text) = self.intl_type
@@ -283,9 +311,45 @@ impl Visit for ExprVisitor {
       };
       self.expressions.push(*watcher);
       self.intl_nodes.insert(node.span);
+    } else if let Callee::Expr(callee) = &node.callee
+      && let Some((member, optional_receiver)) = method_callee(callee)
+    {
+      self.add_member(member, Some((optional_receiver, false)));
+      self.method_calls.insert(node.span, optional_receiver);
+      for arg in &node.args {
+        arg.visit_with(self);
+      }
     } else {
       node.visit_children_with(self);
     }
+  }
+}
+
+// Parentheses preserve a member call receiver; parentheses inside its object end an optional chain.
+fn receiver_optional(expr: &Expr) -> bool {
+  match expr {
+    Expr::Member(member) => receiver_optional(&member.obj),
+    Expr::OptChain(chain) => {
+      chain.optional
+        || match chain.base.as_ref() {
+          OptChainBase::Member(member) => receiver_optional(&member.obj),
+          _ => false,
+        }
+    }
+    _ => false,
+  }
+}
+fn method_callee(expr: &Expr) -> Option<(&MemberExpr, bool)> {
+  match expr {
+    Expr::Member(member) => Some((member, receiver_optional(&member.obj))),
+    Expr::Paren(paren) => method_callee(&paren.expr),
+    Expr::OptChain(chain) => match chain.base.as_ref() {
+      OptChainBase::Member(member) => {
+        Some((member, chain.optional || receiver_optional(&member.obj)))
+      }
+      _ => None,
+    },
+    _ => None,
   }
 }
 
@@ -293,13 +357,15 @@ struct MemberExprReplaceVisitor<'a> {
   count: usize,
   params: Vec<Pat>,
   intl_nodes: &'a HashSet<Span>,
+  method_calls: &'a HashMap<Span, bool>,
 }
 impl<'a> MemberExprReplaceVisitor<'a> {
-  fn new(intl_nodes: &'a HashSet<Span>) -> Self {
+  fn new(intl_nodes: &'a HashSet<Span>, method_calls: &'a HashMap<Span, bool>) -> Self {
     Self {
       count: 0,
       params: vec![],
       intl_nodes,
+      method_calls,
     }
   }
   fn get_alias_ident(&mut self) -> Expr {
@@ -319,6 +385,14 @@ impl<'a> VisitMut for MemberExprReplaceVisitor<'a> {
       Expr::OptChain(oc) => {
         if let OptChainBase::Member(_) = oc.base.as_ref() {
           *node = self.get_alias_ident()
+        } else if let OptChainBase::Call(call) = oc.base.as_mut()
+          && let Some(optional_receiver) = self.method_calls.get(&call.span).copied()
+        {
+          call.callee = Box::new(self.get_alias_ident());
+          oc.optional |= optional_receiver;
+          for arg in &mut call.args {
+            arg.visit_mut_with(self);
+          }
         } else {
           node.visit_mut_children_with(self);
         }
@@ -327,6 +401,11 @@ impl<'a> VisitMut for MemberExprReplaceVisitor<'a> {
       Expr::Call(c) => {
         if self.intl_nodes.contains(&c.span) {
           *node = self.get_alias_ident();
+        } else if self.method_calls.contains_key(&c.span) {
+          c.callee = Callee::Expr(Box::new(self.get_alias_ident()));
+          for arg in &mut c.args {
+            arg.visit_mut_with(self);
+          }
         } else {
           node.visit_mut_children_with(self);
         }

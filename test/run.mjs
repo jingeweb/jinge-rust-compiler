@@ -44,6 +44,7 @@ run(process.execPath, [
     : [
         'test/integration/regressions.test.mjs',
         'test/integration/dom-paths.test.mjs',
+        'test/integration/method-calls.test.mjs',
         'test/integration/svg.test.mjs',
         'test/integration/local-snapshots.test.mjs',
         'test/integration/component-reactivity.test.mjs',

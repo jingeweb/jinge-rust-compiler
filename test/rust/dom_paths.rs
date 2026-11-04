@@ -56,3 +56,56 @@ fn primitive_members_keep_the_original_reactive_root_and_property_paths() {
     "a primitive value must not replace the vm root"
   );
 }
+
+#[test]
+fn hidden_constants_use_the_native_property() {
+  let code = compile_dom("export function A(){return <><div hidden/><div hidden={false}/></>}");
+  assert!(code.contains("$jg$.hidden = true"), "{code}");
+  assert!(code.contains("$jg$.hidden = false"), "{code}");
+}
+#[test]
+fn hidden_watchers_assign_the_native_property() {
+  let code = compile_dom("export function A(props){return <div hidden={props.hidden}/>}");
+  assert!(code.contains("$jg$.hidden = v"), "{code}");
+}
+
+#[test]
+fn inert_constants_use_the_native_property() {
+  let code = compile_dom("export function A(){return <><div inert/><div inert={false}/></>}");
+  assert!(code.contains("$jg$.inert = true"), "{code}");
+  assert!(code.contains("$jg$.inert = false"), "{code}");
+}
+#[test]
+fn inert_watchers_assign_the_native_property() {
+  let code = compile_dom("export function A(props){return <div inert={props.inert}/>}");
+  assert!(code.contains("$jg$.inert = v"), "{code}");
+}
+
+#[test]
+fn f07_static_idl_names_lowercase_only_flagged_properties() {
+  let code = compile_dom(
+    "export function A(){return <><input autoComplete='username' autoFocus readOnly/><video autoPlay/></>}",
+  );
+  for expected in [
+    "$jg$.autocomplete = 'username'",
+    "$jg$.autofocus = true",
+    "$jg$.readOnly = true",
+    "$jg$.autoplay = true",
+  ] {
+    assert!(code.contains(expected), "{expected}:\n{code}");
+  }
+}
+#[test]
+fn f07_reactive_idl_names_lowercase_only_flagged_properties() {
+  let code = compile_dom(
+    "export function A(props){return <><input autoComplete={props.complete} autoFocus={props.focus} readOnly={props.readOnly}/><video autoPlay={props.play}/></>}",
+  );
+  for expected in [
+    "$jg$.autocomplete = v",
+    "$jg$.autofocus = v",
+    "$jg$.readOnly = v",
+    "$jg$.autoplay = v",
+  ] {
+    assert!(code.contains(expected), "{expected}:\n{code}");
+  }
+}

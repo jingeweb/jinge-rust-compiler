@@ -14,14 +14,16 @@
 
 ## Todo
 
-- 只支持 typescript，不再支持 javascript。考虑下要不要这样做。
+- 只支持 typescript，不再支持 javascript，同时引入基于 ts 的更强类型推断处理。考虑下要不要这样做。关于这一点的细节备忘见 TODO.md。
 - 对于先 `const name = state.name` 这样声明，再在 tsx 中使用 `<span>{name}</span>` 的情况，当前会报告警。应该是可以将这个转成通过 `vmWatch` 来监听的，只不过模板中的 `{name}` 如何也通知更新是个问题，可以讨论下方案实现。
 - 对 style 的处理对齐 react 等的 CSSProperties。
   - 对于 `<div style={{ width: state.width, marginTop: 30 }}>` 这种写法，编译成带 watch 的转换。在编译器中转成 `styel={``width:${state.width};margin-top:30px;``}` 这样的字符串 style。运行时不会去做 marginTop 转 margin-top 的逻辑。由 typescript 提供 CSSProperties 的类型能力。
   - 对于 `<div style={state.style}>` 这种写法，类型上也是要求 state.style 是 CSSProperties 类型，但运行时还是要求是 string，否则报错。state.style 由用户通过 `css()` 这个内置编译器糖函数来处理，编译器会在编译时将 css 直接转成带 watch 的 template string 表达式。
     - 但比如 `const x = css({marginTop: 10}); <div style={x}>; x.marginTop = 20` 这种写法怎么处理，还没想清楚。
 - 当模板中使用到组件里定义的变量（比如 x.y 这种表达式，或者直接 x.map 这种数组使用），没有使用 vm 包装时，发出警告。避免用户遗漏 vm 包装后又发现界面不响应数据更新浪费时间排查。
-- 插槽也可以 watch 监听，从而支持动态插槽。
+- 插槽也可以 watch 监听，从而支持动态插槽。关于这一点的细节备忘见 TODO.md。
+- 支持对服务端渲染产物做 hydration，让客户端接管已有的 DOM，而不是整体重新渲染一遍。当前静态站点只能「构建时生成静态 HTML，客户端再渲染一次」，同一份内容要传输两遍，且两套 DOM 不一致时会出现可见跳变。有 hydration 后，静态优先与客户端路由才能干净地共存。
+- 允许配置语法糖编译到的目标组件。目前三元 / `&&` / `||` / `??` 固定编译成内置 `If`、`.map()` 固定编译成内置 `For`，并以 `If$jg$` / `For$jg$` 别名注入，无法把糖指向用户自定义的控制流组件，只能显式手写。计划提供编译选项指定替代组件（需约定与内置 `If`/`For` 一致的属性与 slot 接口，`For` 还需承担 key 复用 / diff）。
 - 支持嵌套属性，比如:
   ```tsx
   <Table pagination={{ pageSize: state.pageSize }}>

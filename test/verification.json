@@ -1,26 +1,26 @@
 {
-  "date": "2026-11-01",
+  "date": "2026-11-04",
   "source": "Current working tree; changes are not committed",
   "environment": {
     "node": "v26.4.0",
-    "chrome": "156.0.8078.73",
+    "chrome": "156.0.8078.80",
     "playwright": "1.64.1",
-    "runtimeCommit": "daf0d92119bc123fdae7db46cb787c2e369dc7c9",
-    "runtimeSource": "Sibling clean working tree at runtimeCommit"
+    "runtimeCommit": "0d0b930224965f2035bd85d7b9ab9c7eec058398",
+    "runtimeSource": "Sibling working tree: MethodPathWatcher plus previously authorized native Temporal exclusion"
   },
   "rust": {
-    "passed": 136,
+    "passed": 140,
     "failed": 0,
     "fixtures": 108,
     "codeSnapshots": 86,
     "diagnosticSnapshots": 22
   },
   "integration": {
-    "passed": 254,
+    "passed": 265,
     "failed": 0
   },
   "e2e": {
-    "passed": 15,
+    "passed": 17,
     "failed": 0,
     "flaky": 0,
     "skipped": 0,
@@ -46,18 +46,18 @@
   },
   "ciExecuted": false,
   "runtime": {
-    "suites": 33,
-    "passed": 341,
+    "suites": 35,
+    "passed": 361,
     "failed": 0,
-    "verificationDate": "2026-10-31; unchanged runtime, not rerun for compiler-only SVG fix"
+    "verificationDate": "2026-11-04; full current working tree"
   },
   "demos": {
-    "passed": 28,
+    "passed": 45,
     "failed": 0
   },
-  "ciRuntimePin": "Updated to runtimeCommit; remote CI not executed",
+  "ciRuntimePin": "Existing pin does not yet contain uncommitted MethodPathWatcher; update after publishing/committing matching runtime; remote CI not executed",
   "pending": {
-    "todo": 4,
+    "todo": 3,
     "includedInPassCounts": false
   },
   "svgRegressionBefore": {
@@ -139,5 +139,36 @@
     "integration": 7,
     "chrome": 1,
     "crossFileReexportsSupported": false
+  },
+  "release": {
+    "passed": 6,
+    "failed": 0
+  },
+  "antd": {
+    "passed": 608,
+    "failed": 0,
+    "normal": 589,
+    "regressions": 19,
+    "frameworkPassed": 1,
+    "frameworkFailed": 8
+  },
+  "methodCallRegression": {
+    "runtimeNew": 10,
+    "rustNew": 4,
+    "integrationNew": 10,
+    "integrationPromotedC02": 1,
+    "chromeNew": 2,
+    "beforeIntegration": {
+      "passed": 1,
+      "failed": 9
+    },
+    "afterIntegration": {
+      "passed": 11,
+      "failed": 0
+    },
+    "deepReceiverSubscription": false,
+    "implicitBodyDependencies": false,
+    "consumerArtifacts": "coverage/local-method-consumers.json",
+    "report": "docs/METHOD-CALLS.md"
   }
 }

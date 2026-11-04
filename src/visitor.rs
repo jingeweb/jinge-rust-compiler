@@ -320,6 +320,22 @@ impl VisitMut for TemplateTransformVisitor<'_> {
             is_type_only: false,
           }));
       }
+      let mut method_usage = MethodUsage(false);
+      n.visit_with(&mut method_usage);
+      if method_usage.0
+        && let ModuleItem::ModuleDecl(ModuleDecl::Import(import)) = &mut imports
+      {
+        import
+          .specifiers
+          .push(ImportSpecifier::Named(ImportNamedSpecifier {
+            span: swc_common::DUMMY_SP,
+            local: JINGE_IMPORT_METHOD_PATH_WATCHER.local(),
+            imported: Some(ModuleExportName::Ident(
+              JINGE_IMPORT_METHOD_PATH_WATCHER.imported(),
+            )),
+            is_type_only: false,
+          }));
+      }
       new_items.push(imports);
       new_items.append(&mut n.body);
 
@@ -385,6 +401,17 @@ struct CommentUsage(bool);
 impl Visit for CommentUsage {
   fn visit_call_expr(&mut self, node: &CallExpr) {
     if matches!(&node.callee, Callee::Expr(callee) if matches!(&**callee, Expr::Ident(id) if id.span.is_dummy() && id.sym == JINGE_IMPORT_CREATE_COMMENT.local().sym))
+    {
+      self.0 = true;
+    }
+    node.visit_children_with(self);
+  }
+}
+
+struct MethodUsage(bool);
+impl Visit for MethodUsage {
+  fn visit_call_expr(&mut self, node: &CallExpr) {
+    if matches!(&node.callee, Callee::Expr(callee) if matches!(&**callee, Expr::Ident(id) if id.span.is_dummy() && id.sym == JINGE_IMPORT_METHOD_PATH_WATCHER.local().sym))
     {
       self.0 = true;
     }

@@ -135,3 +135,126 @@ test('keyed empty slot component roots move and are removed with their list item
     v.dispose();
   }
 });
+
+// F05: left-associative ?? chains must keep slot rendering and nullish semantics.
+for (const [name, expression, slots, expected] of [
+  [
+    'default first',
+    'props.children ?? props["slot:icon"] ?? "fallback"',
+    ['default', 'icon'],
+    'default',
+  ],
+  ['named second', 'props.children ?? props["slot:icon"] ?? "fallback"', ['icon'], 'icon'],
+  ['all missing', 'props.children ?? props["slot:icon"] ?? "fallback"', [], 'fallback'],
+  [
+    'four operands',
+    'props.children ?? props["slot:icon"] ?? props["slot:extra"] ?? "fallback"',
+    ['extra'],
+    'extra',
+  ],
+  [
+    'parenthesized left',
+    '(props.children ?? props["slot:icon"]) ?? "fallback"',
+    ['default'],
+    'default',
+  ],
+  ['parenthesized right', 'props.children ?? (props["slot:icon"] ?? "fallback")', ['icon'], 'icon'],
+  [
+    'optional calls',
+    'props.children?.() ?? props["slot:icon"]?.() ?? "fallback"',
+    ['icon'],
+    'icon',
+  ],
+  ['zero fallback', 'props.children ?? props["slot:icon"] ?? 0 ?? "wrong"', [], '0'],
+  ['false fallback', 'props.children ?? props["slot:icon"] ?? false ?? "wrong"', [], 'false'],
+  ['empty string fallback', 'props.children ?? props["slot:icon"] ?? "" ?? "wrong"', [], ''],
+  ['null fallback', 'props.children ?? props["slot:icon"] ?? null ?? "fallback"', [], 'fallback'],
+  [
+    'mixed logical tail',
+    'props.children ?? props["slot:icon"] ?? (false || "fallback")',
+    [],
+    'fallback',
+  ],
+]) {
+  test(`F05 chained slot fallback: ${name}`, async () => {
+    const calls = [];
+    const props = Object.fromEntries(
+      slots.map((name) => [
+        `slot:${name}`,
+        (_props, host) => {
+          calls.push(name);
+          const node = document.createElement('strong');
+          node.textContent = name;
+          host[rt.ROOT_NODES].push(node);
+          return [node];
+        },
+      ]),
+    );
+    const v = await mount(`export function A(props){return <main>{${expression}}</main>}`, {
+      props,
+    });
+    try {
+      assert.equal(v.text(), expected);
+      assert.equal(document.querySelector('strong')?.textContent, slots[0]);
+      assert.deepEqual(calls, slots.slice(0, 1));
+    } finally {
+      v.dispose();
+    }
+  });
+}
+test('F05 an existing empty slot stops the fallback chain', async () => {
+  const v = await mount(
+    `export function A(props){return <>{props.children ?? props["slot:icon"] ?? "wrong"}</>}`,
+    {
+      props: {
+        'slot:default': (_props, host) => {
+          const node = document.createComment('empty slot');
+          host[rt.ROOT_NODES].push(node);
+          return [node];
+        },
+      },
+    },
+  );
+  try {
+    assert.equal(v.text(), '');
+  } finally {
+    v.dispose();
+  }
+});
+test('F05 ordinary nullish chains retain reactive value semantics', async () => {
+  const v = await mount(
+    `import {vm} from 'jinge';export const state=vm({a:null,b:null});export function A(){return <main>{state.a ?? state.b ?? "fallback"}</main>}`,
+  );
+  try {
+    assert.equal(v.text(), 'fallback');
+    v.m.state.b = 0;
+    await flush();
+    assert.equal(v.text(), '0');
+    v.m.state.a = '';
+    await flush();
+    assert.equal(v.text(), '');
+  } finally {
+    v.dispose();
+  }
+});
+
+test('F05 selected slot receives arguments without evaluating skipped slot arguments', async () => {
+  const v = await mount(
+    `export const calls=[];function args(label){calls.push(label);return label}export function A(props){return <>{props.children?.({label:args('default')}) ?? props["slot:icon"]?.({label:args('icon')}) ?? 'fallback'}</>}`,
+    {
+      props: {
+        'slot:icon': (props, host) => {
+          const node = document.createTextNode(props.label);
+          host[rt.ROOT_NODES].push(node);
+          return [node];
+        },
+      },
+    },
+  );
+  try {
+    assert.equal(v.text(), 'icon');
+    assert.deepEqual(v.m.calls, ['icon']);
+  } finally {
+    v.dispose();
+  }
+});

@@ -2,7 +2,7 @@ use swc_common::{DUMMY_SP, Spanned, SyntaxContext};
 use swc_core::{
   atoms::Wtf8Atom,
   ecma::ast::{
-    ArrayLit, ArrowFunctionBody, AssignExpr, AssignOp, AssignTarget, BinExpr, Callee,
+    ArrayLit, ArrowFunctionBody, AssignExpr, AssignOp, AssignTarget, BinExpr, BinaryOp, Callee,
     ComputedPropName, CondExpr, Expr, ExprOrSpread, ExprStmt, FunctionBody, Ident, KeyValueProp,
     Lit, MemberExpr, MemberProp, NewExpr, Null, ObjectLit, OptChainBase, OptChainExpr, Prop,
     PropName, PropOrSpread, ReturnStmt, SimpleAssignTarget, Stmt,
@@ -316,6 +316,18 @@ pub fn get_bin_expr_slot_name<'a>(
     _ => None,
   }
 }
+// 只展开同一 ?? 链，不穿过 ||、&& 等其他表达式的边界。
+fn collect_nullish_operands<'a>(expr: &'a Expr, operands: &mut Vec<&'a Expr>) {
+  match expr {
+    Expr::Paren(paren) => collect_nullish_operands(&paren.expr, operands),
+    Expr::Bin(bin) if bin.op == BinaryOp::NullishCoalescing => {
+      collect_nullish_operands(&bin.left, operands);
+      collect_nullish_operands(&bin.right, operands);
+    }
+    _ => operands.push(expr),
+  }
+}
+
 impl TemplateParser {
   fn transform_slot_to_render_fn(
     &mut self,
@@ -559,10 +571,32 @@ impl TemplateParser {
   /// <>{props.children ? props.children() : <div>default</div>}</>
   /// ```
   pub fn parse_nullish_coalescing_slot(&mut self, expr: &BinExpr) -> bool {
+    if expr.op == BinaryOp::NullishCoalescing {
+      let mut operands = vec![];
+      collect_nullish_operands(&expr.left, &mut operands);
+      if operands.len() > 1 && get_bin_expr_slot_name(operands[0], &self.props_arg).is_some() {
+        // JS 左结合的 (slotA ?? slotB) ?? fallback 归一为
+        // slotA ?? (slotB ?? fallback)，复用逐级的插槽回退编译。
+        let mut right = expr.right.clone();
+        for operand in operands[1..].iter().rev() {
+          right = Box::new(Expr::Bin(BinExpr {
+            span: DUMMY_SP,
+            op: BinaryOp::NullishCoalescing,
+            left: Box::new((*operand).clone()),
+            right,
+          }));
+        }
+        return self.parse_nullish_coalescing_slot(&BinExpr {
+          span: expr.span,
+          op: expr.op,
+          left: Box::new(operands[0].clone()),
+          right,
+        });
+      }
+    }
     let Some((slot_name, slot_args)) = get_bin_expr_slot_name(&expr.left, &self.props_arg) else {
       return false;
     };
-    // println!("OOO {:#?}", slot_name);
     let render_fn = self.transform_slot_to_render_fn(slot_name.clone(), slot_args);
     let default_slot = self.parse_expr_to_render_fn(&expr.right);
     self.push_expression_with_spread(Box::new(Expr::Cond(CondExpr {

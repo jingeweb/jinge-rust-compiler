@@ -5,6 +5,10 @@ const state = vm<{ multi: boolean; text: string; index: number; user: { name: st
   index: 0,
   user: null,
 });
+function serviceLabel(this: { name: string }) {
+  return this.name;
+}
+const methods = vm({ service: { name: 'Alice', label: serviceLabel } });
 function App() {
   return (
     <>
@@ -33,6 +37,26 @@ function App() {
         mode
       </button>
       <input id="text" value={state.text} on:input={(event) => (state.text = event.target.value)} />
+      <p id="trimmed">{state.text.trim()}</p>
+      <p id="method-service">{methods.service.label()}</p>
+      <button
+        id="method-owner"
+        on:click={() => {
+          methods.service = { name: 'Bob', label: serviceLabel };
+        }}
+      >
+        replace owner
+      </button>
+      <button
+        id="method-function"
+        on:click={() => {
+          methods.service.label = function (this: { name: string }) {
+            return this.name + '!';
+          };
+        }}
+      >
+        replace method
+      </button>
       <p id="length">{state.text.length}</p>
       <p id="index">{state.text[state.index]}</p>
       <p id="optional">{state.user?.name.length}</p>
