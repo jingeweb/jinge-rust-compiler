@@ -17,7 +17,7 @@ export function A(attrs$jg$, rthost$jg$) {
                     PathWatcher$jg$(state, [
                         "key"
                     ])
-                ], true), (v)=>setTextContent$jg$($jg$, v), rthost$jg$);
+                ], true), ($jg$v)=>setTextContent$jg$($jg$, $jg$v), rthost$jg$);
                 return $jg$;
             })());
             rthost$jg$[ROOT_NODES$jg$].push($jg$);

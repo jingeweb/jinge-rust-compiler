@@ -50,7 +50,7 @@ pnpm test:update
 pnpm test:pending
 ```
 
-4 个复现使用明确的 TODO 标记，命令成功不表示问题已修复；包括 C02/C03、局部计算 key 外提及带副作用的可选链。它们不计入主集通过数。
+此处最初记录 4 个待讨论复现；C02 已随方法调用修复转入主集，C03 已于 2026-11-05 随函数边界修复转入 scope-fixes.test.mjs。当前仅剩局部计算 key 外提和带副作用的可选 computed 两项 TODO；它们不计入主集通过数，命令成功不表示问题已修复。
 
 本次完整验证记录见 [verification.json](verification.json)。Rust 136、integration 254、e2e 15 个用例均通过。修复前失败与修复后验证见 [D01/D02 记录](../review/2026-10-30/demos-fixes.md)。
 

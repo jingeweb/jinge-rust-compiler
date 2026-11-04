@@ -3,6 +3,73 @@ import { spawnSync } from 'node:child_process';
 import { test } from 'node:test';
 
 import { compile, load, root } from './harness.mjs';
+
+for (const expression of [
+  'props.obj?.[read()+props.n]',
+  'props.obj?.[props.key]',
+  'props.obj?.[key]',
+  'props.obj?.child[props.key]',
+  'props.obj?.["child"][props.key]',
+  'props.obj?.[0]?.[props.key]',
+  'props.obj[props.key]?.[read()+props.n]',
+  'props.obj?.[props.key]()',
+  'props.obj?.child[props.key]?.()',
+])
+  test(`optional computed keys report unsupported short-circuit extraction: ${expression}`, () => {
+    for (const template of [
+      `<p>{${expression}}</p>`,
+      `<p title={${expression}}/>`,
+      `<Child value={${expression}}/>`,
+      `<>{t('Value {value}',{value:${expression}})}</>`,
+      `<>{props.children({value:${expression}})}</>`,
+    ]) {
+      const source = `import {t} from 'jinge';const key='x';function read(){return 'x'}function Child(props){return <p>{props.value}</p>}export function A(props){return ${template}}`;
+      assert.throws(
+        () => compile(source, { intl: 1 }),
+        (error) =>
+          /可选链.*动态计算属性/.test(error.message) &&
+          /fixture\.tsx:1:/.test(error.message) &&
+          !error.message.includes('internal error'),
+        template,
+      );
+    }
+  });
+
+for (const expression of [
+  'props.obj?.["name"]',
+  'props.obj?.[0]',
+  'props.obj?.child',
+  'props.obj[props.key]?.name',
+  'props.obj[props.key]?.()',
+  'props.obj[read()+props.n]',
+  'props.obj?.["label"]()',
+  'props.table[props.key?.id]',
+])
+  test(`optional computed diagnostic preserves supported paths: ${expression}`, () => {
+    assert.doesNotThrow(() =>
+      compile(`function read(){return 'x'}export function A(props){return <p>{${expression}}</p>}`),
+    );
+  });
+
+test('optional computed diagnostic skips deferred functions and plain TS expressions', () => {
+  assert.doesNotThrow(() =>
+    compile(
+      `function read(){return 'x'}function Child(props){return <p/>}export function A(props){return <Child config={{active:props.active,read:()=>props.obj?.[read()+props.n]}}/>}`,
+    ),
+  );
+  assert.doesNotThrow(() =>
+    compile(
+      `function read(){return 'x'}export function A(props){return <button on:click={()=>{props.obj?.[read()+props.n]}}>Click</button>}`,
+    ),
+  );
+  assert.doesNotThrow(() =>
+    compile(
+      `function read(){return 'x'}export function value(props){return props.obj?.[read()+props.n]}`,
+      { type: 1 },
+    ),
+  );
+});
+
 for (const [name, source, pattern] of [
   ['component props destructuring', 'export function A({name}){return <p>{name}</p>}', /参数/],
   ['invalid host', 'export function A(props,other){return <p/>}', /host/],

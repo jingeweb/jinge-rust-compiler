@@ -2,11 +2,12 @@ use base64ct::{Base64, Encoding};
 use sha2::{Digest, Sha512};
 use swc_common::{DUMMY_SP, Spanned};
 use swc_core::{atoms::Wtf8Atom, ecma::ast::*};
+use swc_ecma_visit::{Visit, VisitMut, VisitMutWith, VisitWith};
 
 use super::{
   IntlType, JINGE_ATTR_IDENT, JINGE_IMPORT_VM, JINGE_KEY, JINGE_V_IDENT, TemplateParser,
   ast_create_arg_expr, ast_create_expr_arrow_fn, ast_create_expr_call, ast_create_expr_ident,
-  ast_create_stmt_decl_const, emit_error,
+  ast_create_expr_member, ast_create_stmt_decl_const, emit_error,
   expr::{ExprParseResult, ExprVisitor},
   tpl_render_intl_normal_text, tpl_render_intl_text, tpl_watch_and_render,
 };
@@ -99,6 +100,124 @@ pub fn extract_t(args: &[ExprOrSpread]) -> Option<(Wtf8Atom, &Wtf8Atom, Option<&
   Some((key.unwrap(), &default_text.value, params_arg))
 }
 impl TemplateParser {
+  /// Compile a rich renderer where it was declared, retaining its lexical scope.
+  /// Its one public argument is translated content (a static slot), not component props.
+  fn parse_intl_renderer(&self, expr: &Expr) -> Option<Box<Expr>> {
+    let mut expr = expr.clone();
+    // Distinct source callbacks need distinct emitted names: a nested renderer may
+    // capture its parent's children. Hygiene is disabled, so contexts alone do not help.
+    let props: Ident = format!("$jg$intlChildren{}", expr.span().lo.0).into();
+    let params = match &expr {
+      Expr::Arrow(f) if !f.is_async && !f.is_generator => Some(f.params.clone()),
+      Expr::Fn(f) if !f.function.is_async && !f.function.is_generator => {
+        Some(f.function.params.iter().map(|p| p.pat.clone()).collect())
+      }
+      Expr::Arrow(_) | Expr::Fn(_) => {
+        emit_error(expr.span(), "国际化富文本回调不支持 async/generator");
+        return None;
+      }
+      _ => None,
+    };
+    if let Some(params) = params {
+      if params.len() > 1 || params.first().is_some_and(|p| !matches!(p, Pat::Ident(_))) {
+        emit_error(
+          expr.span(),
+          "国际化富文本回调只支持零个参数或一个普通 children 参数，不支持默认值、解构或 rest",
+        );
+        return None;
+      }
+      if let Expr::Fn(function) = &expr {
+        struct Arguments(bool);
+        impl Visit for Arguments {
+          fn visit_function(&mut self, _: &Function) {}
+          fn visit_ident(&mut self, id: &Ident) {
+            self.0 |= id.sym == *"arguments";
+          }
+        }
+        let mut arguments = Arguments(false);
+        function.function.body.visit_with(&mut arguments);
+        if arguments.0 {
+          emit_error(
+            expr.span(),
+            "国际化富文本回调不支持读取自身 arguments，请使用 children 参数",
+          );
+          return None;
+        }
+      }
+      if let Some(Pat::Ident(child)) = params.first() {
+        let body = match &expr {
+          Expr::Arrow(f) => (*f.body).clone(),
+          Expr::Fn(f) => ArrowFunctionBody::FunctionBody(f.function.body.clone()?),
+          _ => unreachable!(),
+        };
+        if crate::scope::binding_is_written(&body, &child.id.to_id()) {
+          emit_error(child.id.span, "国际化富文本回调不能重新赋值 children 参数");
+          return None;
+        }
+        struct Children {
+          binding: Id,
+          props: Ident,
+        }
+        impl Children {
+          fn replacement(&self) -> Box<Expr> {
+            ast_create_expr_member(
+              ast_create_expr_ident(self.props.clone()),
+              MemberProp::Computed(ComputedPropName {
+                span: DUMMY_SP,
+                expr: crate::ast::ast_create_expr_lit_str("slot:default".into()),
+              }),
+            )
+          }
+        }
+        impl VisitMut for Children {
+          fn visit_mut_expr(&mut self, node: &mut Expr) {
+            if matches!(node, Expr::Ident(id) if id.to_id() == self.binding) {
+              *node = *self.replacement();
+            } else {
+              node.visit_mut_children_with(self);
+            }
+          }
+          fn visit_mut_prop(&mut self, node: &mut Prop) {
+            if let Prop::Shorthand(id) = node
+              && id.to_id() == self.binding
+            {
+              *node = Prop::KeyValue(KeyValueProp {
+                key: PropName::Ident(id.clone().into()),
+                value: self.replacement(),
+              });
+            } else {
+              node.visit_mut_children_with(self);
+            }
+          }
+        }
+        expr.visit_mut_with(&mut Children {
+          binding: child.id.to_id(),
+          props: props.clone(),
+        });
+      }
+      match &mut expr {
+        Expr::Arrow(f) => f.params = vec![Pat::Ident(props.into())],
+        Expr::Fn(f) => f.function.params = vec![Param::from(Pat::Ident(props.into()))],
+        _ => unreachable!(),
+      }
+    }
+    let mut parser = TemplateParser::new(
+      self.props_arg.clone(),
+      Some(super::JINGE_HOST_IDENT.clone()),
+      self.intl_type,
+    );
+    // Rich renderers retain outer map bindings; nested loops must not reuse their names.
+    parser.map_loop_level = self.map_loop_level;
+    parser.visit_expr(&expr);
+    let slot = parser.context.slots.pop().unwrap();
+    Some(super::component::slot_to_expr(
+      slot.params,
+      slot.stmts,
+      slot.expressions,
+      slot.function,
+    ))
+  }
+
   /// Recognize the current file's direct jinge t import by resolver binding Id.
   pub fn parse_intl_t(&mut self, callee: &Expr, args: &[ExprOrSpread]) -> bool {
     if !matches!(callee, Expr::Ident(name) if crate::scope::is_intl_t(name)) {
@@ -170,6 +289,18 @@ impl TemplateParser {
             | Expr::Fn(_) => {
               // jsx 或者函数都认为是富文本格式的组件
               vm.is_rich_text = true;
+              let tag = match &kv.key {
+                PropName::Ident(id) => id.sym.to_string(),
+                PropName::Str(s) => s.value.to_string_lossy().into_owned(),
+                _ => {
+                  emit_error(kv.key.span(), "国际化富文本标签名必须是静态名称");
+                  continue;
+                }
+              };
+              if let Some(renderer) = self.parse_intl_renderer(&kv.value) {
+                vm.const_props
+                  .push((PropName::Str(Str::from(format!("slot:{tag}"))), renderer));
+              }
             }
             Expr::Lit(val) => {
               vm.const_props

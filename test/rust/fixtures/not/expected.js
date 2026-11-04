@@ -10,13 +10,13 @@ export function A(attrs$jg$, rthost$jg$) {
                 const $jg$ = createTextNode$jg$("");
                 watchPathForRender2$jg$(state, [
                     "on"
-                ], (v)=>setTextContent$jg$($jg$, v), 1, rthost$jg$);
+                ], ($jg$v)=>setTextContent$jg$($jg$, $jg$v), 1, rthost$jg$);
                 return $jg$;
             })(), ":", (()=>{
                 const $jg$ = createTextNode$jg$("");
                 watchPathForRender2$jg$(state, [
                     "on"
-                ], (v)=>setTextContent$jg$($jg$, v), 2, rthost$jg$);
+                ], ($jg$v)=>setTextContent$jg$($jg$, $jg$v), 2, rthost$jg$);
                 return $jg$;
             })());
             rthost$jg$[ROOT_NODES$jg$].push($jg$);

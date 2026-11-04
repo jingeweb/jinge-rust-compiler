@@ -12,7 +12,7 @@ export function A(attrs$jg$, rthost$jg$) {
                     MethodPathWatcher$jg$(state, [
                         "fn"
                     ], false, true)
-                ], ($jg$a0)=>$jg$a0?.()), (v)=>setTextContent$jg$($jg$, v), rthost$jg$);
+                ], ($jg$a0)=>$jg$a0?.()), ($jg$v)=>setTextContent$jg$($jg$, $jg$v), rthost$jg$);
                 return $jg$;
             })());
             rthost$jg$[ROOT_NODES$jg$].push($jg$);

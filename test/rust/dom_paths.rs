@@ -66,7 +66,7 @@ fn hidden_constants_use_the_native_property() {
 #[test]
 fn hidden_watchers_assign_the_native_property() {
   let code = compile_dom("export function A(props){return <div hidden={props.hidden}/>}");
-  assert!(code.contains("$jg$.hidden = v"), "{code}");
+  assert!(code.contains("$jg$.hidden = $jg$v"), "{code}");
 }
 
 #[test]
@@ -78,7 +78,7 @@ fn inert_constants_use_the_native_property() {
 #[test]
 fn inert_watchers_assign_the_native_property() {
   let code = compile_dom("export function A(props){return <div inert={props.inert}/>}");
-  assert!(code.contains("$jg$.inert = v"), "{code}");
+  assert!(code.contains("$jg$.inert = $jg$v"), "{code}");
 }
 
 #[test]
@@ -101,10 +101,10 @@ fn f07_reactive_idl_names_lowercase_only_flagged_properties() {
     "export function A(props){return <><input autoComplete={props.complete} autoFocus={props.focus} readOnly={props.readOnly}/><video autoPlay={props.play}/></>}",
   );
   for expected in [
-    "$jg$.autocomplete = v",
-    "$jg$.autofocus = v",
-    "$jg$.readOnly = v",
-    "$jg$.autoplay = v",
+    "$jg$.autocomplete = $jg$v",
+    "$jg$.autofocus = $jg$v",
+    "$jg$.readOnly = $jg$v",
+    "$jg$.autoplay = $jg$v",
   ] {
     assert!(code.contains(expected), "{expected}:\n{code}");
   }

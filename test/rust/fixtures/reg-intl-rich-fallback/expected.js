@@ -3,7 +3,19 @@ import { t } from 'jinge';
 export function A(attrs$jg$, rthost$jg$) {
     return [
         (()=>{
-            const $jg$ = createEle$jg$("p", ...renderIntlRichText$jg$(rthost$jg$, false, "NH9/Bc", undefined, "Hello <B>world</B>"));
+            const $jg$ = createEle$jg$("p", ...renderIntlRichText$jg$(rthost$jg$, false, "NH9/Bc", {
+                "slot:B": ($jg$intlChildren85, host$jg$)=>[
+                        (()=>{
+                            const $jg$ = createEle$jg$("b", ...(()=>{
+                                const $jg$ = new ComponentHost$jg$(host$jg$[CONTEXT$jg$]);
+                                host$jg$[NON_ROOT_COMPONENT_NODES$jg$].push($jg$);
+                                return renderSlotFunction$jg$($jg$, $jg$intlChildren85["slot:default"]);
+                            })());
+                            host$jg$[ROOT_NODES$jg$].push($jg$);
+                            return $jg$;
+                        })()
+                    ]
+            }, "Hello <B>world</B>"));
             rthost$jg$[ROOT_NODES$jg$].push($jg$);
             return $jg$;
         })()

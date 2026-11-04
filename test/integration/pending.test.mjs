@@ -4,17 +4,6 @@ import { test } from 'node:test';
 import { behavior, mount } from './harness.mjs';
 const vm = `import {vm} from 'jinge';`;
 test(
-  'C03 callback-local expression dependencies',
-  { todo: '已决定本轮不修复；需讨论回调依赖边界' },
-  async () => {
-    await behavior(
-      vm +
-        `const state=vm({items:[{active:true}]});export function A(){return <p>{state.items.some(item=>item.active)}</p>}`,
-      'true',
-    );
-  },
-);
-test(
   'callback-local computed map key extraction',
   { todo: '目前明确拒绝；支持它需要局部计算和外提分析' },
   async () => {
@@ -27,7 +16,7 @@ test(
 );
 test(
   'optional computed member preserves side-effect short circuit',
-  { todo: '短路依赖提取需统一设计，本轮仅修复普通可选函数调用' },
+  { todo: '目前明确拒绝动态可选计算键；完整支持需延迟建立依赖并保留短路' },
   async () => {
     const v = await mount(
       vm +

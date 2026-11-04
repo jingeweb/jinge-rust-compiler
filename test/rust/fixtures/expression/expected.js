@@ -16,7 +16,7 @@ export function A(attrs$jg$, rthost$jg$) {
                     PathWatcher$jg$(state, [
                         "m"
                     ], true)
-                ], ($jg$a0, $jg$a1)=>$jg$a0 * 2 + $jg$a1), (v)=>setTextContent$jg$($jg$, v), rthost$jg$);
+                ], ($jg$a0, $jg$a1)=>$jg$a0 * 2 + $jg$a1), ($jg$v)=>setTextContent$jg$($jg$, $jg$v), rthost$jg$);
                 return $jg$;
             })());
             rthost$jg$[ROOT_NODES$jg$].push($jg$);

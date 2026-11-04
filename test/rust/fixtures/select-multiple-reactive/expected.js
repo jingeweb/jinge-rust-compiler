@@ -9,7 +9,7 @@ export function A(attrs$jg$, rthost$jg$) {
             const $jg$ = createEle$jg$("select");
             watchPathForRender$jg$(state, [
                 "multi"
-            ], (v)=>$jg$.multiple = v, rthost$jg$);
+            ], ($jg$v)=>$jg$.multiple = $jg$v, rthost$jg$);
             $jg$.append((()=>{
                 const $jg$ = createEleA$jg$("option", {}, "A");
                 $jg$.value = "a";

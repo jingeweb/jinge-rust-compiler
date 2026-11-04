@@ -13,7 +13,7 @@ export function A(attrs$jg$, rthost$jg$) {
                     PathWatcher$jg$(state, [
                         "n"
                     ], true)
-                ], ($jg$a0)=>a0 + $jg$a0), (v)=>setTextContent$jg$($jg$, v), rthost$jg$);
+                ], ($jg$a0)=>a0 + $jg$a0), ($jg$v)=>setTextContent$jg$($jg$, $jg$v), rthost$jg$);
                 return $jg$;
             })());
             rthost$jg$[ROOT_NODES$jg$].push($jg$);

@@ -19,7 +19,7 @@ export function A(attrs$jg$, rthost$jg$) {
     return [
         ...(()=>{
             const attrs$jg$ = {
-                "slot:default": (slot, host$jg$)=>{
+                "slot:default": function(slot, host$jg$) {
                     const prefix = 'Hi ';
                     return [
                         (()=>{
@@ -27,7 +27,7 @@ export function A(attrs$jg$, rthost$jg$) {
                                 const $jg$ = createTextNode$jg$("");
                                 watchPathForRender$jg$(slot, [
                                     "name"
-                                ], (v)=>setTextContent$jg$($jg$, v), host$jg$);
+                                ], ($jg$v)=>setTextContent$jg$($jg$, $jg$v), host$jg$);
                                 return $jg$;
                             })());
                             host$jg$[ROOT_NODES$jg$].push($jg$);

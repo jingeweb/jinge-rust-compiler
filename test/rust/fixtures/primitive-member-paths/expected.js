@@ -17,14 +17,14 @@ export function A(attrs$jg$, rthost$jg$) {
                 watchPathForRender$jg$(state, [
                     "text",
                     "length"
-                ], (v)=>setTextContent$jg$($jg$, v), rthost$jg$);
+                ], ($jg$v)=>setTextContent$jg$($jg$, $jg$v), rthost$jg$);
                 return $jg$;
             })(), ":", (()=>{
                 const $jg$ = createTextNode$jg$("");
                 watchPathForRender$jg$(state, [
                     "text",
                     0
-                ], (v)=>setTextContent$jg$($jg$, v), rthost$jg$);
+                ], ($jg$v)=>setTextContent$jg$($jg$, $jg$v), rthost$jg$);
                 return $jg$;
             })(), ":", (()=>{
                 const $jg$ = createTextNode$jg$("");
@@ -33,7 +33,7 @@ export function A(attrs$jg$, rthost$jg$) {
                     PathWatcher$jg$(state, [
                         "index"
                     ])
-                ], true), (v)=>setTextContent$jg$($jg$, v), rthost$jg$);
+                ], true), ($jg$v)=>setTextContent$jg$($jg$, $jg$v), rthost$jg$);
                 return $jg$;
             })(), ":", (()=>{
                 const $jg$ = createTextNode$jg$("");
@@ -41,20 +41,20 @@ export function A(attrs$jg$, rthost$jg$) {
                     "user",
                     "name",
                     "length"
-                ], (v)=>setTextContent$jg$($jg$, v), rthost$jg$);
+                ], ($jg$v)=>setTextContent$jg$($jg$, $jg$v), rthost$jg$);
                 return $jg$;
             })(), ":", (()=>{
                 const $jg$ = createTextNode$jg$("");
                 watchPathForRender$jg$(state, [
                     "items",
                     "length"
-                ], (v)=>setTextContent$jg$($jg$, v), rthost$jg$);
+                ], ($jg$v)=>setTextContent$jg$($jg$, $jg$v), rthost$jg$);
                 return $jg$;
             })());
             watchPathForRender$jg$(state, [
                 "text",
                 "length"
-            ], (v)=>setAttribute$jg$($jg$, "title", v), rthost$jg$);
+            ], ($jg$v)=>setAttribute$jg$($jg$, "title", $jg$v), rthost$jg$);
             rthost$jg$[ROOT_NODES$jg$].push($jg$);
             return $jg$;
         })()

@@ -231,6 +231,15 @@ impl TemplateParser {
       .unwrap_or_else(|| Atom::from(format!("each$jg${}", self.map_loop_level)));
     let arg_data = pat_to_id(func.params.first());
     let arg_index = pat_to_id(func.params.get(1));
+    for param in [&arg_data, &arg_index].into_iter().flatten() {
+      if crate::scope::binding_is_written(&func.body, param) {
+        emit_error(
+          func.span,
+          "map 模板参数不支持重新赋值；请修改对象成员或使用独立的 vm 状态",
+        );
+        return true;
+      }
+    }
     let mut replace_visitor =
       ReplaceVisitor::new(arg_data.clone(), arg_index.clone(), slot_vm_name.clone());
     func.params = vec![Pat::Ident(BindingIdent::from(slot_vm_name.clone()))];

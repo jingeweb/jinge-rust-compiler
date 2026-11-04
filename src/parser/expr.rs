@@ -72,6 +72,7 @@ impl ExprVisitor {
   }
 
   pub fn parse(&mut self, expr: &Expr) -> ExprParseResult {
+    expr.visit_with(&mut OptionalComputed);
     crate::scope::warn_snapshot_refs(expr);
     self.visit_expr(expr);
     if self.no_watch || self.expressions.is_empty() {
@@ -230,6 +231,15 @@ impl ExprVisitor {
   }
 }
 impl Visit for ExprVisitor {
+  // Function bodies/defaults execute when called, not when this value is built.
+  fn visit_function(&mut self, _: &Function) {}
+  fn visit_arrow_expr(&mut self, _: &ArrowExpr) {}
+  fn visit_getter_prop(&mut self, node: &GetterProp) {
+    node.key.visit_with(self);
+  }
+  fn visit_setter_prop(&mut self, node: &SetterProp) {
+    node.key.visit_with(self);
+  }
   fn visit_expr(&mut self, node: &Expr) {
     if self.no_watch {
       return;
@@ -339,6 +349,45 @@ fn receiver_optional(expr: &Expr) -> bool {
     _ => false,
   }
 }
+/// Path watchers evaluate computed keys eagerly. Check the original chain before
+/// flattening loses its short-circuit boundaries, including method receivers.
+struct OptionalComputed;
+impl OptionalComputed {
+  fn member(&mut self, node: &MemberExpr, optional: bool) {
+    if (optional || receiver_optional(&node.obj))
+      && let MemberProp::Computed(key) = &node.prop
+      && !matches!(key.expr.as_ref(), Expr::Lit(Lit::Str(_) | Lit::Num(_)))
+    {
+      emit_error(
+        key.span,
+        "暂不支持可选链短路范围内的动态计算属性（非字面量键），以避免提前求值",
+      );
+    }
+    node.visit_children_with(self);
+  }
+}
+impl Visit for OptionalComputed {
+  // Deferred bodies stay ordinary JS, matching dependency collection.
+  fn visit_function(&mut self, _: &Function) {}
+  fn visit_arrow_expr(&mut self, _: &ArrowExpr) {}
+  fn visit_getter_prop(&mut self, node: &GetterProp) {
+    node.key.visit_with(self);
+  }
+  fn visit_setter_prop(&mut self, node: &SetterProp) {
+    node.key.visit_with(self);
+  }
+  fn visit_member_expr(&mut self, node: &MemberExpr) {
+    self.member(node, false);
+  }
+  fn visit_opt_chain_expr(&mut self, node: &OptChainExpr) {
+    if let OptChainBase::Member(member) = &*node.base {
+      self.member(member, node.optional);
+    } else {
+      node.visit_children_with(self);
+    }
+  }
+}
+
 fn method_callee(expr: &Expr) -> Option<(&MemberExpr, bool)> {
   match expr {
     Expr::Member(member) => Some((member, receiver_optional(&member.obj))),
@@ -380,6 +429,15 @@ impl<'a> MemberExprReplaceVisitor<'a> {
   }
 }
 impl<'a> VisitMut for MemberExprReplaceVisitor<'a> {
+  // Keep replacement traversal identical to dependency collection.
+  fn visit_mut_function(&mut self, _: &mut Function) {}
+  fn visit_mut_arrow_expr(&mut self, _: &mut ArrowExpr) {}
+  fn visit_mut_getter_prop(&mut self, node: &mut GetterProp) {
+    node.key.visit_mut_with(self);
+  }
+  fn visit_mut_setter_prop(&mut self, node: &mut SetterProp) {
+    node.key.visit_mut_with(self);
+  }
   fn visit_mut_expr(&mut self, node: &mut Expr) {
     match node {
       Expr::OptChain(oc) => {

@@ -2,7 +2,13 @@ import ts from '@typescript/typescript6';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 
-import { extractKeyAndMessage, loopReadDir, parseCsv, writeCsv } from './helper';
+import {
+  extractKeyAndMessage,
+  loopReadDir,
+  parseCsv,
+  writeCsv,
+  validateSourceNames,
+} from './helper';
 
 type Dict = Record<
   string,
@@ -22,6 +28,7 @@ async function parseFile({ file, filename, dict }: { file: string; filename: str
     true,
   );
 
+  validateSourceNames(srcFile);
   let hasMessage = false;
 
   function walk(node: ts.Node) {

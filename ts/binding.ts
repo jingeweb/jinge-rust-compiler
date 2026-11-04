@@ -8,6 +8,7 @@ export interface TransformOptions {
 }
 /** rust binding compiler interface */
 export interface JingeCompiler {
+  validateSource(filename: string, type: number, code: string): void;
   transform(
     filename: string,
     type: number,
@@ -28,7 +29,11 @@ function getBinding() {
 }
 
 /** 仓库内 `cargo build` 产出的本地 binding；发布的 npm 包里不会包含该文件。 */
-const LOCAL_BINDING = fileURLToPath(new URL('../index.node', import.meta.url));
+// Bundled CLI/test entry points are one directory deeper than the main bundle.
+const LOCAL_BINDING =
+  ['../index.node', '../../index.node']
+    .map((p) => fileURLToPath(new URL(p, import.meta.url)))
+    .find(existsSync) ?? fileURLToPath(new URL('../index.node', import.meta.url));
 
 export function loadBinding(debug = false) {
   const require = createRequire(import.meta.url);

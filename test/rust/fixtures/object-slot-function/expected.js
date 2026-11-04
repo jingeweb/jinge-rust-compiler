@@ -7,7 +7,7 @@ export const opts = {
                     const $jg$ = createTextNode$jg$("");
                     watchPathForRender$jg$(props, [
                         "text"
-                    ], (v)=>setTextContent$jg$($jg$, v), host$jg$);
+                    ], ($jg$v)=>setTextContent$jg$($jg$, $jg$v), host$jg$);
                     return $jg$;
                 })());
                 host$jg$[ROOT_NODES$jg$].push($jg$);

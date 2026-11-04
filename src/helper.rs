@@ -1,7 +1,4 @@
-use swc_core::{
-  atoms::Wtf8Atom,
-  ecma::ast::{ArrowFunctionBody, Callee, Expr, ExprOrSpread, MemberProp, Stmt},
-};
+use swc_core::ecma::ast::{ArrowFunctionBody, Callee, Expr, ExprOrSpread, Ident, MemberProp, Stmt};
 
 use crate::{
   ast::*,
@@ -35,7 +32,7 @@ use crate::{
 //   }
 // }
 
-fn block_stmts_contains_jsx_return(stmts: &[Stmt], props_arg: &Option<Wtf8Atom>) -> bool {
+fn block_stmts_contains_jsx_return(stmts: &[Stmt], props_arg: &Option<Ident>) -> bool {
   let Some(st) = stmts.last() else {
     return false;
   };
@@ -52,7 +49,7 @@ fn block_stmts_contains_jsx_return(stmts: &[Stmt], props_arg: &Option<Wtf8Atom>)
 /// 比如 `<p>x</p>，<></>, {<p>p</p>}` 这一类的直接有 jsx 元素的，
 /// 或者 `props.children` 或 `props['slot:a']?.()` 等插槽渲染，
 /// 都满足需要转换为 jsx 渲染。
-pub fn should_render_as_jsx(expr: &Expr, props_arg: &Option<Wtf8Atom>) -> bool {
+pub fn should_render_as_jsx(expr: &Expr, props_arg: &Option<Ident>) -> bool {
   match expr {
     Expr::JSXElement(_) | Expr::JSXFragment(_) => true,
     Expr::Cond(e) => {

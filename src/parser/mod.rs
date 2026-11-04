@@ -30,6 +30,8 @@ pub struct Slot {
   name: Wtf8Atom,
   /// 插槽函数的参数
   params: Vec<Pat>,
+  /// 普通函数插槽保留函数种类、自身绑定及 arguments 作用域。
+  function: Option<FnExpr>,
   /// 插槽函数的除 return 之外的语句。
   stmts: Vec<Stmt>,
   /// 插槽函数 return 语句转换后的渲染表达式。比如 return <>...</> 里面可能有多个 jsx 元素。
@@ -42,6 +44,7 @@ impl Slot {
     Self {
       name,
       params: vec![],
+      function: None,
       stmts: vec![],
       expressions: vec![],
       pass_by: None,
@@ -85,13 +88,13 @@ pub struct TemplateParser {
   /// 组件标签元素（非 html 或 svg 元素）的层级深度。默认为0代表最外层的函数组件，每遇到（进入）一个组件标签 +1，退出 -1
   fc_deep: usize,
   /// 最外层的函数组件的第一个参数，即 Props 属性参数。
-  props_arg: Option<Wtf8Atom>,
+  props_arg: Option<Ident>,
 
   map_loop_level: usize,
 }
 
 impl TemplateParser {
-  pub fn new(props_arg: Option<Wtf8Atom>, host_ident: Option<Ident>, intl_type: IntlType) -> Self {
+  pub fn new(props_arg: Option<Ident>, host_ident: Option<Ident>, intl_type: IntlType) -> Self {
     Self {
       intl_type,
       props_arg,
@@ -243,6 +246,7 @@ impl TemplateParser {
       emit_error(expr.function.span(), "插槽函数必须有返回值");
       return;
     };
+    self.context.slots.last_mut().unwrap().function = Some(expr.clone());
     let params: Vec<_> = expr.function.params.iter().map(|p| p.pat.clone()).collect();
     self.parse_func_body_stmts(&body.stmts, &params, body.span());
   }

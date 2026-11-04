@@ -13,7 +13,7 @@ export function A(attrs$jg$, rthost$jg$) {
                 watchPathForRender$jg$(state, [
                     "user",
                     "name"
-                ], (v)=>setTextContent$jg$($jg$, v), rthost$jg$);
+                ], ($jg$v)=>setTextContent$jg$($jg$, $jg$v), rthost$jg$);
                 return $jg$;
             })());
             rthost$jg$[ROOT_NODES$jg$].push($jg$);

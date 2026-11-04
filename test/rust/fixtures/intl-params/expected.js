@@ -10,7 +10,7 @@ export function A(attrs$jg$, rthost$jg$) {
                 const attrs$jg$ = vm$jg$({});
                 watchPathForRender$jg$(state, [
                     "name"
-                ], (v)=>attrs$jg$.name = v, rthost$jg$);
+                ], ($jg$v)=>attrs$jg$.name = $jg$v, rthost$jg$);
                 return renderIntlTextWithParams$jg$(rthost$jg$, false, "fixture-params", attrs$jg$, "Hello {name}");
             })());
             rthost$jg$[ROOT_NODES$jg$].push($jg$);

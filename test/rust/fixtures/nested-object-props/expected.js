@@ -12,7 +12,7 @@ function Child(props, rthost$jg$) {
                     "options",
                     "deep",
                     "n"
-                ], (v)=>setTextContent$jg$($jg$, v), rthost$jg$);
+                ], ($jg$v)=>setTextContent$jg$($jg$, $jg$v), rthost$jg$);
                 return $jg$;
             })());
             rthost$jg$[ROOT_NODES$jg$].push($jg$);
@@ -32,7 +32,7 @@ export function A(attrs$jg$, rthost$jg$) {
                     deep: {
                         n: $jg$a0
                     }
-                })), (v)=>attrs$jg$["options"] = v, rthost$jg$);
+                })), ($jg$v)=>attrs$jg$["options"] = $jg$v, rthost$jg$);
             const $jg$ = new ComponentHost$jg$(rthost$jg$[CONTEXT$jg$]);
             rthost$jg$[ROOT_NODES$jg$].push($jg$);
             return renderFunctionComponent$jg$($jg$, Child, attrs$jg$);

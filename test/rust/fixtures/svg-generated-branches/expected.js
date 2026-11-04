@@ -26,7 +26,7 @@ export function A(attrs$jg$, rthost$jg$) {
                 });
                 watchPathForRender$jg$(state, [
                     "on"
-                ], (v)=>attrs$jg$["expect"] = v, rthost$jg$);
+                ], ($jg$v)=>attrs$jg$["expect"] = $jg$v, rthost$jg$);
                 const $jg$ = new ComponentHost$jg$(rthost$jg$[CONTEXT$jg$]);
                 rthost$jg$[NON_ROOT_COMPONENT_NODES$jg$].push($jg$);
                 return renderFunctionComponent$jg$($jg$, If$jg$, attrs$jg$);
@@ -41,7 +41,7 @@ export function A(attrs$jg$, rthost$jg$) {
                                 watchPathForRender$jg$(each$jg$0, [
                                     "data",
                                     "x"
-                                ], (v)=>setAttribute$jg$($jg$, "cx", v), host$jg$);
+                                ], ($jg$v)=>setAttribute$jg$($jg$, "cx", $jg$v), host$jg$);
                                 host$jg$[ROOT_NODES$jg$].push($jg$);
                                 return $jg$;
                             })()
@@ -49,7 +49,7 @@ export function A(attrs$jg$, rthost$jg$) {
                 });
                 watchPathForRender$jg$(state, [
                     "items"
-                ], (v)=>attrs$jg$["loop"] = v, rthost$jg$);
+                ], ($jg$v)=>attrs$jg$["loop"] = $jg$v, rthost$jg$);
                 const $jg$ = new ComponentHost$jg$(rthost$jg$[CONTEXT$jg$]);
                 rthost$jg$[NON_ROOT_COMPONENT_NODES$jg$].push($jg$);
                 return renderFunctionComponent$jg$($jg$, For$jg$, attrs$jg$);

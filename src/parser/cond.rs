@@ -70,7 +70,7 @@ fn gen_if_component(test: Box<Expr>, alt: Option<&Expr>, cons: Option<&Expr>) ->
 pub(super) fn is_null_undef(expr: &Expr) -> bool {
   match expr {
     Expr::Lit(Lit::Null(_)) => true,
-    Expr::Ident(id) => JINGE_UNDEFINED.eq(&id.sym),
+    Expr::Ident(id) => JINGE_UNDEFINED.eq(&id.sym) && crate::scope::is_unresolved(id),
     _ => false,
   }
 }

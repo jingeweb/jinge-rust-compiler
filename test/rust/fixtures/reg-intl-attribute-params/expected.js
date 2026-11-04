@@ -16,7 +16,7 @@ export function A(attrs$jg$, rthost$jg$) {
                 ], ($jg$a0)=>({
                         name: $jg$a0
                     }))
-            ], ($jg$locale, $jg$intlParams)=>t("greeting", $jg$intlParams, "Hello {name}")), (v)=>setAttribute$jg$($jg$, "title", v), rthost$jg$);
+            ], ($jg$locale, $jg$intlParams)=>t("greeting", $jg$intlParams, "Hello {name}")), ($jg$v)=>setAttribute$jg$($jg$, "title", $jg$v), rthost$jg$);
             rthost$jg$[ROOT_NODES$jg$].push($jg$);
             return $jg$;
         })()

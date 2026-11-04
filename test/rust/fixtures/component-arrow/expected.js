@@ -5,7 +5,7 @@ const Child = (props, rthost$jg$)=>[
                 const $jg$ = createTextNode$jg$("");
                 watchPathForRender$jg$(props, [
                     "text"
-                ], (v)=>setTextContent$jg$($jg$, v), rthost$jg$);
+                ], ($jg$v)=>setTextContent$jg$($jg$, $jg$v), rthost$jg$);
                 return $jg$;
             })());
             rthost$jg$[ROOT_NODES$jg$].push($jg$);

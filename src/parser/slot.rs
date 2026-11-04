@@ -1,12 +1,9 @@
 use swc_common::{DUMMY_SP, Spanned, SyntaxContext};
-use swc_core::{
-  atoms::Wtf8Atom,
-  ecma::ast::{
-    ArrayLit, ArrowFunctionBody, AssignExpr, AssignOp, AssignTarget, BinExpr, BinaryOp, Callee,
-    ComputedPropName, CondExpr, Expr, ExprOrSpread, ExprStmt, FunctionBody, Ident, KeyValueProp,
-    Lit, MemberExpr, MemberProp, NewExpr, Null, ObjectLit, OptChainBase, OptChainExpr, Prop,
-    PropName, PropOrSpread, ReturnStmt, SimpleAssignTarget, Stmt,
-  },
+use swc_core::ecma::ast::{
+  ArrayLit, ArrowFunctionBody, AssignExpr, AssignOp, AssignTarget, BinExpr, BinaryOp, Callee,
+  ComputedPropName, CondExpr, Expr, ExprOrSpread, ExprStmt, FunctionBody, Ident, KeyValueProp, Lit,
+  MemberExpr, MemberProp, NewExpr, Null, ObjectLit, OptChainBase, OptChainExpr, Prop, PropName,
+  PropOrSpread, ReturnStmt, SimpleAssignTarget, Stmt,
 };
 use swc_ecma_visit::Visit;
 
@@ -24,10 +21,10 @@ use super::{
 };
 
 #[inline]
-fn get_default_slot_name(props_arg: &Wtf8Atom) -> MemberExpr {
+fn get_default_slot_name(props_arg: &Ident) -> MemberExpr {
   MemberExpr {
     span: DUMMY_SP,
-    obj: ast_create_expr_ident(props_arg.as_str().unwrap().into()),
+    obj: ast_create_expr_ident(props_arg.clone()),
     prop: MemberProp::Computed(ComputedPropName {
       span: DUMMY_SP,
       expr: ast_create_expr_lit_str(JINGE_SLOT_DEFAULT.clone().into()),
@@ -43,15 +40,15 @@ enum SlotNameType {
 
 fn get_slot_name_type_from_member_epxr(
   expr: &MemberExpr,
-  props_arg: &Option<Wtf8Atom>,
+  props_arg: &Option<Ident>,
 ) -> SlotNameType {
   match &expr.prop {
     MemberProp::Ident(id) => {
-      let Some(props_arg) = props_arg.as_ref().and_then(|v| v.as_str()) else {
+      let Some(props_arg) = props_arg.as_ref() else {
         return SlotNameType::None;
       };
       if JINGE_CHILDREN.eq(&id.sym)
-        && matches!(expr.obj.as_ref(), Expr::Ident(id) if id.sym.eq(props_arg))
+        && matches!(expr.obj.as_ref(), Expr::Ident(id) if id.to_id() == props_arg.to_id())
       {
         return SlotNameType::Default;
       }
@@ -61,8 +58,8 @@ fn get_slot_name_type_from_member_epxr(
         && let Lit::Str(id) = id
       {
         if id.value.as_atom().is_some_and(|v| JINGE_CHILDREN.eq(v)) {
-          if let Some(props_arg) = props_arg.as_ref().and_then(|v| v.as_str())
-            && matches!(expr.obj.as_ref(), Expr::Ident(id) if id.sym.eq(props_arg))
+          if let Some(props_arg) = props_arg.as_ref()
+            && matches!(expr.obj.as_ref(), Expr::Ident(id) if id.to_id() == props_arg.to_id())
           {
             return SlotNameType::Default;
           }
@@ -78,7 +75,7 @@ fn get_slot_name_type_from_member_epxr(
 
 fn get_slot_name_type_from_optchain_expr<'a>(
   expr: &'a OptChainExpr,
-  props_arg: &Option<Wtf8Atom>,
+  props_arg: &Option<Ident>,
 ) -> (SlotNameType, Option<&'a Vec<ExprOrSpread>>) {
   match expr.base.as_ref() {
     OptChainBase::Member(m) => (get_slot_name_type_from_member_epxr(m, props_arg), None),
@@ -102,7 +99,7 @@ fn get_slot_name_type_from_optchain_expr<'a>(
 #[inline]
 pub fn get_slot_name_from_member_expr(
   expr: &MemberExpr,
-  props_arg: &Option<Wtf8Atom>,
+  props_arg: &Option<Ident>,
 ) -> Option<Box<Expr>> {
   match get_slot_name_type_from_member_epxr(expr, props_arg) {
     SlotNameType::None => None,
@@ -115,7 +112,7 @@ pub fn get_slot_name_from_member_expr(
 
 pub fn get_slot_name_from_optchain_expr<'a>(
   expr: &'a OptChainExpr,
-  props_arg: &Option<Wtf8Atom>,
+  props_arg: &Option<Ident>,
 ) -> Option<(Box<Expr>, Option<&'a Vec<ExprOrSpread>>)> {
   match get_slot_name_type_from_optchain_expr(expr, props_arg) {
     (SlotNameType::None, _) => None,
@@ -136,7 +133,7 @@ pub fn get_slot_name_from_optchain_expr<'a>(
   }
 }
 
-pub fn get_slot_name_from_callee(callee: &Expr, props_arg: &Option<Wtf8Atom>) -> Option<Box<Expr>> {
+pub fn get_slot_name_from_callee(callee: &Expr, props_arg: &Option<Ident>) -> Option<Box<Expr>> {
   match callee {
     Expr::Member(e) => get_slot_name_from_member_expr(e, props_arg),
     Expr::OptChain(oc) => {
@@ -301,7 +298,7 @@ fn parse_slot_arg(args: &[ExprOrSpread], intl_type: IntlType) -> SlotVm {
 
 pub fn get_bin_expr_slot_name<'a>(
   expr: &'a Expr,
-  props_arg: &Option<Wtf8Atom>,
+  props_arg: &Option<Ident>,
 ) -> Option<(Box<Expr>, Option<&'a Vec<ExprOrSpread>>)> {
   match expr {
     Expr::Member(mem) => {

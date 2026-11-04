@@ -1,5 +1,4 @@
 use swc_common::Spanned;
-use swc_core::atoms::Wtf8Atom;
 use swc_core::ecma::ast::*;
 use swc_core::ecma::visit::VisitMut;
 use swc_ecma_visit::{Visit, VisitMutWith, VisitWith};
@@ -54,7 +53,7 @@ impl<'a> TemplateTransformVisitor<'a> {
         let mut should_parse_jsx = is_slot;
         if !should_parse_jsx {
           let props_arg = params.first().and_then(|p| match p {
-            Pat::Ident(v) => Some(Wtf8Atom::new(v.sym.as_str())),
+            Pat::Ident(v) if crate::scope::is_template_props(&v.id) => Some(v.id.clone()),
             _ => None,
           });
           should_parse_jsx = should_render_as_jsx(expr_ref, &props_arg);
@@ -92,7 +91,7 @@ impl<'a> TemplateTransformVisitor<'a> {
         let params = &mut expr.params;
         if !should_parse_jsx {
           let props_arg = params.first().and_then(|p| match p {
-            Pat::Ident(v) => Some(Wtf8Atom::new(v.sym.as_str())),
+            Pat::Ident(v) if crate::scope::is_template_props(&v.id) => Some(v.id.clone()),
             _ => None,
           });
           should_parse_jsx = should_render_as_jsx(e.as_ref(), &props_arg);
@@ -138,7 +137,7 @@ impl<'a> TemplateTransformVisitor<'a> {
     let mut props_arg = None;
     if let Some(p) = params.first() {
       if let Pat::Ident(p) = p {
-        props_arg.replace(Wtf8Atom::new(p.sym.as_str()));
+        props_arg.replace(p.id.clone());
       } else {
         emit_error(p.span(), ERR);
         return None;

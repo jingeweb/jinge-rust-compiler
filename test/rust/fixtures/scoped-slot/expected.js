@@ -10,7 +10,7 @@ function Child(props, rthost$jg$) {
                 const attrs$jg$ = vm$jg$({});
                 watchPathForRender$jg$(state, [
                     "n"
-                ], (v)=>attrs$jg$.n = v, rthost$jg$);
+                ], ($jg$v)=>attrs$jg$.n = $jg$v, rthost$jg$);
                 const $jg$ = new ComponentHost$jg$(rthost$jg$[CONTEXT$jg$]);
                 rthost$jg$[NON_ROOT_COMPONENT_NODES$jg$].push($jg$);
                 return renderSlotFunction$jg$($jg$, props["slot:default"], attrs$jg$);
@@ -30,7 +30,7 @@ export function A(attrs$jg$, rthost$jg$) {
                                 const $jg$ = createTextNode$jg$("");
                                 watchPathForRender$jg$(slot, [
                                     "n"
-                                ], (v)=>setTextContent$jg$($jg$, v), host$jg$);
+                                ], ($jg$v)=>setTextContent$jg$($jg$, $jg$v), host$jg$);
                                 return $jg$;
                             })());
                             host$jg$[ROOT_NODES$jg$].push($jg$);

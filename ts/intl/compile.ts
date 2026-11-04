@@ -2,7 +2,22 @@ import ts from '@typescript/typescript6';
 import { promises as fs, readFileSync } from 'node:fs';
 import path from 'node:path';
 
-import { type ExtractMessage, extractKeyAndMessage, parseCsv } from './helper';
+import {
+  type ExtractMessage,
+  extractKeyAndMessage,
+  parseCsv,
+  GENERATED_INTL_HEADER,
+  GENERATED_INTL_PROPS,
+  validateSourceNames,
+} from './helper';
+// Shared by all rich messages in one language module; business renderers are not copied.
+const RICH_HEADER = `import type { JNode } from 'jinge';
+type RichProps = Record<string, JNode> & Partial<Record<\`slot:\${string}\`, (props: unknown) => JNode>>;
+function T_Tag(${GENERATED_INTL_PROPS}: RichProps) {
+  if (typeof ${GENERATED_INTL_PROPS}['slot:render'] !== 'function') throw new Error('Missing rich text tag renderer');
+  return <>{${GENERATED_INTL_PROPS}['slot:render']({...${GENERATED_INTL_PROPS}})}</>;
+}
+`;
 const CWD = process.cwd();
 
 const sourceCache = new Map<string, Map<string, ExtractMessage>>();
@@ -14,6 +29,7 @@ function extractSource(file: string) {
   src = new Map();
   const cnt = readFileSync(filepath, 'utf-8');
   const srcFile = ts.createSourceFile(file, cnt, ts.ScriptTarget.Latest, true);
+  validateSourceNames(srcFile);
   function walk(node: ts.Node) {
     ts.forEachChild(node, walk);
 
@@ -32,7 +48,8 @@ async function compileText(
   file: string,
   key: string,
   text: string,
-  flag: { needImportJNode: boolean; richComponents: string[]; nextId: number },
+  original: string,
+  flag: { richComponents: string[]; nextId: number },
 ) {
   const functionId = flag.nextId++;
   const srcFile = ts.createSourceFile(`${key}.tsx`, `<>${text}</>`, ts.ScriptTarget.Latest);
@@ -55,35 +72,30 @@ async function compileText(
   }
 
   const vars = new Set<string>();
-  const tags = new Map<string, string>();
-  let hasTag = false;
+  const tags = new Set<string>();
+  // Rendering kind belongs to the source message, not an individual locale.
+  // A translator may remove every tag and still needs to return a component.
+  let hasTag = /<[A-Za-z][\w-]*\s*\/?>/.test(original);
   let stack = [] as unknown[];
   function varSeg(n: string) {
     return {
       toString: () => (hasTag ? n : `$${n}`),
     };
   }
-  function dealTag(tag: string) {
+  function dealTag(tag: string, attrs: ts.JsxAttributes) {
+    if (attrs.properties.length) err('rich text tags do not support attributes');
     if (vars.has(tag)) err(`conflict tag name "${tag}"`);
 
     const srcFile = extractSource(file);
     const keyMsg = srcFile.get(key);
     if (!keyMsg) err(`message not found in source file, ${key}: ${text}, ${file}`);
     // console.log(keyMsg);
-    const comp = keyMsg.richComps?.get(tag);
-    if (!comp) err(`rich component not found: ${key}: ${text}, ${file}, ${tag}`);
-    const existing = tags.get(tag);
-    if (existing) return existing.slice('function '.length).split('(')[0];
-    const compName = `T_${functionId}_${tags.size}`;
-    if (comp.type === 'fc_with_props') {
-      flag.needImportJNode = true;
-    }
-    tags.set(
-      tag,
-      `function ${compName}(${comp.type === 'fc_with_props' ? 'props: { children: JNode }' : ''}) { ${comp.expr} }`,
-    );
-    return compName;
+    if (!keyMsg.richComps?.has(tag))
+      err(`rich component not found: ${key}: ${text}, ${file}, ${tag}`);
+    tags.add(tag);
+    return `slot:render={${GENERATED_INTL_PROPS}[${JSON.stringify(`slot:${tag}`)}]}`;
   }
+
   function walk(node: ts.Node) {
     if (ts.isJsxText(node)) {
       stack.push({
@@ -100,23 +112,23 @@ async function compileText(
       const varName = e.text;
       if (tags.has(varName)) err(`conflict var name "${varName}"`);
       vars.add(varName);
-      stack.push(varSeg(`{props.${varName}}`));
+      stack.push(varSeg(`{${GENERATED_INTL_PROPS}.${varName}}`));
     } else if (ts.isJsxElement(node)) {
       const tagNode = node.openingElement.tagName;
       if (!ts.isIdentifier(tagNode)) err('not tag???');
       hasTag = true;
-      const compName = dealTag(tagNode.text);
+      const renderSlot = dealTag(tagNode.text, node.openingElement.attributes);
       const parentStack = stack;
       stack = [];
       ts.forEachChild(node, walk);
-      parentStack.push(`<${compName}>${stack.join('')}</${compName}>`);
+      parentStack.push(`<T_Tag ${renderSlot}>${stack.join('')}</T_Tag>`);
       stack = parentStack;
     } else if (ts.isJsxSelfClosingElement(node)) {
       hasTag = true;
       const tagNode = node.tagName;
       if (!ts.isIdentifier(tagNode)) err('not tag???');
-      const compName = dealTag(tagNode.text);
-      stack.push(`<${compName} />`);
+      const renderSlot = dealTag(tagNode.text, node.attributes);
+      stack.push(`<T_Tag ${renderSlot} />`);
     }
   }
   ts.forEachChild(expr, walk);
@@ -124,11 +136,9 @@ async function compileText(
   if (!vars.size && !hasTag) {
     return `${JSON.stringify(text)}`;
   } else if (!hasTag) {
-    return `(props: Record<string, unknown>) => \`${stack.join('')}\``;
+    return `(${GENERATED_INTL_PROPS}: Record<string, unknown>) => \`${stack.join('')}\``;
   } else {
-    flag.richComponents.push(...tags.values());
-    flag.richComponents
-      .push(`function T_${functionId}(${vars.size ? 'props: Record<string, JNode>' : ''}) {
+    flag.richComponents.push(`function T_${functionId}(${GENERATED_INTL_PROPS}: RichProps) {
   return <>${stack.join('')}</>;
 }`);
     return `T_${functionId}`;
@@ -153,7 +163,6 @@ export async function intlCompile({
     languages.map((l) => [
       l,
       {
-        needImportJNode: false,
         nextId: 0,
         richComponents: [],
         rows: [] as string[],
@@ -168,7 +177,7 @@ export async function intlCompile({
       for (const row of trans) {
         const v = row[lang];
         if (!v) continue;
-        const result = await compileText(lang, row.file, row.id, v, loc);
+        const result = await compileText(lang, row.file, row.id, v, row.orig, loc);
         outputRows.push({
           id: row.id,
           result,
@@ -181,7 +190,7 @@ export async function intlCompile({
 
   for (const lang of languages) {
     const loc = outputs[lang];
-    const cnt = `${loc.needImportJNode ? 'import type { JNode } from "jinge";\n' : ''}${loc.richComponents.length ? `${loc.richComponents.join('\n')}\n` : ''}export default {\n${loc.rows.join(',\n')}\n}`;
+    const cnt = `${GENERATED_INTL_HEADER}\n${loc.richComponents.length ? RICH_HEADER : ''}${loc.richComponents.length ? `${loc.richComponents.join('\n')}\n` : ''}export default {\n${loc.rows.join(',\n')}\n}`;
 
     await fs.writeFile(path.join(outputDir, `${lang}.tsx`), cnt);
   }

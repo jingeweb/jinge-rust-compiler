@@ -7,7 +7,7 @@ export function A(attrs$jg$, rthost$jg$) {
             const $jg$ = createEle$jg$("div");
             watchForRender$jg$(ExprWatcher$jg$([
                 IntlWatcher$jg$("m3HSJL", undefined, "hello")
-            ], ($jg$a0)=>format('x') + $jg$a0), (v)=>setAttribute$jg$($jg$, "title", v), rthost$jg$);
+            ], ($jg$a0)=>format('x') + $jg$a0), ($jg$v)=>setAttribute$jg$($jg$, "title", $jg$v), rthost$jg$);
             rthost$jg$[ROOT_NODES$jg$].push($jg$);
             return $jg$;
         })()

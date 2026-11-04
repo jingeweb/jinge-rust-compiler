@@ -31,7 +31,7 @@ export function A(attrs$jg$, rthost$jg$) {
                                                         watchPathForRender$jg$(each$jg$1, [
                                                             "data",
                                                             "name"
-                                                        ], (v)=>setTextContent$jg$($jg$, v), host$jg$);
+                                                        ], ($jg$v)=>setTextContent$jg$($jg$, $jg$v), host$jg$);
                                                         return $jg$;
                                                     })());
                                                     host$jg$[ROOT_NODES$jg$].push($jg$);
@@ -42,7 +42,7 @@ export function A(attrs$jg$, rthost$jg$) {
                                     watchPathForRender$jg$(each$jg$0, [
                                         "data",
                                         "items"
-                                    ], (v)=>attrs$jg$["loop"] = v, host$jg$);
+                                    ], ($jg$v)=>attrs$jg$["loop"] = $jg$v, host$jg$);
                                     const $jg$ = new ComponentHost$jg$(host$jg$[CONTEXT$jg$]);
                                     host$jg$[NON_ROOT_COMPONENT_NODES$jg$].push($jg$);
                                     return renderFunctionComponent$jg$($jg$, For$jg$, attrs$jg$);
@@ -54,7 +54,7 @@ export function A(attrs$jg$, rthost$jg$) {
                 });
                 watchPathForRender$jg$(state, [
                     "groups"
-                ], (v)=>attrs$jg$["loop"] = v, rthost$jg$);
+                ], ($jg$v)=>attrs$jg$["loop"] = $jg$v, rthost$jg$);
                 const $jg$ = new ComponentHost$jg$(rthost$jg$[CONTEXT$jg$]);
                 rthost$jg$[NON_ROOT_COMPONENT_NODES$jg$].push($jg$);
                 return renderFunctionComponent$jg$($jg$, For$jg$, attrs$jg$);

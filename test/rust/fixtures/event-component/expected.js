@@ -28,7 +28,7 @@ export function A(attrs$jg$, rthost$jg$) {
                 const $jg$ = createTextNode$jg$("");
                 watchPathForRender$jg$(state, [
                     "n"
-                ], (v)=>setTextContent$jg$($jg$, v), rthost$jg$);
+                ], ($jg$v)=>setTextContent$jg$($jg$, $jg$v), rthost$jg$);
                 return $jg$;
             })());
             rthost$jg$[ROOT_NODES$jg$].push($jg$);

@@ -21,13 +21,13 @@ export function A(attrs$jg$, rthost$jg$) {
                                 const $jg$ = createTextNode$jg$("");
                                 watchPathForRender$jg$(copy, [
                                     "item"
-                                ], (v)=>setTextContent$jg$($jg$, v), host$jg$);
+                                ], ($jg$v)=>setTextContent$jg$($jg$, $jg$v), host$jg$);
                                 return $jg$;
                             })(), ":", (()=>{
                                 const $jg$ = createTextNode$jg$("");
                                 watchPathForRender$jg$(copy, [
                                     "index"
-                                ], (v)=>setTextContent$jg$($jg$, v), host$jg$);
+                                ], ($jg$v)=>setTextContent$jg$($jg$, $jg$v), host$jg$);
                                 return $jg$;
                             })());
                             host$jg$[ROOT_NODES$jg$].push($jg$);
@@ -38,7 +38,7 @@ export function A(attrs$jg$, rthost$jg$) {
             });
             watchPathForRender$jg$(state, [
                 "items"
-            ], (v)=>attrs$jg$["loop"] = v, rthost$jg$);
+            ], ($jg$v)=>attrs$jg$["loop"] = $jg$v, rthost$jg$);
             const $jg$ = new ComponentHost$jg$(rthost$jg$[CONTEXT$jg$]);
             rthost$jg$[ROOT_NODES$jg$].push($jg$);
             return renderFunctionComponent$jg$($jg$, For$jg$, attrs$jg$);

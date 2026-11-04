@@ -10,12 +10,12 @@ export function A(attrs$jg$, rthost$jg$) {
                 const attrs$jg$ = vm$jg$({});
                 watchPathForRender$jg$(state, [
                     "name"
-                ], (v)=>attrs$jg$.name = v, rthost$jg$);
+                ], ($jg$v)=>attrs$jg$.name = $jg$v, rthost$jg$);
                 return renderIntlTextWithParams$jg$(rthost$jg$, false, "greet", attrs$jg$, "Hello {name}");
             })());
             watchForRender$jg$(ExprWatcher$jg$([
                 IntlWatcher$jg$("NhX4DJ", undefined, "Hello")
-            ], ($jg$a0)=>$jg$a0 + '!'), (v)=>setAttribute$jg$($jg$, "title", v), rthost$jg$);
+            ], ($jg$a0)=>$jg$a0 + '!'), ($jg$v)=>setAttribute$jg$($jg$, "title", $jg$v), rthost$jg$);
             rthost$jg$[ROOT_NODES$jg$].push($jg$);
             return $jg$;
         })()

@@ -9,10 +9,11 @@ use swc_core::common::{DUMMY_SP, SyntaxContext};
 use swc_core::ecma::ast::*;
 use swc_core::ecma::visit::VisitWith;
 
-fn slot_to_expr(
+pub(super) fn slot_to_expr(
   mut params: Vec<Pat>,
   mut stmts: Vec<Stmt>,
   expressions: Vec<ExprOrSpread>,
+  function: Option<FnExpr>,
 ) -> Box<Expr> {
   let rtn_expr = Box::new(Expr::Array(ArrayLit {
     span: DUMMY_SP,
@@ -21,6 +22,18 @@ fn slot_to_expr(
   if params.is_empty() {
     params.push(Pat::Ident(BindingIdent::from(JINGE_ATTR_IDENT.clone())));
     params.push(Pat::Ident(BindingIdent::from(JINGE_HOST_IDENT.clone())));
+  }
+  if let Some(mut function) = function {
+    function.function.params = params.into_iter().map(Param::from).collect();
+    stmts.push(Stmt::Return(ReturnStmt {
+      span: DUMMY_SP,
+      arg: Some(rtn_expr),
+    }));
+    function.function.body = Some(FunctionBody {
+      span: DUMMY_SP,
+      stmts,
+    });
+    return Box::new(Expr::Fn(function));
   }
   ast_create_expr_arrow_fn(
     params,
@@ -62,6 +75,9 @@ impl TemplateParser {
     false
   }
   pub fn parse_component_element(&mut self, tn: &Ident, n: &JSXElement) {
+    if !crate::scope::validate_component_reference(tn) {
+      return;
+    }
     let mut attrs = self.parse_attrs(n, true);
     // let is_attrs_empty = attrs.const_props.is_empty() && attrs.watch_props.is_empty();
     self.push_context(Parent::Component);
@@ -110,7 +126,7 @@ impl TemplateParser {
         if let Some(pass_by) = s.pass_by {
           pass_by
         } else {
-          slot_to_expr(s.params, s.stmts, s.expressions)
+          slot_to_expr(s.params, s.stmts, s.expressions, s.function)
         },
       ))
     });

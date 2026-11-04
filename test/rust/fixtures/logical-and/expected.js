@@ -17,7 +17,7 @@ export function A(attrs$jg$, rthost$jg$) {
             });
             watchPathForRender$jg$(state, [
                 "on"
-            ], (v)=>attrs$jg$["expect"] = v, rthost$jg$);
+            ], ($jg$v)=>attrs$jg$["expect"] = $jg$v, rthost$jg$);
             const $jg$ = new ComponentHost$jg$(rthost$jg$[CONTEXT$jg$]);
             rthost$jg$[ROOT_NODES$jg$].push($jg$);
             return renderFunctionComponent$jg$($jg$, If$jg$, attrs$jg$);

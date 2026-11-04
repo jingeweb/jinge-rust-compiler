@@ -10,7 +10,7 @@ function Child(props, rthost$jg$) {
                 const $jg$ = createTextNode$jg$("");
                 watchPathForRender$jg$(props, [
                     'data-id'
-                ], (v)=>setTextContent$jg$($jg$, v), rthost$jg$);
+                ], ($jg$v)=>setTextContent$jg$($jg$, $jg$v), rthost$jg$);
                 return $jg$;
             })());
             rthost$jg$[ROOT_NODES$jg$].push($jg$);
@@ -24,7 +24,7 @@ export function A(attrs$jg$, rthost$jg$) {
             const attrs$jg$ = vm$jg$({});
             watchPathForRender$jg$(state, [
                 "n"
-            ], (v)=>attrs$jg$["data-id"] = v, rthost$jg$);
+            ], ($jg$v)=>attrs$jg$["data-id"] = $jg$v, rthost$jg$);
             const $jg$ = new ComponentHost$jg$(rthost$jg$[CONTEXT$jg$]);
             rthost$jg$[ROOT_NODES$jg$].push($jg$);
             return renderFunctionComponent$jg$($jg$, Child, attrs$jg$);

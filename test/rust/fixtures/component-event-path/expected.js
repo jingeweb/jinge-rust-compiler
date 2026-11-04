@@ -11,7 +11,7 @@ function Child(props, rthost$jg$) {
                 const $jg$ = createTextNode$jg$("");
                 watchPathForRender$jg$(props, [
                     "n"
-                ], (v)=>setTextContent$jg$($jg$, v), rthost$jg$);
+                ], ($jg$v)=>setTextContent$jg$($jg$, $jg$v), rthost$jg$);
                 return $jg$;
             })());
             watchPathForDOMEventBind$jg$(props, [
@@ -28,10 +28,10 @@ export function A(attrs$jg$, rthost$jg$) {
             const attrs$jg$ = vm$jg$({});
             watchPathForRender$jg$(state, [
                 "n"
-            ], (v)=>attrs$jg$["n"] = v, rthost$jg$);
+            ], ($jg$v)=>attrs$jg$["n"] = $jg$v, rthost$jg$);
             watchPathForRender$jg$(state, [
                 "handler"
-            ], (v)=>attrs$jg$["on:change"] = v, rthost$jg$);
+            ], ($jg$v)=>attrs$jg$["on:change"] = $jg$v, rthost$jg$);
             const $jg$ = new ComponentHost$jg$(rthost$jg$[CONTEXT$jg$]);
             rthost$jg$[ROOT_NODES$jg$].push($jg$);
             return renderFunctionComponent$jg$($jg$, Child, attrs$jg$);

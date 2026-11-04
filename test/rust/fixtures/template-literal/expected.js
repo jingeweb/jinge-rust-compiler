@@ -12,7 +12,7 @@ export function A(attrs$jg$, rthost$jg$) {
                     PathWatcher$jg$(state, [
                         "name"
                     ], true)
-                ], ($jg$a0)=>`Hello ${$jg$a0}`), (v)=>setTextContent$jg$($jg$, v), rthost$jg$);
+                ], ($jg$a0)=>`Hello ${$jg$a0}`), ($jg$v)=>setTextContent$jg$($jg$, $jg$v), rthost$jg$);
                 return $jg$;
             })());
             rthost$jg$[ROOT_NODES$jg$].push($jg$);
