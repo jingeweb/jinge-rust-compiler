@@ -1,6 +1,6 @@
 {
   "name": "jinge-compiler-linux-x64",
-  "version": "4.2.0",
+  "version": "4.2.1",
   "description": "jinge-compiler on linux-x86_64",
   "homepage": "https://github.com/jingeweb/jinge-rust-compiler#readme",
   "bugs": {
