@@ -72,8 +72,8 @@
     "jsdom": "30.1.3",
     "lint-staged": "^17.6.0",
     "nodemon": "^3.1.14",
-    "oxfmt": "^0.75.0",
-    "oxlint": "^1.90.0",
+    "oxfmt": "^0.76.0",
+    "oxlint": "^1.91.0",
     "oxlint-tsgolint": "^7.0.2005",
     "tsup": "^9.0.0",
     "typescript": "^7.0.2",
@@ -81,11 +81,11 @@
     "vite": "^8.3.5"
   },
   "optionalDependencies": {
-    "jinge-compiler-darwin-arm64": "4.2.1",
-    "jinge-compiler-darwin-x64": "4.2.1",
-    "jinge-compiler-linux-arm64": "4.2.1",
-    "jinge-compiler-linux-x64": "4.2.1",
-    "jinge-compiler-win32-x64": "4.2.1"
+    "jinge-compiler-darwin-arm64": "4.2.0",
+    "jinge-compiler-darwin-x64": "4.2.0",
+    "jinge-compiler-linux-arm64": "4.2.0",
+    "jinge-compiler-linux-x64": "4.2.0",
+    "jinge-compiler-win32-x64": "4.1.13"
   },
   "lint-staged": {
     "!(test/**).{js,ts}": [
